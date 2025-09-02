@@ -14,7 +14,7 @@
 
 namespace rtwbs {
 
-TimedAutomaton::TimedAutomaton(const char* xml_content) {
+TimedAutomaton::TimedAutomaton(const char* xml_content):constructed_(false) {
     DEV_PRINT("TimedAutomaton: Parsing XML content..." << std::endl);
     
     // Create a UTAP document and parse the XML
@@ -38,7 +38,7 @@ TimedAutomaton::TimedAutomaton(const char* xml_content) {
     DEV_PRINT("   TimedAutomaton construction complete!" << std::endl);
 }
 
-TimedAutomaton::TimedAutomaton(const std::string& fileName)
+TimedAutomaton::TimedAutomaton(const std::string& fileName):constructed_(false)
 {
     // Create a UTAP document and parse the XML
     UTAP::Document doc;
@@ -541,7 +541,11 @@ std::vector<std::pair<int, int>> TimedAutomaton::find_synchronized_pairs(const s
     return pairs;
 }
 
-void TimedAutomaton::construct_zone_graph(int initial_location, const std::vector<raw_t>& initial_zone,const size_t MAX_STATES ) {
+void TimedAutomaton::construct_zone_graph(int initial_location, const std::vector<raw_t>& initial_zone,const size_t MAX_STATES, bool force ) {
+    if (constructed_ && !force) {
+        std::cout << "Zone graph already constructed. Use force=true to rebuild." << std::endl;
+        return;
+    }
     // Clear previous exploration state
     states_.clear();
     state_map_.clear();
@@ -571,6 +575,7 @@ void TimedAutomaton::construct_zone_graph(int initial_location, const std::vecto
         std::cout << "Warning: Reached maximum state limit (" << MAX_STATES 
                  << "). Zone graph exploration stopped." << std::endl;
     }
+    constructed_ = true;
 }
 
 std::vector<raw_t> TimedAutomaton::time_elapse(const std::vector<raw_t>& zone) const {
@@ -742,6 +747,29 @@ void TimedAutomaton::explore_state(int state_id) {
             }
         }
     }
+}
+
+void TimedAutomaton::construct_zone_graph() const {
+    // Cast away const since we need to modify internal state for lazy initialization
+    auto* mutable_this = const_cast<TimedAutomaton*>(this);
+    
+    if (constructed_) {
+        return;  // Already constructed
+    }
+    
+    // Create initial zone (all clocks = 0) using proper UDBM initialization
+    std::vector<raw_t> initial_zone(dimension_ * dimension_);
+    dbm_init(initial_zone.data(), dimension_); // Proper zero zone initialization
+    
+    // Construct with default parameters (location 0, zero zone)
+    mutable_this->construct_zone_graph(0, initial_zone, 1000, true); // Force construction
+}
+
+const ZoneState* TimedAutomaton::get_zone_state(size_t state_id) const {
+    if (state_id >= states_.size()) {
+        return nullptr;
+    }
+    return states_[state_id].get();
 }
 
 }  // namespace rtwbs

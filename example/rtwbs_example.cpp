@@ -29,12 +29,23 @@ TimedAutomaton create_abstract_automaton() {
     
     // Add locations
     abstract.add_location(0, "Start");
-    abstract.add_location(1, "End");
+    abstract.add_location(1, "Middle");
+    abstract.add_location(2, "End");
+    
+    // Add a transition that receives an event
+    abstract.add_transition(0, 1, "receive_data?");
+    abstract.add_guard(0, 1, 0, 5, dbm_WEAK); // x1 <= 5
     
     // Add a transition that sends an event
-    abstract.add_transition(0, 1, "send_data!");
+    abstract.add_transition(1, 2, "send_ack!");
+    abstract.add_guard(1, 1, 0, 10, dbm_WEAK); // x1 <= 10
     
-    std::cout << "Abstract automaton: send_data! from Start to End" << std::endl;
+    // Initialize zone graph with proper initial zone (all clocks = 0)
+    std::vector<raw_t> initial_zone(4); // 2x2 matrix for 2 clocks
+    dbm_init(initial_zone.data(), 2); // Initialize as zero zone for 2 clocks
+    abstract.construct_zone_graph(0, initial_zone, 1000, true); // Force construction
+    
+    std::cout << "Abstract automaton: receive_data? (x <= 5) -> send_ack! (x <= 10)" << std::endl;
     return abstract;
 }
 
@@ -49,13 +60,20 @@ TimedAutomaton create_refined_automaton() {
     refined.add_location(1, "Middle");
     refined.add_location(2, "End");
     
-    // First transition: receive a trigger
-    refined.add_transition(0, 1, "trigger?");
+    // Receive event with MORE RELAXED timing (valid for received events)
+    refined.add_transition(0, 1, "receive_data?");
+    refined.add_guard(0, 1, 0, 8, dbm_WEAK); // x1 <= 8 (more relaxed than abstract's 5)
     
-    // Second transition: send the data
-    refined.add_transition(1, 2, "send_data!");
+    // Send event with STRICTER timing (valid for sent events)
+    refined.add_transition(1, 2, "send_ack!");
+    refined.add_guard(1, 1, 0, 7, dbm_WEAK); // x1 <= 7 (stricter than abstract's 10)
     
-    std::cout << "Refined automaton: trigger? -> send_data!" << std::endl;
+    // Initialize zone graph with proper initial zone (all clocks = 0)
+    std::vector<raw_t> initial_zone(4); // 2x2 matrix for 2 clocks
+    dbm_init(initial_zone.data(), 2); // Initialize as zero zone for 2 clocks
+    refined.construct_zone_graph(0, initial_zone, 1000, true); // Force construction
+    
+    std::cout << "Refined automaton: receive_data? (x <= 8) -> send_ack! (x <= 7)" << std::endl;
     return refined;
 }
 
@@ -67,13 +85,23 @@ TimedAutomaton create_invalid_refinement() {
     
     // Add locations
     invalid.add_location(0, "Start");
-    invalid.add_location(1, "End");
+    invalid.add_location(1, "Middle");
+    invalid.add_location(2, "End");
     
-    // This transition violates RTWBS: sent event with relaxed timing would be invalid
-    // But since we can't add specific timing constraints easily, we'll use different action
-    invalid.add_transition(0, 1, "invalid_send!");
+    // Received event with STRICTER timing (INVALID - should be more relaxed)
+    invalid.add_transition(0, 1, "receive_data?");
+    invalid.add_guard(0, 1, 0, 3, dbm_WEAK); // x1 <= 3 (stricter than abstract's 5 - INVALID!)
     
-    std::cout << "Invalid refinement: different event name (not matching abstract)" << std::endl;
+    // Sent event with MORE RELAXED timing (INVALID - should be stricter)
+    invalid.add_transition(1, 2, "send_ack!");
+    invalid.add_guard(1, 1, 0, 15, dbm_WEAK); // x1 <= 15 (more relaxed than abstract's 10 - INVALID!)
+    
+    // Initialize zone graph with proper initial zone (all clocks = 0)
+    std::vector<raw_t> initial_zone(4); // 2x2 matrix for 2 clocks
+    dbm_init(initial_zone.data(), 2); // Initialize as zero zone for 2 clocks
+    invalid.construct_zone_graph(0, initial_zone, 1000, true); // Force construction
+    
+    std::cout << "Invalid refinement: receive_data? (x <= 3) -> send_ack! (x <= 15) - violates RWTBS!" << std::endl;
     return invalid;
 }
 

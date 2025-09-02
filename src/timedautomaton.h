@@ -118,7 +118,7 @@ private:
     std::unordered_map<ZoneState, int, ZoneStateHash> state_map_;
     std::vector<std::vector<int>> zone_transitions_;  // adjacency list: state_id -> list of successor state_ids
     std::queue<int> waiting_list_;
-    
+    bool constructed_;
 public:
     /**
      * Constructor
@@ -208,7 +208,12 @@ public:
     /**
      * Construct the zone graph starting from initial location and zone
      */
-    void construct_zone_graph(int initial_location, const std::vector<raw_t>& initial_zone, const size_t MAX_STATES = 1000);
+    void construct_zone_graph(int initial_location, const std::vector<raw_t>& initial_zone, const size_t MAX_STATES = 1000, bool force = false);
+    
+    /**
+     * Construct the zone graph with default initial state (location 0, zero zone) - used by RTWBS
+     */
+    void construct_zone_graph() const;
 
     /**
      * Apply time elapse to a zone (up operation)
@@ -254,6 +259,13 @@ public:
      * Get successors of a state
      */
     const std::vector<int>& get_successors(size_t state_id) const;
+    
+    /**
+     * Get zone state by ID (needed for RTWBS state correspondence)
+     */
+    const ZoneState* get_zone_state(size_t state_id) const;
+    
+
 
 private:
     /**

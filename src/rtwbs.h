@@ -72,6 +72,15 @@ private:
     
     // Generate hash key for path caching
     std::string generate_path_key(const std::vector<EventTransition>& path);
+        /**
+     * Check if two zone states satisfy RTWBS inclusion constraints
+     * @param refined_state_id: State ID in refined automaton
+     * @param abstract_state_id: State ID in abstract automaton  
+     * @param abstract_automaton: The abstract automaton to compare against
+     * @return: true if refined zone can simulate abstract zone under RTWBS
+     */
+    bool check_zone_inclusion_rtwbs(size_t refined_state_id, size_t abstract_state_id, 
+                                   const TimedAutomaton& refined_automaton,const TimedAutomaton& abstract_automaton) const;
 
 public:
     /**
