@@ -186,6 +186,11 @@ public:
     const std::unordered_set<std::string>& get_channels() const;
     
     /**
+     * Get all transitions (for RTWBS analysis)
+     */
+    const std::vector<Transition>& get_transitions() const;
+    
+    /**
      * Find synchronized transition pairs for a given channel
      */
     std::vector<std::pair<int, int>> find_synchronized_pairs(const std::string& channel) const;

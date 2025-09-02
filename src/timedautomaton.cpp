@@ -520,6 +520,10 @@ const std::unordered_set<std::string>& TimedAutomaton::get_channels() const {
     return channels_;
 }
 
+const std::vector<Transition>& TimedAutomaton::get_transitions() const {
+    return transitions_;
+}
+
 std::vector<std::pair<int, int>> TimedAutomaton::find_synchronized_pairs(const std::string& channel) const {
     std::vector<std::pair<int, int>> pairs;
     

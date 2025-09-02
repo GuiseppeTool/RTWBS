@@ -187,6 +187,8 @@ add_integration_example(minimal_test)
 
 add_integration_example(single_transition_test)
 
+add_integration_example(rtwbs_example)
+
 message(STATUS "UDBM Library: ${UDBM_LIBRARY}")
 message(STATUS "UUtils Base: ${UUTILS_BASE_LIBRARY}")
 message(STATUS "UUtils Hash: ${UUTILS_HASH_LIBRARY}")
@@ -197,5 +199,5 @@ message(STATUS "Y Library: ${Y_LIBRARY}")
 
 # Add a custom target to build all examples
 add_custom_target(examples 
-    DEPENDS simple_example test_example railway_example zonegraph_example utap_example integration_example integration_example2
+    DEPENDS simple_example test_example railway_example zonegraph_example utap_example integration_example integration_example2 rtwbs_example
 )
