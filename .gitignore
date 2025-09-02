@@ -1,6 +1,7 @@
+# Build directories
+build/
 build/**
-UDBM/** 
-utap/**
 
-utap
-UDBM
+# External dependencies (should be installed separately)
+UDBM/
+utap/
