@@ -5,3 +5,6 @@ build/**
 # External dependencies (should be installed separately)
 UDBM/
 utap/
+
+
+*.a
