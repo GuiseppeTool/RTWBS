@@ -1,0 +1,181 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.6//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_6.dtd'>
+<nta>
+    <declaration>
+        // Test 9: Cyclic Behavior with Resets
+        // Tests systems with loops and frequent clock resets
+        clock x, y;
+        chan cycle, reset_signal, checkpoint;
+        int cycle_count = 0;
+        int checkpoint_count = 0;
+        const int MAX_CYCLES = 5;
+    </declaration>
+    
+    <template>
+        <name>CyclicProcess</name>
+        
+        <location id="start" x="200" y="0">
+            <name x="185" y="-34">Start</name>
+        </location>
+        
+        <location id="work1" x="400" y="0">
+            <name x="385" y="-34">Work1</name>
+            <label kind="invariant" x="385" y="17">x &lt;= 6</label>
+        </location>
+        
+        <location id="work2" x="600" y="0">
+            <name x="585" y="-34">Work2</name>
+            <label kind="invariant" x="585" y="17">y &lt;= 8</label>
+        </location>
+        
+        <location id="checkpoint" x="400" y="150">
+            <name x="350" y="184">Checkpoint</name>
+            <label kind="invariant" x="350" y="201">x &lt;= 3</label>
+        </location>
+        
+        <location id="reset_state" x="200" y="150">
+            <name x="150" y="184">ResetState</name>
+        </location>
+        
+        <location id="end_cycle" x="600" y="150">
+            <name x="575" y="184">EndCycle</name>
+        </location>
+        
+        <location id="complete" x="400" y="300">
+            <name x="375" y="334">Complete</name>
+        </location>
+        
+        <init ref="start"/>
+        
+        <!-- Main cycle path -->
+        <transition>
+            <source ref="start"/>
+            <target ref="work1"/>
+            <label kind="guard" x="275" y="-17">cycle_count &lt; MAX_CYCLES</label>
+            <label kind="assignment" x="275" y="0">x := 0</label>
+        </transition>
+        
+        <transition>
+            <source ref="work1"/>
+            <target ref="work2"/>
+            <label kind="guard" x="475" y="-17">x &gt;= 3</label>
+            <label kind="assignment" x="475" y="0">y := 0</label>
+        </transition>
+        
+        <transition>
+            <source ref="work2"/>
+            <target ref="start"/>
+            <label kind="guard" x="400" y="-75">y &gt;= 5</label>
+            <label kind="synchronisation" x="400" y="-58">cycle!</label>
+            <label kind="assignment" x="400" y="-41">cycle_count++, x := 0, y := 0</label>
+        </transition>
+        
+        <!-- Checkpoint branch -->
+        <transition>
+            <source ref="work1"/>
+            <target ref="checkpoint"/>
+            <label kind="guard" x="350" y="75">x &gt;= 4</label>
+            <label kind="synchronisation" x="350" y="92">checkpoint!</label>
+            <label kind="assignment" x="350" y="109">x := 0</label>
+        </transition>
+        
+        <transition>
+            <source ref="checkpoint"/>
+            <target ref="work2"/>
+            <label kind="guard" x="475" y="180">x &gt;= 2</label>
+            <label kind="assignment" x="475" y="197">y := 0, checkpoint_count++</label>
+        </transition>
+        
+        <!-- Reset branch -->
+        <transition>
+            <source ref="work2"/>
+            <target ref="reset_state"/>
+            <label kind="guard" x="300" y="180">y &gt;= 6</label>
+            <label kind="synchronisation" x="300" y="197">reset_signal!</label>
+        </transition>
+        
+        <transition>
+            <source ref="reset_state"/>
+            <target ref="start"/>
+            <label kind="assignment" x="100" y="75">x := 0, y := 0</label>
+        </transition>
+        
+        <!-- End cycle branch -->
+        <transition>
+            <source ref="work2"/>
+            <target ref="end_cycle"/>
+            <label kind="guard" x="550" y="75">y &gt;= 7</label>
+            <label kind="assignment" x="550" y="92">cycle_count++</label>
+        </transition>
+        
+        <transition>
+            <source ref="end_cycle"/>
+            <target ref="complete"/>
+            <label kind="guard" x="475" y="225">cycle_count &gt;= MAX_CYCLES</label>
+            <label kind="assignment" x="475" y="242">x := 0, y := 0</label>
+        </transition>
+        
+        <!-- Completion -->
+        <transition>
+            <source ref="start"/>
+            <target ref="complete"/>
+            <label kind="guard" x="275" y="150">cycle_count &gt;= MAX_CYCLES</label>
+        </transition>
+        
+        <!-- Self-loop for completion -->
+        <transition>
+            <source ref="complete"/>
+            <target ref="complete"/>
+            <label kind="guard" x="450" y="350">x &gt;= 10</label>
+            <label kind="assignment" x="450" y="367">x := 0</label>
+        </transition>
+    </template>
+    
+    <template>
+        <name>Monitor</name>
+        
+        <location id="monitor_idle" x="0" y="0">
+            <name x="-40" y="-34">MonitorIdle</name>
+        </location>
+        
+        <location id="monitor_active" x="200" y="0">
+            <name x="150" y="-34">MonitorActive</name>
+        </location>
+        
+        <location id="monitor_reset" x="100" y="150">
+            <name x="50" y="184">MonitorReset</name>
+        </location>
+        
+        <init ref="monitor_idle"/>
+        
+        <transition>
+            <source ref="monitor_idle"/>
+            <target ref="monitor_active"/>
+            <label kind="synchronisation" x="75" y="-17">cycle?</label>
+        </transition>
+        
+        <transition>
+            <source ref="monitor_active"/>
+            <target ref="monitor_idle"/>
+            <label kind="synchronisation" x="75" y="50">checkpoint?</label>
+        </transition>
+        
+        <transition>
+            <source ref="monitor_active"/>
+            <target ref="monitor_reset"/>
+            <label kind="synchronisation" x="75" y="75">reset_signal?</label>
+        </transition>
+        
+        <transition>
+            <source ref="monitor_reset"/>
+            <target ref="monitor_idle"/>
+            <label kind="guard" x="25" y="200">x &gt;= 1</label>
+        </transition>
+    </template>
+    
+    <system>
+        CyclicProc = CyclicProcess();
+        Mon = Monitor();
+        system CyclicProc, Mon;
+    </system>
+</nta>

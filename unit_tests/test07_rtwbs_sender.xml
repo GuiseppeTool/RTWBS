@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.6//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_6.dtd'>
+<nta>
+    <declaration>
+        // Test 7: RTWBS Sender Test  
+        // Focuses on testing sent event timing strictness
+        clock x, y, z;
+        chan trigger, send_data, complete;
+        int task_count = 0;
+    </declaration>
+    
+    <template>
+        <name>SenderAbstract</name>
+        
+        <location id="abs_idle" x="0" y="0">
+            <name x="-25" y="-34">Idle</name>
+        </location>
+        
+        <location id="abs_ready" x="200" y="0">
+            <name x="175" y="-34">Ready</name>
+            <label kind="invariant" x="175" y="17">x &lt;= 15</label>
+        </location>
+        
+        <location id="abs_transmit" x="400" y="0">
+            <name x="350" y="-34">Transmit</name>
+            <label kind="invariant" x="350" y="17">y &lt;= 20</label>
+        </location>
+        
+        <location id="abs_complete" x="200" y="150">
+            <name x="175" y="184">Complete</name>
+        </location>
+        
+        <init ref="abs_idle"/>
+        
+        <transition>
+            <source ref="abs_idle"/>
+            <target ref="abs_ready"/>
+            <label kind="synchronisation" x="75" y="-17">trigger?</label>
+            <label kind="assignment" x="75" y="0">x := 0</label>
+        </transition>
+        
+        <!-- Sent event with loose timing bound (abstract) -->
+        <transition>
+            <source ref="abs_ready"/>
+            <target ref="abs_transmit"/>
+            <label kind="guard" x="275" y="-17">x &gt;= 5 &amp;&amp; x &lt;= 12</label>
+            <label kind="synchronisation" x="275" y="0">send_data!</label>
+            <label kind="assignment" x="275" y="17">y := 0</label>
+        </transition>
+        
+        <transition>
+            <source ref="abs_transmit"/>
+            <target ref="abs_complete"/>
+            <label kind="guard" x="275" y="75">y &gt;= 10</label>
+            <label kind="synchronisation" x="275" y="92">complete!</label>
+        </transition>
+        
+        <transition>
+            <source ref="abs_complete"/>
+            <target ref="abs_idle"/>
+            <label kind="guard" x="75" y="200">z &gt;= 5</label>
+            <label kind="assignment" x="75" y="217">x := 0, y := 0, z := 0</label>
+        </transition>
+    </template>
+    
+    <template>
+        <name>SenderRefined</name>
+        
+        <location id="ref_idle" x="0" y="0">
+            <name x="-25" y="-34">Idle</name>
+        </location>
+        
+        <location id="ref_ready" x="200" y="0">
+            <name x="175" y="-34">Ready</name>
+            <label kind="invariant" x="175" y="17">x &lt;= 12</label>
+        </location>
+        
+        <location id="ref_transmit" x="400" y="0">
+            <name x="350" y="-34">Transmit</name>
+            <label kind="invariant" x="350" y="17">y &lt;= 15</label>
+        </location>
+        
+        <location id="ref_complete" x="200" y="150">
+            <name x="175" y="184">Complete</name>
+        </location>
+        
+        <init ref="ref_idle"/>
+        
+        <transition>
+            <source ref="ref_idle"/>
+            <target ref="ref_ready"/>
+            <label kind="synchronisation" x="75" y="-17">trigger?</label>
+            <label kind="assignment" x="75" y="0">x := 0, task_count++</label>
+        </transition>
+        
+        <!-- Sent event with STRICTER timing bound (valid for RTWBS) -->
+        <transition>
+            <source ref="ref_ready"/>
+            <target ref="ref_transmit"/>
+            <label kind="guard" x="275" y="-17">x &gt;= 6 &amp;&amp; x &lt;= 9</label>
+            <label kind="synchronisation" x="275" y="0">send_data!</label>
+            <label kind="assignment" x="275" y="17">y := 0</label>
+        </transition>
+        
+        <transition>
+            <source ref="ref_transmit"/>
+            <target ref="ref_complete"/>
+            <label kind="guard" x="275" y="75">y &gt;= 8</label>
+            <label kind="synchronisation" x="275" y="92">complete!</label>
+        </transition>
+        
+        <transition>
+            <source ref="ref_complete"/>
+            <target ref="ref_idle"/>
+            <label kind="guard" x="75" y="200">z &gt;= 3</label>
+            <label kind="assignment" x="75" y="217">x := 0, y := 0, z := 0</label>
+        </transition>
+    </template>
+    
+    <template>
+        <name>TriggerEnvironment</name>
+        
+        <location id="trigger_idle" x="0" y="0">
+            <name x="-40" y="-34">TriggerIdle</name>
+        </location>
+        
+        <location id="trigger_waiting" x="250" y="0">
+            <name x="190" y="-34">TriggerWaiting</name>
+        </location>
+        
+        <location id="trigger_done" x="125" y="150">
+            <name x="100" y="184">TriggerDone</name>
+        </location>
+        
+        <init ref="trigger_idle"/>
+        
+        <transition>
+            <source ref="trigger_idle"/>
+            <target ref="trigger_waiting"/>
+            <label kind="synchronisation" x="100" y="-17">trigger!</label>
+        </transition>
+        
+        <transition>
+            <source ref="trigger_waiting"/>
+            <target ref="trigger_done"/>
+            <label kind="synchronisation" x="100" y="75">send_data?</label>
+        </transition>
+        
+        <transition>
+            <source ref="trigger_done"/>
+            <target ref="trigger_idle"/>
+            <label kind="synchronisation" x="25" y="200">complete?</label>
+        </transition>
+    </template>
+    
+    <system>
+        // For RTWBS testing: Compare Abstract vs Refined sender behavior
+        AbstractSender = SenderAbstract();
+        RefinedSender = SenderRefined();
+        TriggerEnv = TriggerEnvironment();
+        system AbstractSender, TriggerEnv;
+        // Alternative: system RefinedSender, TriggerEnv;
+    </system>
+</nta>

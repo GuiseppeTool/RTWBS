@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.6//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_6.dtd'>
+<nta>
+    <declaration>
+        // Test 8: Dense Clock Constraints
+        // Tests many clocks with complex timing relationships
+        clock x1, x2, x3, x4, x5;
+        chan sync_a, sync_b, sync_c;
+        int constraint_checks = 0;
+        bool all_constraints_met = false;
+    </declaration>
+    
+    <template>
+        <name>DenseClockSystem</name>
+        
+        <location id="init" x="0" y="0">
+            <name x="-25" y="-34">Init</name>
+            <label kind="invariant" x="-25" y="17">x1 &lt;= 30</label>
+        </location>
+        
+        <location id="phase1" x="200" y="0">
+            <name x="175" y="-34">Phase1</name>
+            <label kind="invariant" x="175" y="17">x2 &lt;= 15 &amp;&amp; x3 &lt;= 10</label>
+        </location>
+        
+        <location id="phase2" x="400" y="0">
+            <name x="375" y="-34">Phase2</name>
+            <label kind="invariant" x="375" y="17">x4 &lt;= 8 &amp;&amp; x5 &lt;= 12</label>
+        </location>
+        
+        <location id="sync_state" x="200" y="150">
+            <name x="150" y="184">SyncState</name>
+            <label kind="invariant" x="150" y="201">x1 &lt;= 25 &amp;&amp; x2 &lt;= 20</label>
+        </location>
+        
+        <location id="constraint_check" x="400" y="150">
+            <name x="330" y="184">ConstraintCheck</name>
+            <label kind="invariant" x="330" y="201">x3 &lt;= 5 &amp;&amp; x4 &lt;= 7 &amp;&amp; x5 &lt;= 9</label>
+        </location>
+        
+        <location id="final" x="200" y="300">
+            <name x="185" y="334">Final</name>
+        </location>
+        
+        <init ref="init"/>
+        
+        <!-- Transition with complex clock constraints -->
+        <transition>
+            <source ref="init"/>
+            <target ref="phase1"/>
+            <label kind="guard" x="50" y="-17">x1 &gt;= 5 &amp;&amp; x1 &lt;= 25</label>
+            <label kind="assignment" x="50" y="0">x2 := 0, x3 := 0</label>
+        </transition>
+        
+        <transition>
+            <source ref="phase1"/>
+            <target ref="phase2"/>
+            <label kind="guard" x="250" y="-17">x2 &gt;= 8 &amp;&amp; x3 &gt;= 3 &amp;&amp; x2 - x3 &lt;= 10</label>
+            <label kind="synchronisation" x="250" y="0">sync_a!</label>
+            <label kind="assignment" x="250" y="17">x4 := 0, x5 := 0</label>
+        </transition>
+        
+        <transition>
+            <source ref="phase1"/>
+            <target ref="sync_state"/>
+            <label kind="guard" x="50" y="75">x2 &gt;= 12</label>
+            <label kind="synchronisation" x="50" y="92">sync_b?</label>
+            <label kind="assignment" x="50" y="109">constraint_checks++</label>
+        </transition>
+        
+        <transition>
+            <source ref="phase2"/>
+            <target ref="constraint_check"/>
+            <label kind="guard" x="350" y="75">x4 &gt;= 4 &amp;&amp; x5 &gt;= 6 &amp;&amp; x4 + x5 &lt;= 15</label>
+            <label kind="assignment" x="350" y="92">x3 := 0</label>
+        </transition>
+        
+        <transition>
+            <source ref="sync_state"/>
+            <target ref="constraint_check"/>
+            <label kind="guard" x="250" y="180">x1 &gt;= 20 &amp;&amp; x2 &gt;= 15</label>
+            <label kind="synchronisation" x="250" y="197">sync_c!</label>
+            <label kind="assignment" x="250" y="214">x4 := 0, x5 := 0</label>
+        </transition>
+        
+        <transition>
+            <source ref="constraint_check"/>
+            <target ref="final"/>
+            <label kind="guard" x="250" y="225">x3 &gt;= 2 &amp;&amp; x4 &gt;= 3 &amp;&amp; x5 &gt;= 4</label>
+            <label kind="assignment" x="250" y="242">all_constraints_met := true</label>
+        </transition>
+        
+        <transition>
+            <source ref="final"/>
+            <target ref="init"/>
+            <label kind="guard" x="75" y="350">x1 &gt;= 30</label>
+            <label kind="assignment" x="75" y="367">x1 := 0, x2 := 0, x3 := 0, x4 := 0, x5 := 0</label>
+        </transition>
+        
+        <!-- Alternative paths with different constraints -->
+        <transition>
+            <source ref="phase2"/>
+            <target ref="init"/>
+            <label kind="guard" x="200" y="-75">x4 &gt;= 7 &amp;&amp; x5 &gt;= 10</label>
+            <label kind="assignment" x="200" y="-58">x1 := 0, x2 := 0, x3 := 0, x4 := 0, x5 := 0</label>
+        </transition>
+    </template>
+    
+    <template>
+        <name>SyncHelper</name>
+        
+        <location id="helper_idle" x="0" y="0">
+            <name x="-35" y="-34">HelperIdle</name>
+        </location>
+        
+        <location id="helper_active" x="200" y="0">
+            <name x="150" y="-34">HelperActive</name>
+        </location>
+        
+        <init ref="helper_idle"/>
+        
+        <transition>
+            <source ref="helper_idle"/>
+            <target ref="helper_active"/>
+            <label kind="synchronisation" x="75" y="-17">sync_a?</label>
+        </transition>
+        
+        <transition>
+            <source ref="helper_active"/>
+            <target ref="helper_idle"/>
+            <label kind="synchronisation" x="75" y="50">sync_b!</label>
+        </transition>
+        
+        <transition>
+            <source ref="helper_active"/>
+            <target ref="helper_idle"/>
+            <label kind="synchronisation" x="75" y="75">sync_c?</label>
+        </transition>
+    </template>
+    
+    <system>
+        DenseSystem = DenseClockSystem();
+        Helper = SyncHelper();
+        system DenseSystem, Helper;
+    </system>
+</nta>

@@ -165,7 +165,6 @@ endfunction()
 
 # Create UDBM example executables
 add_udbm_example(simple_example)
-add_udbm_example(test_example)
 
 # Create integration examples (need both UTAP and UDBM + timedautomaton.cpp)
 add_integration_example(railway_example)
@@ -188,6 +187,21 @@ add_integration_example(minimal_test)
 add_integration_example(single_transition_test)
 
 add_integration_example(rtwbs_example)
+add_integration_example(system_rtwbs_example)
+add_integration_example(unit_test_example)
+add_integration_example(run_unit_tests)
+add_integration_example(debug_test9)
+
+# Copy unit_tests directory to build directory
+add_custom_target(copy_unit_tests ALL
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+    ${CMAKE_CURRENT_SOURCE_DIR}/unit_tests
+    ${CMAKE_CURRENT_BINARY_DIR}/unit_tests
+    COMMENT "Copying unit_tests directory to build directory"
+)
+
+# Make run_unit_tests depend on copying unit tests
+add_dependencies(run_unit_tests copy_unit_tests)
 
 message(STATUS "UDBM Library: ${UDBM_LIBRARY}")
 message(STATUS "UUtils Base: ${UUTILS_BASE_LIBRARY}")
@@ -199,5 +213,5 @@ message(STATUS "Y Library: ${Y_LIBRARY}")
 
 # Add a custom target to build all examples
 add_custom_target(examples 
-    DEPENDS simple_example test_example railway_example zonegraph_example utap_example integration_example integration_example2 rtwbs_example
+    DEPENDS simple_example railway_example zonegraph_example utap_example integration_example integration_example_2 rtwbs_example system_rtwbs_example unit_test_example run_unit_tests
 )

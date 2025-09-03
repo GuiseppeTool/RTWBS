@@ -3,6 +3,7 @@
 
 #include "timedautomaton.h"
 #include "configs.h"
+#include "system.h"
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -10,6 +11,8 @@
 #include <functional>
 
 namespace rtwbs {
+
+
 struct PairHash {
     std::size_t operator()(const std::pair<const ZoneState*, const ZoneState*>& p) const {
         auto h1 = std::hash<const ZoneState*>{}(p.first);
@@ -139,6 +142,38 @@ public:
         std::cout << "  Check Time: " << last_stats_.check_time_ms << " ms" << std::endl;
     }
 
+    /**
+     * Check RTWBS equivalence between two systems
+     * 
+     * This checks if each automaton in system_refined is RTWBS-equivalent 
+     * to the corresponding automaton in system_abstract (matched by index).
+     * 
+     * @param system_refined The refined/concrete system
+     * @param system_abstract The abstract system
+     * @return true if all corresponding automata pairs are RTWBS-equivalent
+     */
+    bool check_rtwbs_equivalence(const System& system_refined, const System& system_abstract);
+    
+    /**
+     * Check RTWBS equivalence between two systems with detailed results
+     * 
+     * @param system_refined The refined/concrete system
+     * @param system_abstract The abstract system
+     * @param results Output vector containing results for each automaton pair
+     * @return true if all corresponding automata pairs are RTWBS-equivalent
+     */
+    struct SystemCheckResult {
+        size_t automaton_index;
+        std::string template_name_refined;
+        std::string template_name_abstract;
+        bool is_equivalent;
+        CheckStatistics statistics;
+        std::vector<EventTransition> counterexample;
+    };
+    
+    bool check_rtwbs_equivalence_detailed(const System& system_refined, 
+                                         const System& system_abstract,
+                                         std::vector<SystemCheckResult>& results);
 
 private:
     mutable CheckStatistics last_stats_;

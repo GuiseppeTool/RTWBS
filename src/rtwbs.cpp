@@ -1,4 +1,5 @@
 #include "rtwbs.h"
+
 #include <chrono>
 #include <algorithm>
 #include <sstream>
@@ -359,6 +360,118 @@ void RTWBSChecker::clear_caches() {
 
 RTWBSChecker::CheckStatistics RTWBSChecker::get_last_check_statistics() const {
     return last_stats_;
+}
+
+bool RTWBSChecker::check_rtwbs_equivalence(const System& system_refined, const System& system_abstract) {
+    // Systems must have the same number of automata
+    if (system_refined.size() != system_abstract.size()) {
+        std::cout << "Systems have different number of automata: " 
+                  << system_refined.size() << " vs " << system_abstract.size() << std::endl;
+        return false;
+    }
+    
+    if (system_refined.size() == 0) {
+        std::cout << "Both systems are empty - considered equivalent" << std::endl;
+        return true;
+    }
+    
+    std::cout << "=== System-Level RTWBS Checking ===" << std::endl;
+    std::cout << "Checking " << system_refined.size() << " automaton pairs..." << std::endl;
+    
+    // Check each corresponding automaton pair
+    bool all_equivalent = true;
+    for (size_t i = 0; i < system_refined.size(); ++i) {
+        const auto& refined_automaton = system_refined.get_automaton(i);
+        const auto& abstract_automaton = system_abstract.get_automaton(i);
+        
+        const auto& refined_names = system_refined.get_template_names();
+        const auto& abstract_names = system_abstract.get_template_names();
+        
+        std::cout << "--- Checking Pair " << i << ": " 
+                  << refined_names[i] << " ≼ " << abstract_names[i] << " ---" << std::endl;
+        
+        bool pair_equivalent = check_rtwbs_equivalence(refined_automaton, abstract_automaton);
+        
+        std::cout << "Result: " << (pair_equivalent ? "EQUIVALENT" : "NOT EQUIVALENT") << std::endl;
+        
+        if (!pair_equivalent) {
+            all_equivalent = false;
+            // For now, continue checking all pairs instead of early termination
+            // if (enable_early_termination) {
+            //     std::cout << "Early termination enabled - stopping on first counterexample" << std::endl;
+            //     break;
+            // }
+        }
+        std::cout << std::endl;
+    }
+    
+    std::cout << "=== System-Level Result: " << (all_equivalent ? "EQUIVALENT" : "NOT EQUIVALENT") << " ===" << std::endl;
+    return all_equivalent;
+}
+
+bool RTWBSChecker::check_rtwbs_equivalence_detailed(const System& system_refined, 
+                                                   const System& system_abstract,
+                                                   std::vector<SystemCheckResult>& results) {
+    results.clear();
+    
+    // Systems must have the same number of automata
+    if (system_refined.size() != system_abstract.size()) {
+        std::cout << "Systems have different number of automata: " 
+                  << system_refined.size() << " vs " << system_abstract.size() << std::endl;
+        return false;
+    }
+    
+    if (system_refined.size() == 0) {
+        std::cout << "Both systems are empty - considered equivalent" << std::endl;
+        return true;
+    }
+    
+    std::cout << "=== Detailed System-Level RTWBS Checking ===" << std::endl;
+    std::cout << "Checking " << system_refined.size() << " automaton pairs..." << std::endl;
+    
+    bool all_equivalent = true;
+    const auto& refined_names = system_refined.get_template_names();
+    const auto& abstract_names = system_abstract.get_template_names();
+    
+    for (size_t i = 0; i < system_refined.size(); ++i) {
+        SystemCheckResult result;
+        result.automaton_index = i;
+        result.template_name_refined = refined_names[i];
+        result.template_name_abstract = abstract_names[i];
+        
+        const auto& refined_automaton = system_refined.get_automaton(i);
+        const auto& abstract_automaton = system_abstract.get_automaton(i);
+        
+        std::cout << "--- Checking Pair " << i << ": " 
+                  << result.template_name_refined << " ≼ " << result.template_name_abstract << " ---" << std::endl;
+        
+        // Check with counterexample collection
+        result.is_equivalent = check_rtwbs_with_counterexample(
+            refined_automaton, abstract_automaton, result.counterexample);
+        
+        result.statistics = get_last_check_statistics();
+        
+        std::cout << "Result: " << (result.is_equivalent ? "EQUIVALENT" : "NOT EQUIVALENT") << std::endl;
+        
+        if (!result.is_equivalent) {
+            all_equivalent = false;
+            if (!result.counterexample.empty()) {
+                std::cout << "Counterexample found for this pair." << std::endl;
+            }
+        }
+        
+        results.push_back(result);
+        std::cout << std::endl;
+        
+        // For now, continue checking all pairs instead of early termination
+        // if (!result.is_equivalent && enable_early_termination) {
+        //     std::cout << "Early termination enabled - stopping on first counterexample" << std::endl;
+        //     break;
+        // }
+    }
+    
+    std::cout << "=== Detailed System-Level Result: " << (all_equivalent ? "EQUIVALENT" : "NOT EQUIVALENT") << " ===" << std::endl;
+    return all_equivalent;
 }
 
 } // namespace rtwbs

@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.6//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_6.dtd'>
+<nta>
+    <declaration>
+        // Test 1: Simple Sequential Automaton
+        // Single clock, basic transitions with timing constraints
+        clock x;
+    </declaration>
+    
+    <template>
+        <name>SimpleSequential</name>
+        
+        <location id="s0" x="0" y="0">
+            <name x="-10" y="-34">Start</name>
+        </location>
+        
+        <location id="s1" x="150" y="0">
+            <name x="140" y="-34">Middle</name>
+            <label kind="invariant" x="140" y="17">x &lt;= 5</label>
+        </location>
+        
+        <location id="s2" x="300" y="0">
+            <name x="290" y="-34">End</name>
+        </location>
+        
+        <init ref="s0"/>
+        
+        <transition>
+            <source ref="s0"/>
+            <target ref="s1"/>
+            <label kind="guard" x="50" y="-17">x &gt;= 1</label>
+            <label kind="assignment" x="50" y="0">x := 0</label>
+        </transition>
+        
+        <transition>
+            <source ref="s1"/>
+            <target ref="s2"/>
+            <label kind="guard" x="200" y="-17">x &gt;= 2 &amp;&amp; x &lt;= 4</label>
+        </transition>
+        
+        <transition>
+            <source ref="s2"/>
+            <target ref="s0"/>
+            <label kind="guard" x="150" y="50">x &gt;= 10</label>
+            <label kind="assignment" x="150" y="67">x := 0</label>
+        </transition>
+    </template>
+    
+    <system>
+        Process = SimpleSequential();
+        system Process;
+    </system>
+</nta>

@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.6//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_6.dtd'>
+<nta>
+    <declaration>
+        // Test 4: Complex State Space
+        // Many states to test state exploration limits
+        clock x, y;
+        int state_counter = 0;
+        chan event_a, event_b;
+    </declaration>
+    
+    <template>
+        <name>ComplexStateMachine</name>
+        
+        <location id="s0" x="0" y="0">
+            <name x="-25" y="-34">State0</name>
+        </location>
+        
+        <location id="s1" x="150" y="0">
+            <name x="125" y="-34">State1</name>
+            <label kind="invariant" x="125" y="17">x &lt;= 5</label>
+        </location>
+        
+        <location id="s2" x="300" y="0">
+            <name x="275" y="-34">State2</name>
+            <label kind="invariant" x="275" y="17">y &lt;= 8</label>
+        </location>
+        
+        <location id="s3" x="0" y="150">
+            <name x="-25" y="184">State3</name>
+            <label kind="invariant" x="-25" y="201">x &lt;= 12</label>
+        </location>
+        
+        <location id="s4" x="150" y="150">
+            <name x="125" y="184">State4</name>
+            <label kind="invariant" x="125" y="201">y &lt;= 15</label>
+        </location>
+        
+        <location id="s5" x="300" y="150">
+            <name x="275" y="184">State5</name>
+            <label kind="invariant" x="275" y="201">x &lt;= 6 &amp;&amp; y &lt;= 10</label>
+        </location>
+        
+        <location id="s6" x="450" y="75">
+            <name x="425" y="109">State6</name>
+        </location>
+        
+        <location id="s7" x="150" y="300">
+            <name x="125" y="334">State7</name>
+            <label kind="invariant" x="125" y="351">x &lt;= 20</label>
+        </location>
+        
+        <init ref="s0"/>
+        
+        <transition>
+            <source ref="s0"/>
+            <target ref="s1"/>
+            <label kind="guard" x="50" y="-17">x &gt;= 1</label>
+            <label kind="assignment" x="50" y="0">state_counter++</label>
+        </transition>
+        
+        <transition>
+            <source ref="s1"/>
+            <target ref="s2"/>
+            <label kind="guard" x="200" y="-17">x &gt;= 2</label>
+            <label kind="synchronisation" x="200" y="0">event_a!</label>
+            <label kind="assignment" x="200" y="17">y := 0</label>
+        </transition>
+        
+        <transition>
+            <source ref="s2"/>
+            <target ref="s6"/>
+            <label kind="guard" x="350" y="20">y &gt;= 3</label>
+            <label kind="assignment" x="350" y="37">x := 0, y := 0</label>
+        </transition>
+        
+        <transition>
+            <source ref="s0"/>
+            <target ref="s3"/>
+            <label kind="guard" x="-50" y="75">x &gt;= 3</label>
+            <label kind="assignment" x="-50" y="92">x := 0</label>
+        </transition>
+        
+        <transition>
+            <source ref="s1"/>
+            <target ref="s4"/>
+            <label kind="guard" x="100" y="75">x &gt;= 4</label>
+            <label kind="synchronisation" x="100" y="92">event_b?</label>
+            <label kind="assignment" x="100" y="109">y := 0</label>
+        </transition>
+        
+        <transition>
+            <source ref="s3"/>
+            <target ref="s4"/>
+            <label kind="guard" x="50" y="180">x &gt;= 5</label>
+        </transition>
+        
+        <transition>
+            <source ref="s4"/>
+            <target ref="s5"/>
+            <label kind="guard" x="200" y="180">y &gt;= 7</label>
+            <label kind="assignment" x="200" y="197">x := 0</label>
+        </transition>
+        
+        <transition>
+            <source ref="s5"/>
+            <target ref="s7"/>
+            <label kind="guard" x="150" y="225">x &gt;= 2 &amp;&amp; y &gt;= 5</label>
+            <label kind="assignment" x="150" y="242">x := 0, y := 0</label>
+        </transition>
+        
+        <transition>
+            <source ref="s6"/>
+            <target ref="s0"/>
+            <label kind="guard" x="225" y="-75">x &gt;= 10</label>
+            <label kind="assignment" x="225" y="-58">x := 0, y := 0</label>
+        </transition>
+        
+        <transition>
+            <source ref="s7"/>
+            <target ref="s0"/>
+            <label kind="guard" x="50" y="350">x &gt;= 15</label>
+            <label kind="assignment" x="50" y="367">x := 0, y := 0</label>
+        </transition>
+    </template>
+    
+    <system>
+        Process = ComplexStateMachine();
+        system Process;
+    </system>
+</nta>

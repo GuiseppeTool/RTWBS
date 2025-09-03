@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.6//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_6.dtd'>
+<nta>
+    <declaration>
+        // Test 2: Multi-Clock System
+        // Tests multiple clocks with different timing constraints
+        clock x, y, z;
+        int counter = 0;
+    </declaration>
+    
+    <template>
+        <name>MultiClockSystem</name>
+        
+        <location id="idle" x="0" y="0">
+            <name x="-30" y="-34">Idle</name>
+            <label kind="invariant" x="-30" y="17">x &lt;= 20</label>
+        </location>
+        
+        <location id="active" x="200" y="0">
+            <name x="190" y="-34">Active</name>
+            <label kind="invariant" x="190" y="17">y &lt;= 15 &amp;&amp; z &lt;= 10</label>
+        </location>
+        
+        <location id="processing" x="400" y="0">
+            <name x="390" y="-34">Processing</name>
+            <label kind="invariant" x="390" y="17">x &lt;= 8</label>
+        </location>
+        
+        <location id="waiting" x="200" y="150">
+            <name x="190" y="184">Waiting</name>
+            <label kind="invariant" x="190" y="201">y &lt;= 25</label>
+        </location>
+        
+        <init ref="idle"/>
+        
+        <transition>
+            <source ref="idle"/>
+            <target ref="active"/>
+            <label kind="guard" x="75" y="-17">x &gt;= 5</label>
+            <label kind="assignment" x="75" y="0">y := 0, z := 0</label>
+        </transition>
+        
+        <transition>
+            <source ref="active"/>
+            <target ref="processing"/>
+            <label kind="guard" x="275" y="-17">y &gt;= 3 &amp;&amp; z &gt;= 2</label>
+            <label kind="assignment" x="275" y="0">x := 0, counter++</label>
+        </transition>
+        
+        <transition>
+            <source ref="active"/>
+            <target ref="waiting"/>
+            <label kind="guard" x="100" y="75">y &gt;= 10</label>
+            <label kind="assignment" x="100" y="92">z := 0</label>
+        </transition>
+        
+        <transition>
+            <source ref="processing"/>
+            <target ref="idle"/>
+            <label kind="guard" x="200" y="-75">x &gt;= 5</label>
+            <label kind="assignment" x="200" y="-58">x := 0, y := 0, z := 0</label>
+        </transition>
+        
+        <transition>
+            <source ref="waiting"/>
+            <target ref="idle"/>
+            <label kind="guard" x="50" y="200">y &gt;= 20</label>
+            <label kind="assignment" x="50" y="217">x := 0, y := 0, z := 0</label>
+        </transition>
+    </template>
+    
+    <system>
+        Process = MultiClockSystem();
+        system Process;
+    </system>
+</nta>

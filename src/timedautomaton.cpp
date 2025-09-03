@@ -58,31 +58,43 @@ void TimedAutomaton::build_from_utap_document(UTAP::Document& doc) {
     // Get the first template
     auto& templates = doc.get_templates();
     auto& template_ref = templates.front();
-    
+
+
     // Create clock name to index mapping
     std::unordered_map<std::string, cindex_t> clock_map;
     
     // Extract clocks from global declarations
     auto& global_declarations = doc.get_globals();
     cindex_t clock_count = 0;
+    std::vector<std::string> global_clocks;
     
     DEV_PRINT("   Analyzing global declarations..." << std::endl);
     for (const auto& variable : global_declarations.variables) {
         if (variable.uid.get_type().is_clock()) {
             clock_count++;
             clock_map[variable.uid.get_name()] = clock_count;
+            global_clocks.push_back(variable.uid.get_name());
             DEV_PRINT("   Found clock: " << variable.uid.get_name() << " -> index " << clock_count << std::endl);
         }
     }
     
     // Set dimension = reference clock (index 0) + number of clocks
-    dimension_ = clock_count + 1;
     
-    DEV_PRINT("   Creating automaton with dimension " << dimension_ << " (" << clock_count << " clocks + reference)" << std::endl);
-    
+    build_from_template(template_ref, clock_count+1, global_clocks);
+}
+void TimedAutomaton::build_from_template(const UTAP::Template& template_ref, int dimensions, const std::vector<std::string>& global_clocks){
+
+    dimension_ = dimensions;    
+    DEV_PRINT("   Creating automaton with dimension " << dimension_ << " (" << dimension_-1 << " clocks + reference)" << std::endl);
+    std::vector<std::string> private_clocks_;
+    for (const auto& variable : template_ref.variables) {
+        if (variable.uid.get_type().is_clock()) {
+            private_clocks_.push_back(variable.uid.get_name());
+        }
+    }
     // Add locations
     std::unordered_map<std::string, int> location_map;
-    
+    std::unordered_map<std::string, cindex_t> clock_map;
     for (size_t i = 0; i < template_ref.locations.size(); ++i) {
         std::string loc_id = template_ref.locations[i].uid.get_name();
         std::string loc_name = loc_id;
@@ -101,8 +113,12 @@ void TimedAutomaton::build_from_utap_document(UTAP::Document& doc) {
             std::string clock_name;
             std::string op;
             int value;
-            
-            if (parse_clock_constraint_from_expr(template_ref.locations[i].invariant, clock_name, op, value)) {
+
+            if (parse_clock_constraint_from_expr(template_ref.locations[i].invariant, clock_name, op, value) 
+            && std::find(global_clocks.begin(), global_clocks.end(), clock_name) != global_clocks.end()
+            && std::find(private_clocks_.begin(), private_clocks_.end(), clock_name) != private_clocks_.end()
+            ) {
+                clocks_.push_back(clock_name);
                 DEV_PRINT("     Parsed invariant: " << clock_name << " " << op << " " << value << std::endl);
                 add_dbm_constraint(clock_name, op, value, clock_map, loc_int_id, -1);
                 DEV_PRINT("     Added invariant constraint to location" << std::endl);
@@ -188,8 +204,12 @@ void TimedAutomaton::build_from_utap_document(UTAP::Document& doc) {
             std::string op;
             int value;
             
-            if (parse_clock_constraint_from_expr(edge.guard, clock_name, op, value)) {
+            if (parse_clock_constraint_from_expr(edge.guard, clock_name, op, value) 
+            && std::find(global_clocks.begin(), global_clocks.end(), clock_name) != global_clocks.end()
+            && std::find(private_clocks_.begin(), private_clocks_.end(), clock_name) != private_clocks_.end()
+        ){
                 DEV_PRINT("     Parsed constraint: " << clock_name << " " << op << " " << value << std::endl);
+                clocks_.push_back(clock_name);
                 add_dbm_constraint(clock_name, op, value, clock_map, -1, i);
                 DEV_PRINT("     Added guard constraint to transition" << std::endl);
             } else {
@@ -415,11 +435,25 @@ void TimedAutomaton::add_dbm_constraint(const std::string& clock_name, const std
                                        std::unordered_map<std::string, cindex_t>& clock_map,
                                        int location_id, size_t transition_idx) {
     
+    
+    
     // Find or create clock index
     cindex_t clock_idx;
     if (clock_map.find(clock_name) == clock_map.end()) {
+        // Assign next available index, ensuring we don't exceed dimension
         clock_idx = clock_map.size() + 1; // +1 because index 0 is reserved for reference clock
+        
+        // Validate that we don't exceed dimension
+        if (clock_idx >= dimension_) {
+            std::cerr << "ERROR: Clock index " << clock_idx << " would exceed dimension " << dimension_ 
+                      << " for clock " << clock_name << std::endl;
+            std::cerr << "Current clock_map size: " << clock_map.size() << std::endl;
+            std::cerr << "This suggests too many clocks are being discovered during constraint parsing" << std::endl;
+            return;
+        }
+        
         clock_map[clock_name] = clock_idx;
+        DEV_PRINT("     Assigned new clock index " << clock_idx << " to " << clock_name << std::endl);
     } else {
         clock_idx = clock_map[clock_name];
     }
@@ -585,6 +619,14 @@ void TimedAutomaton::construct_zone_graph(int initial_location, const std::vecto
 }
 
 std::vector<raw_t> TimedAutomaton::time_elapse(const std::vector<raw_t>& zone) const {
+    // Validate zone size
+    size_t expected_size = dimension_ * dimension_;
+    if (zone.size() != expected_size) {
+        std::cerr << "ERROR: Zone size mismatch in time_elapse! Expected " << expected_size 
+                  << ", got " << zone.size() << std::endl;
+        return {}; // Return empty zone
+    }
+    
     std::vector<raw_t> result = zone;
     dbm_up(result.data(), dimension_);
     
@@ -628,9 +670,23 @@ std::vector<raw_t> TimedAutomaton::apply_invariants(const std::vector<raw_t>& zo
 }
 
 bool TimedAutomaton::is_transition_enabled(const std::vector<raw_t>& zone, const Transition& transition) const {
+    // Validate zone size
+    size_t expected_size = dimension_ * dimension_;
+    if (zone.size() != expected_size) {
+        std::cerr << "ERROR: Zone size mismatch! Expected " << expected_size 
+                  << ", got " << zone.size() << std::endl;
+        return false;
+    }
+    
     std::vector<raw_t> test_zone = zone;
     
     for (const auto& guard : transition.guards) {
+        // Validate guard indices
+        if (guard.i >= dimension_ || guard.j >= dimension_) {
+            std::cerr << "ERROR: Guard index out of bounds! i=" << guard.i 
+                      << ", j=" << guard.j << ", dimension=" << dimension_ << std::endl;
+            return false;
+        }
         dbm_constrain1(test_zone.data(), dimension_, guard.i, guard.j, guard.value);
     }
     
@@ -638,15 +694,34 @@ bool TimedAutomaton::is_transition_enabled(const std::vector<raw_t>& zone, const
 }
 
 std::vector<raw_t> TimedAutomaton::apply_transition(const std::vector<raw_t>& zone, const Transition& transition) const {
+    // Validate zone size
+    size_t expected_size = dimension_ * dimension_;
+    if (zone.size() != expected_size) {
+        std::cerr << "ERROR: Zone size mismatch in apply_transition! Expected " << expected_size 
+                  << ", got " << zone.size() << std::endl;
+        return {}; // Return empty zone
+    }
+    
     std::vector<raw_t> result = zone;
     
     // Apply guards
     for (const auto& guard : transition.guards) {
+        // Validate guard indices
+        if (guard.i >= dimension_ || guard.j >= dimension_) {
+            std::cerr << "ERROR: Guard index out of bounds in apply_transition! i=" << guard.i 
+                      << ", j=" << guard.j << ", dimension=" << dimension_ << std::endl;
+            return {}; // Return empty zone
+        }
         dbm_constrain1(result.data(), dimension_, guard.i, guard.j, guard.value);
     }
     
     // Apply resets
     for (cindex_t reset_clock : transition.resets) {
+        if (reset_clock >= dimension_) {
+            std::cerr << "ERROR: Reset clock index out of bounds! clock=" << reset_clock 
+                      << ", dimension=" << dimension_ << std::endl;
+            return {}; // Return empty zone
+        }
         dbm_updateValue(result.data(), dimension_, reset_clock, 0);
     }
     
@@ -699,6 +774,15 @@ const std::vector<int>& TimedAutomaton::get_successors(size_t state_id) const {
 }
 
 int TimedAutomaton::add_state(int location_id, const std::vector<raw_t>& zone) {
+    // Validate zone size
+    size_t expected_size = dimension_ * dimension_;
+    if (zone.size() != expected_size) {
+        std::cerr << "ERROR: Zone size mismatch in add_state! Expected " << expected_size 
+                  << ", got " << zone.size() << std::endl;
+        std::cerr << "Dimension: " << dimension_ << std::endl;
+        return -1; // Invalid state
+    }
+    
     // Create the state
     auto new_state = std::make_unique<ZoneState>(location_id, zone, dimension_);
     
@@ -800,12 +884,4 @@ void TimedAutomaton::print_all_transitions() const {
     }
 }
 
-
-
-
-
-
-
-
-
-}  // namespace rtwbs
+} // namespace rtwbs

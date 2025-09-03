@@ -117,6 +117,19 @@ depend:
 .PHONY : depend
 
 #=============================================================================
+# Target rules for targets named rtwbs
+
+# Build rule for target.
+rtwbs: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 rtwbs
+.PHONY : rtwbs
+
+# fast build rule for target.
+rtwbs/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rtwbs.dir/build.make CMakeFiles/rtwbs.dir/build
+.PHONY : rtwbs/fast
+
+#=============================================================================
 # Target rules for targets named simple_example
 
 # Build rule for target.
@@ -208,6 +221,175 @@ integration_example_2/fast:
 .PHONY : integration_example_2/fast
 
 #=============================================================================
+# Target rules for targets named synchronization_example
+
+# Build rule for target.
+synchronization_example: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 synchronization_example
+.PHONY : synchronization_example
+
+# fast build rule for target.
+synchronization_example/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/synchronization_example.dir/build.make CMakeFiles/synchronization_example.dir/build
+.PHONY : synchronization_example/fast
+
+#=============================================================================
+# Target rules for targets named simple_sync_test
+
+# Build rule for target.
+simple_sync_test: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 simple_sync_test
+.PHONY : simple_sync_test
+
+# fast build rule for target.
+simple_sync_test/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_sync_test.dir/build.make CMakeFiles/simple_sync_test.dir/build
+.PHONY : simple_sync_test/fast
+
+#=============================================================================
+# Target rules for targets named minimal_test
+
+# Build rule for target.
+minimal_test: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 minimal_test
+.PHONY : minimal_test
+
+# fast build rule for target.
+minimal_test/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/minimal_test.dir/build.make CMakeFiles/minimal_test.dir/build
+.PHONY : minimal_test/fast
+
+#=============================================================================
+# Target rules for targets named single_transition_test
+
+# Build rule for target.
+single_transition_test: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 single_transition_test
+.PHONY : single_transition_test
+
+# fast build rule for target.
+single_transition_test/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/single_transition_test.dir/build.make CMakeFiles/single_transition_test.dir/build
+.PHONY : single_transition_test/fast
+
+#=============================================================================
+# Target rules for targets named rtwbs_example
+
+# Build rule for target.
+rtwbs_example: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 rtwbs_example
+.PHONY : rtwbs_example
+
+# fast build rule for target.
+rtwbs_example/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rtwbs_example.dir/build.make CMakeFiles/rtwbs_example.dir/build
+.PHONY : rtwbs_example/fast
+
+#=============================================================================
+# Target rules for targets named system_rtwbs_example
+
+# Build rule for target.
+system_rtwbs_example: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 system_rtwbs_example
+.PHONY : system_rtwbs_example
+
+# fast build rule for target.
+system_rtwbs_example/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/system_rtwbs_example.dir/build.make CMakeFiles/system_rtwbs_example.dir/build
+.PHONY : system_rtwbs_example/fast
+
+#=============================================================================
+# Target rules for targets named unit_test_example
+
+# Build rule for target.
+unit_test_example: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_test_example
+.PHONY : unit_test_example
+
+# fast build rule for target.
+unit_test_example/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/unit_test_example.dir/build.make CMakeFiles/unit_test_example.dir/build
+.PHONY : unit_test_example/fast
+
+#=============================================================================
+# Target rules for targets named run_unit_tests
+
+# Build rule for target.
+run_unit_tests: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 run_unit_tests
+.PHONY : run_unit_tests
+
+# fast build rule for target.
+run_unit_tests/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/run_unit_tests.dir/build.make CMakeFiles/run_unit_tests.dir/build
+.PHONY : run_unit_tests/fast
+
+#=============================================================================
+# Target rules for targets named debug_test9
+
+# Build rule for target.
+debug_test9: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 debug_test9
+.PHONY : debug_test9
+
+# fast build rule for target.
+debug_test9/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/debug_test9.dir/build.make CMakeFiles/debug_test9.dir/build
+.PHONY : debug_test9/fast
+
+#=============================================================================
+# Target rules for targets named memory_leak_test
+
+# Build rule for target.
+memory_leak_test: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 memory_leak_test
+.PHONY : memory_leak_test
+
+# fast build rule for target.
+memory_leak_test/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/memory_leak_test.dir/build.make CMakeFiles/memory_leak_test.dir/build
+.PHONY : memory_leak_test/fast
+
+#=============================================================================
+# Target rules for targets named memory_debug_minimal
+
+# Build rule for target.
+memory_debug_minimal: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 memory_debug_minimal
+.PHONY : memory_debug_minimal
+
+# fast build rule for target.
+memory_debug_minimal/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/memory_debug_minimal.dir/build.make CMakeFiles/memory_debug_minimal.dir/build
+.PHONY : memory_debug_minimal/fast
+
+#=============================================================================
+# Target rules for targets named ultra_minimal_test
+
+# Build rule for target.
+ultra_minimal_test: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 ultra_minimal_test
+.PHONY : ultra_minimal_test
+
+# fast build rule for target.
+ultra_minimal_test/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ultra_minimal_test.dir/build.make CMakeFiles/ultra_minimal_test.dir/build
+.PHONY : ultra_minimal_test/fast
+
+#=============================================================================
+# Target rules for targets named copy_unit_tests
+
+# Build rule for target.
+copy_unit_tests: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 copy_unit_tests
+.PHONY : copy_unit_tests
+
+# fast build rule for target.
+copy_unit_tests/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/copy_unit_tests.dir/build.make CMakeFiles/copy_unit_tests.dir/build
+.PHONY : copy_unit_tests/fast
+
+#=============================================================================
 # Target rules for targets named examples
 
 # Build rule for target.
@@ -219,6 +401,30 @@ examples: cmake_check_build_system
 examples/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/examples.dir/build.make CMakeFiles/examples.dir/build
 .PHONY : examples/fast
+
+example/debug_test9.o: example/debug_test9.cpp.o
+.PHONY : example/debug_test9.o
+
+# target to build an object file
+example/debug_test9.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/debug_test9.dir/build.make CMakeFiles/debug_test9.dir/example/debug_test9.cpp.o
+.PHONY : example/debug_test9.cpp.o
+
+example/debug_test9.i: example/debug_test9.cpp.i
+.PHONY : example/debug_test9.i
+
+# target to preprocess a source file
+example/debug_test9.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/debug_test9.dir/build.make CMakeFiles/debug_test9.dir/example/debug_test9.cpp.i
+.PHONY : example/debug_test9.cpp.i
+
+example/debug_test9.s: example/debug_test9.cpp.s
+.PHONY : example/debug_test9.s
+
+# target to generate assembly for a file
+example/debug_test9.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/debug_test9.dir/build.make CMakeFiles/debug_test9.dir/example/debug_test9.cpp.s
+.PHONY : example/debug_test9.cpp.s
 
 example/integration_example.o: example/integration_example.cpp.o
 .PHONY : example/integration_example.o
@@ -268,6 +474,78 @@ example/integration_example_2.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/integration_example_2.dir/build.make CMakeFiles/integration_example_2.dir/example/integration_example_2.cpp.s
 .PHONY : example/integration_example_2.cpp.s
 
+example/memory_debug_minimal.o: example/memory_debug_minimal.cpp.o
+.PHONY : example/memory_debug_minimal.o
+
+# target to build an object file
+example/memory_debug_minimal.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/memory_debug_minimal.dir/build.make CMakeFiles/memory_debug_minimal.dir/example/memory_debug_minimal.cpp.o
+.PHONY : example/memory_debug_minimal.cpp.o
+
+example/memory_debug_minimal.i: example/memory_debug_minimal.cpp.i
+.PHONY : example/memory_debug_minimal.i
+
+# target to preprocess a source file
+example/memory_debug_minimal.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/memory_debug_minimal.dir/build.make CMakeFiles/memory_debug_minimal.dir/example/memory_debug_minimal.cpp.i
+.PHONY : example/memory_debug_minimal.cpp.i
+
+example/memory_debug_minimal.s: example/memory_debug_minimal.cpp.s
+.PHONY : example/memory_debug_minimal.s
+
+# target to generate assembly for a file
+example/memory_debug_minimal.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/memory_debug_minimal.dir/build.make CMakeFiles/memory_debug_minimal.dir/example/memory_debug_minimal.cpp.s
+.PHONY : example/memory_debug_minimal.cpp.s
+
+example/memory_leak_test.o: example/memory_leak_test.cpp.o
+.PHONY : example/memory_leak_test.o
+
+# target to build an object file
+example/memory_leak_test.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/memory_leak_test.dir/build.make CMakeFiles/memory_leak_test.dir/example/memory_leak_test.cpp.o
+.PHONY : example/memory_leak_test.cpp.o
+
+example/memory_leak_test.i: example/memory_leak_test.cpp.i
+.PHONY : example/memory_leak_test.i
+
+# target to preprocess a source file
+example/memory_leak_test.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/memory_leak_test.dir/build.make CMakeFiles/memory_leak_test.dir/example/memory_leak_test.cpp.i
+.PHONY : example/memory_leak_test.cpp.i
+
+example/memory_leak_test.s: example/memory_leak_test.cpp.s
+.PHONY : example/memory_leak_test.s
+
+# target to generate assembly for a file
+example/memory_leak_test.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/memory_leak_test.dir/build.make CMakeFiles/memory_leak_test.dir/example/memory_leak_test.cpp.s
+.PHONY : example/memory_leak_test.cpp.s
+
+example/minimal_test.o: example/minimal_test.cpp.o
+.PHONY : example/minimal_test.o
+
+# target to build an object file
+example/minimal_test.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/minimal_test.dir/build.make CMakeFiles/minimal_test.dir/example/minimal_test.cpp.o
+.PHONY : example/minimal_test.cpp.o
+
+example/minimal_test.i: example/minimal_test.cpp.i
+.PHONY : example/minimal_test.i
+
+# target to preprocess a source file
+example/minimal_test.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/minimal_test.dir/build.make CMakeFiles/minimal_test.dir/example/minimal_test.cpp.i
+.PHONY : example/minimal_test.cpp.i
+
+example/minimal_test.s: example/minimal_test.cpp.s
+.PHONY : example/minimal_test.s
+
+# target to generate assembly for a file
+example/minimal_test.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/minimal_test.dir/build.make CMakeFiles/minimal_test.dir/example/minimal_test.cpp.s
+.PHONY : example/minimal_test.cpp.s
+
 example/railway_example.o: example/railway_example.cpp.o
 .PHONY : example/railway_example.o
 
@@ -291,6 +569,54 @@ example/railway_example.s: example/railway_example.cpp.s
 example/railway_example.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/railway_example.dir/build.make CMakeFiles/railway_example.dir/example/railway_example.cpp.s
 .PHONY : example/railway_example.cpp.s
+
+example/rtwbs_example.o: example/rtwbs_example.cpp.o
+.PHONY : example/rtwbs_example.o
+
+# target to build an object file
+example/rtwbs_example.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rtwbs_example.dir/build.make CMakeFiles/rtwbs_example.dir/example/rtwbs_example.cpp.o
+.PHONY : example/rtwbs_example.cpp.o
+
+example/rtwbs_example.i: example/rtwbs_example.cpp.i
+.PHONY : example/rtwbs_example.i
+
+# target to preprocess a source file
+example/rtwbs_example.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rtwbs_example.dir/build.make CMakeFiles/rtwbs_example.dir/example/rtwbs_example.cpp.i
+.PHONY : example/rtwbs_example.cpp.i
+
+example/rtwbs_example.s: example/rtwbs_example.cpp.s
+.PHONY : example/rtwbs_example.s
+
+# target to generate assembly for a file
+example/rtwbs_example.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rtwbs_example.dir/build.make CMakeFiles/rtwbs_example.dir/example/rtwbs_example.cpp.s
+.PHONY : example/rtwbs_example.cpp.s
+
+example/run_unit_tests.o: example/run_unit_tests.cpp.o
+.PHONY : example/run_unit_tests.o
+
+# target to build an object file
+example/run_unit_tests.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/run_unit_tests.dir/build.make CMakeFiles/run_unit_tests.dir/example/run_unit_tests.cpp.o
+.PHONY : example/run_unit_tests.cpp.o
+
+example/run_unit_tests.i: example/run_unit_tests.cpp.i
+.PHONY : example/run_unit_tests.i
+
+# target to preprocess a source file
+example/run_unit_tests.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/run_unit_tests.dir/build.make CMakeFiles/run_unit_tests.dir/example/run_unit_tests.cpp.i
+.PHONY : example/run_unit_tests.cpp.i
+
+example/run_unit_tests.s: example/run_unit_tests.cpp.s
+.PHONY : example/run_unit_tests.s
+
+# target to generate assembly for a file
+example/run_unit_tests.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/run_unit_tests.dir/build.make CMakeFiles/run_unit_tests.dir/example/run_unit_tests.cpp.s
+.PHONY : example/run_unit_tests.cpp.s
 
 example/simple_example.o: example/simple_example.cpp.o
 .PHONY : example/simple_example.o
@@ -316,6 +642,102 @@ example/simple_example.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_example.dir/build.make CMakeFiles/simple_example.dir/example/simple_example.cpp.s
 .PHONY : example/simple_example.cpp.s
 
+example/simple_sync_test.o: example/simple_sync_test.cpp.o
+.PHONY : example/simple_sync_test.o
+
+# target to build an object file
+example/simple_sync_test.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_sync_test.dir/build.make CMakeFiles/simple_sync_test.dir/example/simple_sync_test.cpp.o
+.PHONY : example/simple_sync_test.cpp.o
+
+example/simple_sync_test.i: example/simple_sync_test.cpp.i
+.PHONY : example/simple_sync_test.i
+
+# target to preprocess a source file
+example/simple_sync_test.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_sync_test.dir/build.make CMakeFiles/simple_sync_test.dir/example/simple_sync_test.cpp.i
+.PHONY : example/simple_sync_test.cpp.i
+
+example/simple_sync_test.s: example/simple_sync_test.cpp.s
+.PHONY : example/simple_sync_test.s
+
+# target to generate assembly for a file
+example/simple_sync_test.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/simple_sync_test.dir/build.make CMakeFiles/simple_sync_test.dir/example/simple_sync_test.cpp.s
+.PHONY : example/simple_sync_test.cpp.s
+
+example/single_transition_test.o: example/single_transition_test.cpp.o
+.PHONY : example/single_transition_test.o
+
+# target to build an object file
+example/single_transition_test.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/single_transition_test.dir/build.make CMakeFiles/single_transition_test.dir/example/single_transition_test.cpp.o
+.PHONY : example/single_transition_test.cpp.o
+
+example/single_transition_test.i: example/single_transition_test.cpp.i
+.PHONY : example/single_transition_test.i
+
+# target to preprocess a source file
+example/single_transition_test.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/single_transition_test.dir/build.make CMakeFiles/single_transition_test.dir/example/single_transition_test.cpp.i
+.PHONY : example/single_transition_test.cpp.i
+
+example/single_transition_test.s: example/single_transition_test.cpp.s
+.PHONY : example/single_transition_test.s
+
+# target to generate assembly for a file
+example/single_transition_test.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/single_transition_test.dir/build.make CMakeFiles/single_transition_test.dir/example/single_transition_test.cpp.s
+.PHONY : example/single_transition_test.cpp.s
+
+example/synchronization_example.o: example/synchronization_example.cpp.o
+.PHONY : example/synchronization_example.o
+
+# target to build an object file
+example/synchronization_example.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/synchronization_example.dir/build.make CMakeFiles/synchronization_example.dir/example/synchronization_example.cpp.o
+.PHONY : example/synchronization_example.cpp.o
+
+example/synchronization_example.i: example/synchronization_example.cpp.i
+.PHONY : example/synchronization_example.i
+
+# target to preprocess a source file
+example/synchronization_example.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/synchronization_example.dir/build.make CMakeFiles/synchronization_example.dir/example/synchronization_example.cpp.i
+.PHONY : example/synchronization_example.cpp.i
+
+example/synchronization_example.s: example/synchronization_example.cpp.s
+.PHONY : example/synchronization_example.s
+
+# target to generate assembly for a file
+example/synchronization_example.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/synchronization_example.dir/build.make CMakeFiles/synchronization_example.dir/example/synchronization_example.cpp.s
+.PHONY : example/synchronization_example.cpp.s
+
+example/system_rtwbs_example.o: example/system_rtwbs_example.cpp.o
+.PHONY : example/system_rtwbs_example.o
+
+# target to build an object file
+example/system_rtwbs_example.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/system_rtwbs_example.dir/build.make CMakeFiles/system_rtwbs_example.dir/example/system_rtwbs_example.cpp.o
+.PHONY : example/system_rtwbs_example.cpp.o
+
+example/system_rtwbs_example.i: example/system_rtwbs_example.cpp.i
+.PHONY : example/system_rtwbs_example.i
+
+# target to preprocess a source file
+example/system_rtwbs_example.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/system_rtwbs_example.dir/build.make CMakeFiles/system_rtwbs_example.dir/example/system_rtwbs_example.cpp.i
+.PHONY : example/system_rtwbs_example.cpp.i
+
+example/system_rtwbs_example.s: example/system_rtwbs_example.cpp.s
+.PHONY : example/system_rtwbs_example.s
+
+# target to generate assembly for a file
+example/system_rtwbs_example.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/system_rtwbs_example.dir/build.make CMakeFiles/system_rtwbs_example.dir/example/system_rtwbs_example.cpp.s
+.PHONY : example/system_rtwbs_example.cpp.s
+
 example/test_example.o: example/test_example.cpp.o
 .PHONY : example/test_example.o
 
@@ -339,6 +761,54 @@ example/test_example.s: example/test_example.cpp.s
 example/test_example.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_example.dir/build.make CMakeFiles/test_example.dir/example/test_example.cpp.s
 .PHONY : example/test_example.cpp.s
+
+example/ultra_minimal_test.o: example/ultra_minimal_test.cpp.o
+.PHONY : example/ultra_minimal_test.o
+
+# target to build an object file
+example/ultra_minimal_test.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ultra_minimal_test.dir/build.make CMakeFiles/ultra_minimal_test.dir/example/ultra_minimal_test.cpp.o
+.PHONY : example/ultra_minimal_test.cpp.o
+
+example/ultra_minimal_test.i: example/ultra_minimal_test.cpp.i
+.PHONY : example/ultra_minimal_test.i
+
+# target to preprocess a source file
+example/ultra_minimal_test.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ultra_minimal_test.dir/build.make CMakeFiles/ultra_minimal_test.dir/example/ultra_minimal_test.cpp.i
+.PHONY : example/ultra_minimal_test.cpp.i
+
+example/ultra_minimal_test.s: example/ultra_minimal_test.cpp.s
+.PHONY : example/ultra_minimal_test.s
+
+# target to generate assembly for a file
+example/ultra_minimal_test.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ultra_minimal_test.dir/build.make CMakeFiles/ultra_minimal_test.dir/example/ultra_minimal_test.cpp.s
+.PHONY : example/ultra_minimal_test.cpp.s
+
+example/unit_test_example.o: example/unit_test_example.cpp.o
+.PHONY : example/unit_test_example.o
+
+# target to build an object file
+example/unit_test_example.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/unit_test_example.dir/build.make CMakeFiles/unit_test_example.dir/example/unit_test_example.cpp.o
+.PHONY : example/unit_test_example.cpp.o
+
+example/unit_test_example.i: example/unit_test_example.cpp.i
+.PHONY : example/unit_test_example.i
+
+# target to preprocess a source file
+example/unit_test_example.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/unit_test_example.dir/build.make CMakeFiles/unit_test_example.dir/example/unit_test_example.cpp.i
+.PHONY : example/unit_test_example.cpp.i
+
+example/unit_test_example.s: example/unit_test_example.cpp.s
+.PHONY : example/unit_test_example.s
+
+# target to generate assembly for a file
+example/unit_test_example.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/unit_test_example.dir/build.make CMakeFiles/unit_test_example.dir/example/unit_test_example.cpp.s
+.PHONY : example/unit_test_example.cpp.s
 
 example/utap_example.o: example/utap_example.cpp.o
 .PHONY : example/utap_example.o
@@ -388,6 +858,78 @@ example/zonegraph_example.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/zonegraph_example.dir/build.make CMakeFiles/zonegraph_example.dir/example/zonegraph_example.cpp.s
 .PHONY : example/zonegraph_example.cpp.s
 
+src/rtwbs.o: src/rtwbs.cpp.o
+.PHONY : src/rtwbs.o
+
+# target to build an object file
+src/rtwbs.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rtwbs.dir/build.make CMakeFiles/rtwbs.dir/src/rtwbs.cpp.o
+.PHONY : src/rtwbs.cpp.o
+
+src/rtwbs.i: src/rtwbs.cpp.i
+.PHONY : src/rtwbs.i
+
+# target to preprocess a source file
+src/rtwbs.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rtwbs.dir/build.make CMakeFiles/rtwbs.dir/src/rtwbs.cpp.i
+.PHONY : src/rtwbs.cpp.i
+
+src/rtwbs.s: src/rtwbs.cpp.s
+.PHONY : src/rtwbs.s
+
+# target to generate assembly for a file
+src/rtwbs.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rtwbs.dir/build.make CMakeFiles/rtwbs.dir/src/rtwbs.cpp.s
+.PHONY : src/rtwbs.cpp.s
+
+src/system.o: src/system.cpp.o
+.PHONY : src/system.o
+
+# target to build an object file
+src/system.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rtwbs.dir/build.make CMakeFiles/rtwbs.dir/src/system.cpp.o
+.PHONY : src/system.cpp.o
+
+src/system.i: src/system.cpp.i
+.PHONY : src/system.i
+
+# target to preprocess a source file
+src/system.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rtwbs.dir/build.make CMakeFiles/rtwbs.dir/src/system.cpp.i
+.PHONY : src/system.cpp.i
+
+src/system.s: src/system.cpp.s
+.PHONY : src/system.s
+
+# target to generate assembly for a file
+src/system.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rtwbs.dir/build.make CMakeFiles/rtwbs.dir/src/system.cpp.s
+.PHONY : src/system.cpp.s
+
+src/timedautomaton.o: src/timedautomaton.cpp.o
+.PHONY : src/timedautomaton.o
+
+# target to build an object file
+src/timedautomaton.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rtwbs.dir/build.make CMakeFiles/rtwbs.dir/src/timedautomaton.cpp.o
+.PHONY : src/timedautomaton.cpp.o
+
+src/timedautomaton.i: src/timedautomaton.cpp.i
+.PHONY : src/timedautomaton.i
+
+# target to preprocess a source file
+src/timedautomaton.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rtwbs.dir/build.make CMakeFiles/rtwbs.dir/src/timedautomaton.cpp.i
+.PHONY : src/timedautomaton.cpp.i
+
+src/timedautomaton.s: src/timedautomaton.cpp.s
+.PHONY : src/timedautomaton.s
+
+# target to generate assembly for a file
+src/timedautomaton.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rtwbs.dir/build.make CMakeFiles/rtwbs.dir/src/timedautomaton.cpp.s
+.PHONY : src/timedautomaton.cpp.s
+
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -396,35 +938,94 @@ help:
 	@echo "... depend"
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
+	@echo "... copy_unit_tests"
 	@echo "... examples"
+	@echo "... debug_test9"
 	@echo "... integration_example"
 	@echo "... integration_example_2"
+	@echo "... memory_debug_minimal"
+	@echo "... memory_leak_test"
+	@echo "... minimal_test"
 	@echo "... railway_example"
+	@echo "... rtwbs"
+	@echo "... rtwbs_example"
+	@echo "... run_unit_tests"
 	@echo "... simple_example"
+	@echo "... simple_sync_test"
+	@echo "... single_transition_test"
+	@echo "... synchronization_example"
+	@echo "... system_rtwbs_example"
 	@echo "... test_example"
+	@echo "... ultra_minimal_test"
+	@echo "... unit_test_example"
 	@echo "... utap_example"
 	@echo "... zonegraph_example"
+	@echo "... example/debug_test9.o"
+	@echo "... example/debug_test9.i"
+	@echo "... example/debug_test9.s"
 	@echo "... example/integration_example.o"
 	@echo "... example/integration_example.i"
 	@echo "... example/integration_example.s"
 	@echo "... example/integration_example_2.o"
 	@echo "... example/integration_example_2.i"
 	@echo "... example/integration_example_2.s"
+	@echo "... example/memory_debug_minimal.o"
+	@echo "... example/memory_debug_minimal.i"
+	@echo "... example/memory_debug_minimal.s"
+	@echo "... example/memory_leak_test.o"
+	@echo "... example/memory_leak_test.i"
+	@echo "... example/memory_leak_test.s"
+	@echo "... example/minimal_test.o"
+	@echo "... example/minimal_test.i"
+	@echo "... example/minimal_test.s"
 	@echo "... example/railway_example.o"
 	@echo "... example/railway_example.i"
 	@echo "... example/railway_example.s"
+	@echo "... example/rtwbs_example.o"
+	@echo "... example/rtwbs_example.i"
+	@echo "... example/rtwbs_example.s"
+	@echo "... example/run_unit_tests.o"
+	@echo "... example/run_unit_tests.i"
+	@echo "... example/run_unit_tests.s"
 	@echo "... example/simple_example.o"
 	@echo "... example/simple_example.i"
 	@echo "... example/simple_example.s"
+	@echo "... example/simple_sync_test.o"
+	@echo "... example/simple_sync_test.i"
+	@echo "... example/simple_sync_test.s"
+	@echo "... example/single_transition_test.o"
+	@echo "... example/single_transition_test.i"
+	@echo "... example/single_transition_test.s"
+	@echo "... example/synchronization_example.o"
+	@echo "... example/synchronization_example.i"
+	@echo "... example/synchronization_example.s"
+	@echo "... example/system_rtwbs_example.o"
+	@echo "... example/system_rtwbs_example.i"
+	@echo "... example/system_rtwbs_example.s"
 	@echo "... example/test_example.o"
 	@echo "... example/test_example.i"
 	@echo "... example/test_example.s"
+	@echo "... example/ultra_minimal_test.o"
+	@echo "... example/ultra_minimal_test.i"
+	@echo "... example/ultra_minimal_test.s"
+	@echo "... example/unit_test_example.o"
+	@echo "... example/unit_test_example.i"
+	@echo "... example/unit_test_example.s"
 	@echo "... example/utap_example.o"
 	@echo "... example/utap_example.i"
 	@echo "... example/utap_example.s"
 	@echo "... example/zonegraph_example.o"
 	@echo "... example/zonegraph_example.i"
 	@echo "... example/zonegraph_example.s"
+	@echo "... src/rtwbs.o"
+	@echo "... src/rtwbs.i"
+	@echo "... src/rtwbs.s"
+	@echo "... src/system.o"
+	@echo "... src/system.i"
+	@echo "... src/system.s"
+	@echo "... src/timedautomaton.o"
+	@echo "... src/timedautomaton.i"
+	@echo "... src/timedautomaton.s"
 .PHONY : help
 
 

@@ -1,0 +1,298 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.6//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_6.dtd'>
+<nta>
+    <declaration>
+        // Test 10: Comprehensive RTWBS Stress Test
+        // Multiple templates, many clocks, complex timing relationships
+        // Tests the limits of zone graph construction and RTWBS analysis
+        clock x1, x2, x3, x4, x5, x6;
+        chan req, ack, data, error, timeout, restart;
+        chan internal_a, internal_b, internal_c;
+        int requests = 0;
+        int responses = 0;
+        int errors = 0;
+        bool system_active = false;
+        bool critical_section = false;
+        const int MAX_REQUESTS = 3;
+    </declaration>
+    
+    <template>
+        <name>RequestHandler</name>
+        
+        <location id="rh_idle" x="0" y="0">
+            <name x="-25" y="-34">Idle</name>
+        </location>
+        
+        <location id="rh_processing" x="200" y="0">
+            <name x="130" y="-34">Processing</name>
+            <label kind="invariant" x="130" y="17">x1 &lt;= 20 &amp;&amp; x2 &lt;= 15</label>
+        </location>
+        
+        <location id="rh_validating" x="400" y="0">
+            <name x="340" y="-34">Validating</name>
+            <label kind="invariant" x="340" y="17">x3 &lt;= 8</label>
+        </location>
+        
+        <location id="rh_critical" x="200" y="150">
+            <name x="155" y="184">Critical</name>
+            <label kind="invariant" x="155" y="201">x1 &lt;= 5 &amp;&amp; x4 &lt;= 12</label>
+        </location>
+        
+        <location id="rh_error" x="400" y="150">
+            <name x="385" y="184">Error</name>
+            <label kind="invariant" x="385" y="201">x5 &lt;= 10</label>
+        </location>
+        
+        <location id="rh_recovery" x="200" y="300">
+            <name x="170" y="334">Recovery</name>
+            <label kind="invariant" x="170" y="351">x6 &lt;= 25</label>
+        </location>
+        
+        <init ref="rh_idle"/>
+        
+        <transition>
+            <source ref="rh_idle"/>
+            <target ref="rh_processing"/>
+            <label kind="guard" x="50" y="-17">requests &lt; MAX_REQUESTS</label>
+            <label kind="synchronisation" x="50" y="0">req?</label>
+            <label kind="assignment" x="50" y="17">x1 := 0, x2 := 0, requests++, system_active := true</label>
+        </transition>
+        
+        <transition>
+            <source ref="rh_processing"/>
+            <target ref="rh_validating"/>
+            <label kind="guard" x="250" y="-17">x1 &gt;= 5 &amp;&amp; x2 &gt;= 3</label>
+            <label kind="synchronisation" x="250" y="0">internal_a!</label>
+            <label kind="assignment" x="250" y="17">x3 := 0</label>
+        </transition>
+        
+        <transition>
+            <source ref="rh_processing"/>
+            <target ref="rh_critical"/>
+            <label kind="guard" x="50" y="75">x1 &gt;= 10 &amp;&amp; x2 &gt;= 8</label>
+            <label kind="assignment" x="50" y="92">x4 := 0, critical_section := true</label>
+        </transition>
+        
+        <transition>
+            <source ref="rh_validating"/>
+            <target ref="rh_idle"/>
+            <label kind="guard" x="200" y="-75">x3 &gt;= 4 &amp;&amp; x3 &lt;= 6</label>
+            <label kind="synchronisation" x="200" y="-58">ack!</label>
+            <label kind="assignment" x="200" y="-41">responses++, system_active := false</label>
+        </transition>
+        
+        <transition>
+            <source ref="rh_validating"/>
+            <target ref="rh_error"/>
+            <label kind="guard" x="350" y="75">x3 &gt;= 7</label>
+            <label kind="synchronisation" x="350" y="92">error!</label>
+            <label kind="assignment" x="350" y="109">x5 := 0, errors++</label>
+        </transition>
+        
+        <transition>
+            <source ref="rh_critical"/>
+            <target ref="rh_validating"/>
+            <label kind="guard" x="250" y="180">x4 &gt;= 6 &amp;&amp; x1 &gt;= 3</label>
+            <label kind="synchronisation" x="250" y="197">data!</label>
+            <label kind="assignment" x="250" y="214">x3 := 0, critical_section := false</label>
+        </transition>
+        
+        <transition>
+            <source ref="rh_error"/>
+            <target ref="rh_recovery"/>
+            <label kind="guard" x="275" y="225">x5 &gt;= 5</label>
+            <label kind="synchronisation" x="275" y="242">timeout!</label>
+            <label kind="assignment" x="275" y="259">x6 := 0</label>
+        </transition>
+        
+        <transition>
+            <source ref="rh_recovery"/>
+            <target ref="rh_idle"/>
+            <label kind="guard" x="75" y="350">x6 &gt;= 15</label>
+            <label kind="synchronisation" x="75" y="367">restart!</label>
+            <label kind="assignment" x="75" y="384">x1 := 0, x2 := 0, x3 := 0, x4 := 0, x5 := 0, x6 := 0</label>
+        </transition>
+    </template>
+    
+    <template>
+        <name>DataProcessor</name>
+        
+        <location id="dp_idle" x="0" y="0">
+            <name x="-25" y="-34">Idle</name>
+        </location>
+        
+        <location id="dp_buffer" x="200" y="0">
+            <name x="175" y="-34">Buffer</name>
+            <label kind="invariant" x="175" y="17">x1 &lt;= 30</label>
+        </location>
+        
+        <location id="dp_compute" x="400" y="0">
+            <name x="365" y="-34">Compute</name>
+            <label kind="invariant" x="365" y="17">x2 &lt;= 18</label>
+        </location>
+        
+        <location id="dp_output" x="200" y="150">
+            <name x="175" y="184">Output</name>
+        </location>
+        
+        <init ref="dp_idle"/>
+        
+        <transition>
+            <source ref="dp_idle"/>
+            <target ref="dp_buffer"/>
+            <label kind="synchronisation" x="75" y="-17">internal_a?</label>
+            <label kind="assignment" x="75" y="0">x1 := 0</label>
+        </transition>
+        
+        <transition>
+            <source ref="dp_buffer"/>
+            <target ref="dp_compute"/>
+            <label kind="guard" x="275" y="-17">x1 &gt;= 12</label>
+            <label kind="synchronisation" x="275" y="0">internal_b!</label>
+            <label kind="assignment" x="275" y="17">x2 := 0</label>
+        </transition>
+        
+        <transition>
+            <source ref="dp_compute"/>
+            <target ref="dp_output"/>
+            <label kind="guard" x="275" y="75">x2 &gt;= 10</label>
+            <label kind="synchronisation" x="275" y="92">data?</label>
+        </transition>
+        
+        <transition>
+            <source ref="dp_output"/>
+            <target ref="dp_idle"/>
+            <label kind="synchronisation" x="75" y="180">internal_c!</label>
+            <label kind="assignment" x="75" y="197">x1 := 0, x2 := 0</label>
+        </transition>
+    </template>
+    
+    <template>
+        <name>ErrorHandler</name>
+        
+        <location id="eh_ready" x="0" y="0">
+            <name x="-25" y="-34">Ready</name>
+        </location>
+        
+        <location id="eh_handling" x="200" y="0">
+            <name x="150" y="-34">Handling</name>
+            <label kind="invariant" x="150" y="17">x3 &lt;= 20</label>
+        </location>
+        
+        <location id="eh_escalate" x="400" y="0">
+            <name x="365" y="-34">Escalate</name>
+            <label kind="invariant" x="365" y="17">x4 &lt;= 15</label>
+        </location>
+        
+        <init ref="eh_ready"/>
+        
+        <transition>
+            <source ref="eh_ready"/>
+            <target ref="eh_handling"/>
+            <label kind="synchronisation" x="75" y="-17">error?</label>
+            <label kind="assignment" x="75" y="0">x3 := 0</label>
+        </transition>
+        
+        <transition>
+            <source ref="eh_handling"/>
+            <target ref="eh_ready"/>
+            <label kind="guard" x="75" y="50">x3 &gt;= 8 &amp;&amp; x3 &lt;= 12</label>
+            <label kind="assignment" x="75" y="67">x3 := 0</label>
+        </transition>
+        
+        <transition>
+            <source ref="eh_handling"/>
+            <target ref="eh_escalate"/>
+            <label kind="guard" x="275" y="-17">x3 &gt;= 15</label>
+            <label kind="assignment" x="275" y="0">x4 := 0</label>
+        </transition>
+        
+        <transition>
+            <source ref="eh_escalate"/>
+            <target ref="eh_ready"/>
+            <label kind="guard" x="200" y="-75">x4 &gt;= 10</label>
+            <label kind="synchronisation" x="200" y="-58">timeout?</label>
+            <label kind="assignment" x="200" y="-41">x3 := 0, x4 := 0</label>
+        </transition>
+    </template>
+    
+    <template>
+        <name>SystemController</name>
+        
+        <location id="sc_init" x="0" y="0">
+            <name x="-25" y="-34">Init</name>
+        </location>
+        
+        <location id="sc_active" x="200" y="0">
+            <name x="175" y="-34">Active</name>
+            <label kind="invariant" x="175" y="17">x5 &lt;= 50</label>
+        </location>
+        
+        <location id="sc_monitor" x="400" y="0">
+            <name x="365" y="-34">Monitor</name>
+        </location>
+        
+        <location id="sc_restart" x="200" y="150">
+            <name x="170" y="184">Restart</name>
+        </location>
+        
+        <init ref="sc_init"/>
+        
+        <transition>
+            <source ref="sc_init"/>
+            <target ref="sc_active"/>
+            <label kind="synchronisation" x="75" y="-17">req!</label>
+            <label kind="assignment" x="75" y="0">x5 := 0</label>
+        </transition>
+        
+        <transition>
+            <source ref="sc_active"/>
+            <target ref="sc_monitor"/>
+            <label kind="synchronisation" x="275" y="-17">ack?</label>
+        </transition>
+        
+        <transition>
+            <source ref="sc_active"/>
+            <target ref="sc_active"/>
+            <label kind="guard" x="150" y="50">x5 &gt;= 20 &amp;&amp; requests &lt; MAX_REQUESTS</label>
+            <label kind="synchronisation" x="150" y="67">req!</label>
+            <label kind="assignment" x="150" y="84">x5 := 0</label>
+        </transition>
+        
+        <transition>
+            <source ref="sc_monitor"/>
+            <target ref="sc_active"/>
+            <label kind="guard" x="275" y="50">responses &lt; requests</label>
+            <label kind="synchronisation" x="275" y="67">internal_b?</label>
+        </transition>
+        
+        <transition>
+            <source ref="sc_monitor"/>
+            <target ref="sc_restart"/>
+            <label kind="synchronisation" x="275" y="125">restart?</label>
+        </transition>
+        
+        <transition>
+            <source ref="sc_restart"/>
+            <target ref="sc_init"/>
+            <label kind="guard" x="75" y="200">errors &gt; 0</label>
+            <label kind="assignment" x="75" y="217">x5 := 0, errors := 0</label>
+        </transition>
+        
+        <transition>
+            <source ref="sc_monitor"/>
+            <target ref="sc_init"/>
+            <label kind="guard" x="200" y="-75">requests &gt;= MAX_REQUESTS &amp;&amp; responses &gt;= requests</label>
+            <label kind="synchronisation" x="200" y="-58">internal_c?</label>
+            <label kind="assignment" x="200" y="-41">x5 := 0</label>
+        </transition>
+    </template>
+    
+    <system>
+        RequestH = RequestHandler();
+        DataProc = DataProcessor();
+        ErrorH = ErrorHandler();
+        SysCtrl = SystemController();
+        system RequestH, DataProc, ErrorH, SysCtrl;
+    </system>
+</nta>

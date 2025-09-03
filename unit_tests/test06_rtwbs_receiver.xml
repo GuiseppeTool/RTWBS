@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.6//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_6.dtd'>
+<nta>
+    <declaration>
+        // Test 6: RTWBS Receiver Test
+        // Focuses on testing received event timing relaxation
+        clock x, y;
+        chan receive_data, send_ack;
+        int data_value = 0;
+    </declaration>
+    
+    <template>
+        <name>RTWBSAbstract</name>
+        
+        <location id="abs_start" x="0" y="0">
+            <name x="-25" y="-34">Start</name>
+        </location>
+        
+        <location id="abs_middle" x="200" y="0">
+            <name x="175" y="-34">Middle</name>
+            <label kind="invariant" x="175" y="17">x &lt;= 10</label>
+        </location>
+        
+        <location id="abs_end" x="400" y="0">
+            <name x="390" y="-34">End</name>
+        </location>
+        
+        <init ref="abs_start"/>
+        
+        <!-- Received event with tight timing constraint -->
+        <transition>
+            <source ref="abs_start"/>
+            <target ref="abs_middle"/>
+            <label kind="guard" x="75" y="-17">x &lt;= 5</label>
+            <label kind="synchronisation" x="75" y="0">receive_data?</label>
+            <label kind="assignment" x="75" y="17">y := 0</label>
+        </transition>
+        
+        <!-- Sent event with loose timing constraint -->
+        <transition>
+            <source ref="abs_middle"/>
+            <target ref="abs_end"/>
+            <label kind="guard" x="275" y="-17">y &gt;= 3 &amp;&amp; y &lt;= 8</label>
+            <label kind="synchronisation" x="275" y="0">send_ack!</label>
+        </transition>
+        
+        <transition>
+            <source ref="abs_end"/>
+            <target ref="abs_start"/>
+            <label kind="guard" x="200" y="50">x &gt;= 12</label>
+            <label kind="assignment" x="200" y="67">x := 0, y := 0</label>
+        </transition>
+    </template>
+    
+    <template>
+        <name>RTWBSRefined</name>
+        
+        <location id="ref_start" x="0" y="0">
+            <name x="-25" y="-34">Start</name>
+        </location>
+        
+        <location id="ref_middle" x="200" y="0">
+            <name x="175" y="-34">Middle</name>
+            <label kind="invariant" x="175" y="17">x &lt;= 15</label>
+        </location>
+        
+        <location id="ref_end" x="400" y="0">
+            <name x="390" y="-34">End</name>
+        </location>
+        
+        <init ref="ref_start"/>
+        
+        <!-- Received event with RELAXED timing (should be valid for RTWBS) -->
+        <transition>
+            <source ref="ref_start"/>
+            <target ref="ref_middle"/>
+            <label kind="guard" x="75" y="-17">x &lt;= 8</label>
+            <label kind="synchronisation" x="75" y="0">receive_data?</label>
+            <label kind="assignment" x="75" y="17">y := 0, data_value++</label>
+        </transition>
+        
+        <!-- Sent event with STRICTER timing (should be valid for RTWBS) -->
+        <transition>
+            <source ref="ref_middle"/>
+            <target ref="ref_end"/>
+            <label kind="guard" x="275" y="-17">y &gt;= 2 &amp;&amp; y &lt;= 6</label>
+            <label kind="synchronisation" x="275" y="0">send_ack!</label>
+        </transition>
+        
+        <transition>
+            <source ref="ref_end"/>
+            <target ref="ref_start"/>
+            <label kind="guard" x="200" y="50">x &gt;= 10</label>
+            <label kind="assignment" x="200" y="67">x := 0, y := 0</label>
+        </transition>
+    </template>
+    
+    <template>
+        <name>Environment</name>
+        
+        <location id="env_idle" x="0" y="0">
+            <name x="-25" y="-34">Idle</name>
+        </location>
+        
+        <location id="env_waiting" x="200" y="0">
+            <name x="175" y="-34">Waiting</name>
+        </location>
+        
+        <init ref="env_idle"/>
+        
+        <transition>
+            <source ref="env_idle"/>
+            <target ref="env_waiting"/>
+            <label kind="synchronisation" x="75" y="-17">receive_data!</label>
+        </transition>
+        
+        <transition>
+            <source ref="env_waiting"/>
+            <target ref="env_idle"/>
+            <label kind="synchronisation" x="75" y="50">send_ack?</label>
+        </transition>
+    </template>
+    
+    <system>
+        // For RTWBS testing: Compare Abstract vs Refined behavior
+        Abstract = RTWBSAbstract();
+        Refined = RTWBSRefined();
+        Env = Environment();
+        system Abstract, Env;
+        // Alternative: system Refined, Env;
+    </system>
+</nta>

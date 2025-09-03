@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.6//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_6.dtd'>
+<nta>
+    <declaration>
+        // Test 5: Multi-Channel Communication
+        // Multiple processes with several synchronization channels
+        clock x, y, z;
+        chan start, data, ack, timeout;
+        int message_id = 0;
+        bool processing = false;
+    </declaration>
+    
+    <template>
+        <name>Producer</name>
+        
+        <location id="prod_idle" x="0" y="0">
+            <name x="-35" y="-34">ProdIdle</name>
+        </location>
+        
+        <location id="prod_waiting" x="200" y="0">
+            <name x="150" y="-34">ProdWaiting</name>
+            <label kind="invariant" x="150" y="17">x &lt;= 8</label>
+        </location>
+        
+        <location id="prod_sending" x="400" y="0">
+            <name x="350" y="-34">ProdSending</name>
+            <label kind="invariant" x="350" y="17">x &lt;= 5</label>
+        </location>
+        
+        <location id="prod_done" x="200" y="150">
+            <name x="175" y="184">ProdDone</name>
+        </location>
+        
+        <init ref="prod_idle"/>
+        
+        <transition>
+            <source ref="prod_idle"/>
+            <target ref="prod_waiting"/>
+            <label kind="synchronisation" x="75" y="-17">start?</label>
+            <label kind="assignment" x="75" y="0">x := 0</label>
+        </transition>
+        
+        <transition>
+            <source ref="prod_waiting"/>
+            <target ref="prod_sending"/>
+            <label kind="guard" x="275" y="-17">x &gt;= 3</label>
+            <label kind="assignment" x="275" y="0">x := 0, message_id++</label>
+        </transition>
+        
+        <transition>
+            <source ref="prod_sending"/>
+            <target ref="prod_done"/>
+            <label kind="guard" x="275" y="75">x &gt;= 2</label>
+            <label kind="synchronisation" x="275" y="92">data!</label>
+        </transition>
+        
+        <transition>
+            <source ref="prod_done"/>
+            <target ref="prod_idle"/>
+            <label kind="synchronisation" x="75" y="180">ack?</label>
+            <label kind="assignment" x="75" y="197">x := 0</label>
+        </transition>
+        
+        <transition>
+            <source ref="prod_waiting"/>
+            <target ref="prod_idle"/>
+            <label kind="guard" x="50" y="75">x &gt;= 7</label>
+            <label kind="synchronisation" x="50" y="92">timeout!</label>
+        </transition>
+    </template>
+    
+    <template>
+        <name>Consumer</name>
+        
+        <location id="cons_idle" x="0" y="0">
+            <name x="-35" y="-34">ConsIdle</name>
+        </location>
+        
+        <location id="cons_processing" x="250" y="0">
+            <name x="170" y="-34">ConsProcessing</name>
+            <label kind="invariant" x="170" y="17">y &lt;= 12</label>
+        </location>
+        
+        <location id="cons_ready" x="500" y="0">
+            <name x="475" y="-34">ConsReady</name>
+        </location>
+        
+        <init ref="cons_idle"/>
+        
+        <transition>
+            <source ref="cons_idle"/>
+            <target ref="cons_processing"/>
+            <label kind="synchronisation" x="100" y="-17">data?</label>
+            <label kind="assignment" x="100" y="0">y := 0, processing := true</label>
+        </transition>
+        
+        <transition>
+            <source ref="cons_processing"/>
+            <target ref="cons_ready"/>
+            <label kind="guard" x="350" y="-17">y &gt;= 8</label>
+            <label kind="assignment" x="350" y="0">processing := false</label>
+        </transition>
+        
+        <transition>
+            <source ref="cons_ready"/>
+            <target ref="cons_idle"/>
+            <label kind="synchronisation" x="250" y="50">ack!</label>
+            <label kind="assignment" x="250" y="67">y := 0</label>
+        </transition>
+    </template>
+    
+    <template>
+        <name>Controller</name>
+        
+        <location id="ctrl_init" x="0" y="0">
+            <name x="-30" y="-34">CtrlInit</name>
+        </location>
+        
+        <location id="ctrl_running" x="200" y="0">
+            <name x="150" y="-34">CtrlRunning</name>
+            <label kind="invariant" x="150" y="17">z &lt;= 20</label>
+        </location>
+        
+        <location id="ctrl_timeout" x="100" y="150">
+            <name x="50" y="184">CtrlTimeout</name>
+        </location>
+        
+        <init ref="ctrl_init"/>
+        
+        <transition>
+            <source ref="ctrl_init"/>
+            <target ref="ctrl_running"/>
+            <label kind="synchronisation" x="75" y="-17">start!</label>
+            <label kind="assignment" x="75" y="0">z := 0</label>
+        </transition>
+        
+        <transition>
+            <source ref="ctrl_running"/>
+            <target ref="ctrl_init"/>
+            <label kind="guard" x="100" y="-75">z &gt;= 15</label>
+            <label kind="assignment" x="100" y="-58">z := 0</label>
+        </transition>
+        
+        <transition>
+            <source ref="ctrl_running"/>
+            <target ref="ctrl_timeout"/>
+            <label kind="synchronisation" x="75" y="75">timeout?</label>
+        </transition>
+        
+        <transition>
+            <source ref="ctrl_timeout"/>
+            <target ref="ctrl_init"/>
+            <label kind="guard" x="25" y="200">z &gt;= 5</label>
+            <label kind="assignment" x="25" y="217">z := 0</label>
+        </transition>
+    </template>
+    
+    <system>
+        P = Producer();
+        C = Consumer();
+        Ctrl = Controller();
+        system P, C, Ctrl;
+    </system>
+</nta>

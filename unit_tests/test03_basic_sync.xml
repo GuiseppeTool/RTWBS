@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.6//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_6.dtd'>
+<nta>
+    <declaration>
+        // Test 3: Basic Synchronization
+        // Two processes communicating via single channel
+        clock x, y;
+        chan start;
+    </declaration>
+    
+    <template>
+        <name>Sender</name>
+        
+        <location id="sender_idle" x="0" y="0">
+            <name x="-40" y="-34">SenderIdle</name>
+        </location>
+        
+        <location id="sender_ready" x="200" y="0">
+            <name x="150" y="-34">SenderReady</name>
+            <label kind="invariant" x="150" y="17">x &lt;= 10</label>
+        </location>
+        
+        <location id="sender_done" x="400" y="0">
+            <name x="390" y="-34">SenderDone</name>
+        </location>
+        
+        <init ref="sender_idle"/>
+        
+        <transition>
+            <source ref="sender_idle"/>
+            <target ref="sender_ready"/>
+            <label kind="guard" x="75" y="-17">x &gt;= 2</label>
+            <label kind="assignment" x="75" y="0">x := 0</label>
+        </transition>
+        
+        <transition>
+            <source ref="sender_ready"/>
+            <target ref="sender_done"/>
+            <label kind="guard" x="275" y="-17">x &gt;= 5</label>
+            <label kind="synchronisation" x="275" y="0">start!</label>
+        </transition>
+        
+        <transition>
+            <source ref="sender_done"/>
+            <target ref="sender_idle"/>
+            <label kind="guard" x="200" y="50">x &gt;= 15</label>
+            <label kind="assignment" x="200" y="67">x := 0</label>
+        </transition>
+    </template>
+    
+    <template>
+        <name>Receiver</name>
+        
+        <location id="receiver_waiting" x="0" y="0">
+            <name x="-60" y="-34">ReceiverWaiting</name>
+            <label kind="invariant" x="-60" y="17">y &lt;= 20</label>
+        </location>
+        
+        <location id="receiver_active" x="250" y="0">
+            <name x="200" y="-34">ReceiverActive</name>
+        </location>
+        
+        <init ref="receiver_waiting"/>
+        
+        <transition>
+            <source ref="receiver_waiting"/>
+            <target ref="receiver_active"/>
+            <label kind="synchronisation" x="100" y="-17">start?</label>
+            <label kind="assignment" x="100" y="0">y := 0</label>
+        </transition>
+        
+        <transition>
+            <source ref="receiver_active"/>
+            <target ref="receiver_waiting"/>
+            <label kind="guard" x="125" y="50">y &gt;= 8</label>
+            <label kind="assignment" x="125" y="67">y := 0</label>
+        </transition>
+    </template>
+    
+    <system>
+        S = Sender();
+        R = Receiver();
+        system S, R;
+    </system>
+</nta>
