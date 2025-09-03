@@ -2,6 +2,7 @@
 build/
 build/**
 ICSE_DT/** 
+old/** */
 # External dependencies (should be installed separately)
 UDBM/
 utap/

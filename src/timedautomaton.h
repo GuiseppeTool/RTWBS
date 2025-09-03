@@ -15,6 +15,8 @@
 #include "dbm/constraints.h"
 #include "dbm/print.h"
 
+#include "configs.h"
+
 // Forward declarations for UTAP types
 namespace UTAP {
     class Document;
@@ -49,11 +51,44 @@ struct Transition {
     
     // Synchronization support
     std::string channel;                // Channel name for synchronization (empty if no sync)
-    bool is_sender;                     // true for '!', false for '?'
+    bool is_sender;                     // true for TA_CONFIG.sender_suffix
+    bool is_receiver;                   // true for TA_CONFIG.receiver_suffix
     bool has_synchronization() const { return !channel.empty(); }
     
     Transition(int from, int to, const std::string& action) 
-        : from_location(from), to_location(to), action(action), is_sender(false) {}
+        : from_location(from), to_location(to), action(action), is_sender(false), is_receiver(false) {
+
+    }
+    bool includes(const Transition* other) const{
+        return other->is_included(this);
+    }
+    bool is_included(const Transition* other) const {
+        if (!other) return false;
+        
+        // Check if actions are compatible
+        if (action != other->action) return false;
+        
+        // Check if this transition's guards are included in other's guards
+        // For each guard in this transition, check if it's satisfied by other's guards
+        for (const auto& guard : guards) {
+            bool found_compatible = false;
+            for (const auto& other_guard : other->guards) {
+                // Check if guards affect same clock variables
+                if (guard.i == other_guard.i && guard.j == other_guard.j) {
+                    // Check if this guard is weaker or equal to other guard
+                    // For now, simple comparison - this guard should be <= other guard
+                    if (guard.value <= other_guard.value) {
+                        found_compatible = true;
+                        break;
+                    }
+                }
+            }
+            if (!found_compatible) {
+                return false;
+            }
+        }
+        return true;
+    }
 };
 
 /**
@@ -76,7 +111,16 @@ struct ZoneState {
         }
         return dbm_areEqual(zone.data(), other.zone.data(), dimension);
     }
-    
+
+    // checks if one zone is within the other. NO ID CHECK
+    bool operator<=(const ZoneState& other) const {
+        if ( dimension != other.dimension) {
+            return false;
+        }
+        relation_t rel = dbm_relation(zone.data(), other.zone.data(), dimension);
+        return (rel == base_SUBSET || rel == base_EQUAL);
+    }
+
 private:
     void compute_hash() {
         std::hash<int> int_hasher;
@@ -110,8 +154,8 @@ private:
     
     // Synchronization support
     std::unordered_set<std::string> channels_;                        // Set of declared channels
-    std::unordered_map<std::string, std::vector<int>> sender_transitions_;    // channel -> transitions with '!'
-    std::unordered_map<std::string, std::vector<int>> receiver_transitions_;  // channel -> transitions with '?'
+    std::unordered_map<std::string, std::vector<int>> sender_transitions_;    // channel -> transitions with TA_CONFIG.sender_suffix
+    std::unordered_map<std::string, std::vector<int>> receiver_transitions_;  // channel -> transitions with TA_CONFIG.receiver_suffix
     
     // Zone graph exploration state
     std::vector<std::unique_ptr<ZoneState>> states_;
@@ -141,6 +185,11 @@ public:
      * Get the dimension (number of clocks + 1)
      */
     cindex_t get_dimension() const { return dimension_; }
+
+
+    std::vector<const Transition*> get_outgoing_transitions(int location_id) const;
+
+    
     
 private:
     // Helper methods for XML parsing
@@ -208,7 +257,7 @@ public:
     /**
      * Construct the zone graph starting from initial location and zone
      */
-    void construct_zone_graph(int initial_location, const std::vector<raw_t>& initial_zone, const size_t MAX_STATES = 1000, bool force = false);
+    void construct_zone_graph(int initial_location, const std::vector<raw_t>& initial_zone, const size_t MAX_STATES = TA_CONFIG.max_states_limit, bool force = TA_CONFIG.force_construction);
     
     /**
      * Construct the zone graph with default initial state (location 0, zero zone) - used by RTWBS
@@ -249,6 +298,9 @@ public:
      * Print all states
      */
     void print_all_states() const;
+
+
+    void print_all_transitions() const;
     
     /**
      * Get the number of states in the zone graph
@@ -265,7 +317,7 @@ public:
      */
     const ZoneState* get_zone_state(size_t state_id) const;
     
-
+    const std::vector<std::unique_ptr<ZoneState>>& get_all_zone_states() const { return states_; }
 
 private:
     /**

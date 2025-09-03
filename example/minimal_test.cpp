@@ -12,9 +12,9 @@ int main() {
         // Add two locations with NO transitions
         automaton.add_location(0, "L0");
         automaton.add_location(1, "L1");
-        
-        std::cout << "Created automaton with 2 locations, NO transitions\n";
-        
+
+        std::cout << "Created automaton with 2 locations, 1 transition\n";
+
         // Test zone graph construction
         std::vector<raw_t> initial_zone(4, dbm_LE_ZERO); // 2x2 matrix
         

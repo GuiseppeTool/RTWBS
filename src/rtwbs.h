@@ -2,6 +2,7 @@
 #define RTWBS_H
 
 #include "timedautomaton.h"
+#include "configs.h"
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -9,7 +10,13 @@
 #include <functional>
 
 namespace rtwbs {
-
+struct PairHash {
+    std::size_t operator()(const std::pair<const ZoneState*, const ZoneState*>& p) const {
+        auto h1 = std::hash<const ZoneState*>{}(p.first);
+        auto h2 = std::hash<const ZoneState*>{}(p.second);
+        return h1 ^ (h2 << 1);
+    }
+};
 /**
  * RTWBS (Relaxed Weak Timed Bisimulation) Equivalence Checker
  * 
@@ -55,33 +62,32 @@ private:
     std::unordered_map<std::string, bool> path_cache_;
     std::unordered_set<StateCorrespondence, StateCorrespondenceHash> correspondence_cache_;
     
-    // Extract event transitions from a timed automaton
+   /* // Extract event transitions from a timed automaton
     std::vector<EventTransition> extract_event_transitions(const TimedAutomaton& automaton);
     
     // Check if a path exists in the abstract system that corresponds to the refined path
     bool find_equivalent_path(const std::vector<EventTransition>& refined_path,
-                             const std::vector<EventTransition>& abstract_transitions);
+                             const std::vector<EventTransition>& abstract_transitions){};
     
     // Verify state correspondence under RWTBS rules
     bool verify_state_correspondence(int refined_state, int abstract_state,
-                                   const TimedAutomaton& refined, const TimedAutomaton& abstract);
+                                   const TimedAutomaton& refined, const TimedAutomaton& abstract){};
     
     // Check timing constraints: strict for sent events, relaxed for received events
     bool check_timing_constraints(const EventTransition& refined_trans, 
-                                 const EventTransition& abstract_trans);
+                                 const EventTransition& abstract_trans){};
     
     // Generate hash key for path caching
-    std::string generate_path_key(const std::vector<EventTransition>& path);
-        /**
-     * Check if two zone states satisfy RTWBS inclusion constraints
-     * @param refined_state_id: State ID in refined automaton
-     * @param abstract_state_id: State ID in abstract automaton  
-     * @param abstract_automaton: The abstract automaton to compare against
-     * @return: true if refined zone can simulate abstract zone under RTWBS
-     */
-    bool check_zone_inclusion_rtwbs(size_t refined_state_id, size_t abstract_state_id, 
-                                   const TimedAutomaton& refined_automaton,const TimedAutomaton& abstract_automaton) const;
+    std::string generate_path_key(const std::vector<EventTransition>& path){};
 
+     // Check if two zone states satisfy RTWBS inclusion constraints
+     // @param refined_state_id: State ID in refined automaton
+     // @param abstract_state_id: State ID in abstract automaton  
+     // @param abstract_automaton: The abstract automaton to compare against
+     // @return: true if refined zone can simulate abstract zone under RTWBS
+        bool check_zone_inclusion_rtwbs(size_t refined_state_id, size_t abstract_state_id, 
+                                   const TimedAutomaton& refined_automaton,const TimedAutomaton& abstract_automaton) const{};
+*/
 public:
     /**
      * Check if refined automaton is RTWBS-equivalent to abstract automaton
@@ -113,13 +119,26 @@ public:
      * Get statistics about the last refinement check
      */
     struct CheckStatistics {
-        size_t paths_checked;
-        size_t cache_hits;
-        size_t correspondences_verified;
+        size_t refined_states;
+        size_t abstract_states;
+        size_t simulation_pairs;
         double check_time_ms;
     };
+
+
+
+    bool check_transition_simulation(std::vector<const Transition*> refined, std::vector<const Transition*> abstract);
     
     CheckStatistics get_last_check_statistics() const;
+    void print_statistics() const
+    {
+        std::cout << "RTWBS Check Statistics:" << std::endl;
+        std::cout << "  Refined States: " << last_stats_.refined_states << std::endl;
+        std::cout << "  Abstract States: " << last_stats_.abstract_states << std::endl;
+        std::cout << "  Simulation Pairs: " << last_stats_.simulation_pairs << std::endl;
+        std::cout << "  Check Time: " << last_stats_.check_time_ms << " ms" << std::endl;
+    }
+
 
 private:
     mutable CheckStatistics last_stats_;

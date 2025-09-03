@@ -35,10 +35,16 @@ TimedAutomaton create_abstract_automaton() {
     // Add a transition that receives an event
     abstract.add_transition(0, 1, "receive_data?");
     abstract.add_guard(0, 1, 0, 5, dbm_WEAK); // x1 <= 5
+    // Set up synchronization for receive_data
+    abstract.add_channel("receive_data");
+    abstract.add_synchronization(0, "receive_data", false); // false = receiver
     
     // Add a transition that sends an event
     abstract.add_transition(1, 2, "send_ack!");
     abstract.add_guard(1, 1, 0, 10, dbm_WEAK); // x1 <= 10
+    // Set up synchronization for send_ack
+    abstract.add_channel("send_ack");
+    abstract.add_synchronization(1, "send_ack", true); // true = sender
     
     // Initialize zone graph with proper initial zone (all clocks = 0)
     std::vector<raw_t> initial_zone(4); // 2x2 matrix for 2 clocks
@@ -63,10 +69,16 @@ TimedAutomaton create_refined_automaton() {
     // Receive event with MORE RELAXED timing (valid for received events)
     refined.add_transition(0, 1, "receive_data?");
     refined.add_guard(0, 1, 0, 8, dbm_WEAK); // x1 <= 8 (more relaxed than abstract's 5)
+    // Set up synchronization for receive_data
+    refined.add_channel("receive_data");
+    refined.add_synchronization(0, "receive_data", false); // false = receiver
     
     // Send event with STRICTER timing (valid for sent events)
     refined.add_transition(1, 2, "send_ack!");
     refined.add_guard(1, 1, 0, 7, dbm_WEAK); // x1 <= 7 (stricter than abstract's 10)
+    // Set up synchronization for send_ack
+    refined.add_channel("send_ack");
+    refined.add_synchronization(1, "send_ack", true); // true = sender
     
     // Initialize zone graph with proper initial zone (all clocks = 0)
     std::vector<raw_t> initial_zone(4); // 2x2 matrix for 2 clocks
@@ -91,10 +103,16 @@ TimedAutomaton create_invalid_refinement() {
     // Received event with STRICTER timing (INVALID - should be more relaxed)
     invalid.add_transition(0, 1, "receive_data?");
     invalid.add_guard(0, 1, 0, 3, dbm_WEAK); // x1 <= 3 (stricter than abstract's 5 - INVALID!)
+    // Set up synchronization for receive_data
+    invalid.add_channel("receive_data");
+    invalid.add_synchronization(0, "receive_data", false); // false = receiver
     
     // Sent event with MORE RELAXED timing (INVALID - should be stricter)
     invalid.add_transition(1, 2, "send_ack!");
     invalid.add_guard(1, 1, 0, 15, dbm_WEAK); // x1 <= 15 (more relaxed than abstract's 10 - INVALID!)
+    // Set up synchronization for send_ack
+    invalid.add_channel("send_ack");
+    invalid.add_synchronization(1, "send_ack", true); // true = sender
     
     // Initialize zone graph with proper initial zone (all clocks = 0)
     std::vector<raw_t> initial_zone(4); // 2x2 matrix for 2 clocks
@@ -127,12 +145,7 @@ int main() {
         
         std::cout << "Result: " << (is_valid ? "VALID" : "INVALID") << " refinement" << std::endl;
         
-        auto stats = checker.get_last_check_statistics();
-        std::cout << "Statistics: " << stats.paths_checked << " paths checked, "
-                  << stats.cache_hits << " cache hits, "
-                  << stats.correspondences_verified << " correspondences verified" << std::endl;
-        std::cout << "Check time: " << stats.check_time_ms << " ms" << std::endl;
-        
+        checker.print_statistics();    
         std::cout << std::endl;
         
         // Test 2: Invalid refinement
@@ -152,10 +165,7 @@ int main() {
             }
         }
         
-        auto stats2 = checker.get_last_check_statistics();
-        std::cout << "Statistics: " << stats2.paths_checked << " paths checked, "
-                  << stats2.cache_hits << " cache hits" << std::endl;
-        std::cout << "Check time: " << stats2.check_time_ms << " ms" << std::endl;
+        checker.print_statistics();
         
         std::cout << std::endl;
         
@@ -163,14 +173,7 @@ int main() {
         std::cout << "=== Test 3: Self-Equivalence ===" << std::endl;
         bool self_equiv = checker.check_rtwbs_equivalence(abstract, abstract);
         std::cout << "Abstract ≡ Abstract: " << (self_equiv ? "TRUE" : "FALSE") << std::endl;
-        
-        std::cout << std::endl;
-        std::cout << "=== RTWBS Explanation ===" << std::endl;
-        std::cout << "RTWBS (Relaxed Weak Timed Bisimulation) allows:" << std::endl;
-        std::cout << "• Received events (?): can have MORE relaxed timing in refinement" << std::endl;
-        std::cout << "• Sent events (!): must have SAME or STRICTER timing in refinement" << std::endl;
-        std::cout << "• This models distributed systems where message delays are acceptable" << std::endl;
-        std::cout << "  but sending timing must be respected for correctness" << std::endl;
+
         
     } catch (const std::exception& e) {
         std::cerr << "Error: " << e.what() << std::endl;

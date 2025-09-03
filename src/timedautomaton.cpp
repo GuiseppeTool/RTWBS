@@ -1,4 +1,5 @@
 #include "timedautomaton.h"
+
 #include "utap/utap.hpp"
 #include <iostream>
 #include <sstream>
@@ -135,7 +136,7 @@ void TimedAutomaton::build_from_utap_document(UTAP::Document& doc) {
         int target_int = location_map[target_id];
         
         // Parse assignment for action name
-        std::string action = "tau";  // Default action name
+        std::string action = TA_CONFIG.default_action_name;  // Default action name
         if (!edge.assign.empty()) {
             std::string assign_str = edge.assign.str();
             DEV_PRINT("     Assignment: " << assign_str << std::endl);
@@ -208,6 +209,7 @@ void TimedAutomaton::build_from_utap_document(UTAP::Document& doc) {
             
             if (parse_synchronization_from_expr(edge.sync, channel, is_sender)) {
                 DEV_PRINT("     Parsed synchronization: " << channel << (is_sender ? "!" : "?") << std::endl);
+                
                 add_synchronization(i, channel, is_sender);
                 add_channel(channel);
                 DEV_PRINT("     Added synchronization to transition" << std::endl);
@@ -395,11 +397,11 @@ bool TimedAutomaton::parse_synchronization_from_expr(const UTAP::Expression& exp
     // Handle synchronization by parsing the string representation
     std::string sync_str = expr.str();
     if (!sync_str.empty()) {
-        if (sync_str.back() == '!') {
+        if (sync_str.back() == TA_CONFIG.sender_suffix) {
             channel = sync_str.substr(0, sync_str.length() - 1);
             is_sender = true;
             return true;
-        } else if (sync_str.back() == '?') {
+        } else if (sync_str.back() == TA_CONFIG.receiver_suffix) {
             channel = sync_str.substr(0, sync_str.length() - 1);
             is_sender = false;
             return true;
@@ -480,7 +482,10 @@ void TimedAutomaton::add_invariant(int location_id, cindex_t i, cindex_t j, int3
 }
 
 void TimedAutomaton::add_transition(int from, int to, const std::string& action) {
-    transitions_.emplace_back(from, to, action);
+    if (action == TA_CONFIG.default_action_name || action.empty()) 
+            transitions_.emplace_back(from, to, TA_CONFIG.tau_action_name);
+    else 
+            transitions_.emplace_back(from, to, action);
     int transition_idx = transitions_.size() - 1;
     outgoing_transitions_[from].push_back(transition_idx);
 }
@@ -502,6 +507,7 @@ void TimedAutomaton::add_synchronization(size_t transition_idx, const std::strin
     if (transition_idx < transitions_.size()) {
         transitions_[transition_idx].channel = channel;
         transitions_[transition_idx].is_sender = is_sender;
+        transitions_[transition_idx].is_receiver = !is_sender; // Set the receiver flag
         
         // Add to appropriate synchronization map
         if (is_sender) {
@@ -762,7 +768,7 @@ void TimedAutomaton::construct_zone_graph() const {
     dbm_init(initial_zone.data(), dimension_); // Proper zero zone initialization
     
     // Construct with default parameters (location 0, zero zone)
-    mutable_this->construct_zone_graph(0, initial_zone, 1000, true); // Force construction
+    mutable_this->construct_zone_graph(TA_CONFIG.default_initial_location, initial_zone, 1000, true); // Force construction
 }
 
 const ZoneState* TimedAutomaton::get_zone_state(size_t state_id) const {
@@ -771,5 +777,35 @@ const ZoneState* TimedAutomaton::get_zone_state(size_t state_id) const {
     }
     return states_[state_id].get();
 }
+
+
+std::vector<const Transition*> TimedAutomaton::get_outgoing_transitions(int location_id) const {
+    std::vector<const Transition*> outgoing;
+    
+    for (const auto& transition : transitions_) {
+        if (transition.from_location == location_id) {
+            outgoing.push_back(&transition);
+        }
+    }
+    
+    return outgoing;
+}
+
+
+
+void TimedAutomaton::print_all_transitions() const {
+    std::cout << "Transitions:\n";
+    for (const auto& transition : transitions_) {
+        std::cout << "  " << transition.from_location << " --(" << transition.action << ")--> " << transition.to_location << "\n";
+    }
+}
+
+
+
+
+
+
+
+
 
 }  // namespace rtwbs

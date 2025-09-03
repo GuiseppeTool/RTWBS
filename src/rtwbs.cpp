@@ -6,432 +6,150 @@
 
 namespace rtwbs {
 
-std::vector<EventTransition> RTWBSChecker::extract_event_transitions(const TimedAutomaton& automaton) {
-    std::vector<EventTransition> event_transitions;
+// Helper function to compute weak transitions: τ* → action → τ*
+std::vector<std::pair<const ZoneState*, const Transition*>> compute_weak_successors(
+    const TimedAutomaton& automaton, 
+    const ZoneState* current_zone, 
+    const std::string& action) {
     
-    // Get all transitions from the automaton
-    const auto& transitions = automaton.get_transitions();
+    std::vector<std::pair<const ZoneState*, const Transition*>> weak_successors;
+    std::queue<const ZoneState*> to_explore;
+    std::unordered_set<const ZoneState*> visited;
     
-    std::cout << "Extracting " << transitions.size() << " transitions from automaton" << std::endl;
+    to_explore.push(current_zone);
+    visited.insert(current_zone);
     
-    for (size_t i = 0; i < transitions.size(); ++i) {
-        const auto& trans = transitions[i];
+    // First, follow all τ-transitions (internal transitions)
+    std::vector<const ZoneState*> tau_reachable;
+    while (!to_explore.empty()) {
+        const ZoneState* zone = to_explore.front();
+        to_explore.pop();
+        tau_reachable.push_back(zone);
         
-        // Skip internal (tau) transitions
-        if (trans.action.empty()) {
-            continue;
-        }
-        
-        // Parse synchronization action to extract event name and direction
-        std::string event_name = trans.action;
-        bool is_sent = false;
-        
-        if (event_name.back() == '!') {
-            is_sent = true;
-            event_name.pop_back(); // Remove '!' suffix
-        } else if (event_name.back() == '?') {
-            is_sent = false;
-            event_name.pop_back(); // Remove '?' suffix
-        }
-        
-        // Extract time bound from guard constraints
-        int32_t time_bound = dbm_INFINITY; // Default bound if no constraints
-        
-        // Parse actual guard constraints to extract timing bounds
-        for (const auto& guard : trans.guards) {
-            // Convert raw constraint back to bound value
-            int32_t bound_value = dbm_raw2bound(guard.value);
-            
-            // For RTWBS, we're interested in upper bounds (constraints like x <= c)
-            // Guard i=0, j=clock means "0 - x_clock <= bound" i.e., "x_clock >= -bound"
-            // Guard i=clock, j=0 means "x_clock - 0 <= bound" i.e., "x_clock <= bound"
-            if (guard.i != 0 && guard.j == 0) {
-                // This is an upper bound constraint x_i <= bound_value
-                time_bound = std::min(time_bound, bound_value);
-            }
-            // We could also handle lower bounds (guard.i == 0, guard.j != 0) if needed
-        }
-        
-        event_transitions.emplace_back(trans.from_location, trans.to_location, event_name, is_sent, time_bound);
-        
-        std::cout << "  Transition " << i << ": " << event_name 
-                  << " (" << (is_sent ? "send" : "receive") << ") "
-                  << "bound=" << time_bound << " from=" << trans.from_location 
-                  << " to=" << trans.to_location << std::endl;
-    }
-    
-    return event_transitions;
-}
-
-bool RTWBSChecker::check_timing_constraints(const EventTransition& refined_trans, 
-                                           const EventTransition& abstract_trans) {
-    // RTWBS rules:
-    // 1. For sent events (!): refined timing must be stricter or equal to abstract
-    // 2. For received events (?): refined timing can be more relaxed than abstract
-    
-    if (refined_trans.is_sent && abstract_trans.is_sent) {
-        // Both are sent events - refined must be stricter or equal
-        return refined_trans.time_bound <= abstract_trans.time_bound;
-    } else if (!refined_trans.is_sent && !abstract_trans.is_sent) {
-        // Both are received events - refined can be more relaxed
-        return refined_trans.time_bound >= abstract_trans.time_bound;
-    } else {
-        // Event direction mismatch
-        return false;
-    }
-}
-
-bool RTWBSChecker::find_equivalent_path(const std::vector<EventTransition>& refined_path,
-                                       const std::vector<EventTransition>& abstract_transitions) {
-    // Implement the RWTBS algorithm from the ICSE_DT paper
-    // 
-    // The algorithm checks if for every transition in the refined path,
-    // there exists a corresponding weak transition in the abstract system
-    // that satisfies RWTBS timing constraints.
-    
-    if (refined_path.empty()) return true;
-    
-    // Generate cache key
-    std::string key = generate_path_key(refined_path);
-    auto cache_it = path_cache_.find(key);
-    if (cache_it != path_cache_.end()) {
-        last_stats_.cache_hits++;
-        return cache_it->second;
-    }
-    
-    // RWTBS Algorithm Implementation:
-    // 
-    // Note: The systematic state space exploration is implemented in 
-    // TimedAutomaton::construct_zone_graph(), which uses BFS to build 
-    // the reachable zone graph. This RWTBS checker operates on the 
-    // transitions extracted from that zone graph.
-    //
-    // For each transition t_r in refined_path:
-    //   Find a corresponding transition t_a in abstract_transitions where:
-    //   1. Event names match
-    //   2. RWTBS timing constraints are satisfied:
-    //      - For received events (?): I_C(μ) ⊆ I_C'(μ) (refined can be more relaxed)
-    //      - For sent events (!): I_C(μ) = I_C'(μ) (refined must be same or stricter)
-    
-    std::vector<bool> refined_matched(refined_path.size(), false);
-    
-    // For each refined transition, try to find a matching abstract transition
-    for (size_t r_idx = 0; r_idx < refined_path.size(); ++r_idx) {
-        const auto& ref_trans = refined_path[r_idx];
-        
-        // Look for corresponding abstract transition
-        for (const auto& abs_trans : abstract_transitions) {
-            // Check event name match
-            if (ref_trans.event != abs_trans.event) continue;
-            
-            // Check RWTBS timing constraints
-            bool timing_valid = false;
-            
-            if (ref_trans.is_sent && abs_trans.is_sent) {
-                // Both sent events: refined must be stricter or equal (I_C(μ) = I_C'(μ))
-                // This means time_bound(refined) <= time_bound(abstract)
-                timing_valid = (ref_trans.time_bound <= abs_trans.time_bound);
-            } else if (!ref_trans.is_sent && !abs_trans.is_sent) {
-                // Both received events: refined can be more relaxed (I_C(μ) ⊆ I_C'(μ))
-                // This means time_bound(refined) >= time_bound(abstract)
-                timing_valid = (ref_trans.time_bound >= abs_trans.time_bound);
-            } else {
-                // Direction mismatch - not valid under RWTBS
-                timing_valid = false;
-            }
-            
-            if (timing_valid) {
-                refined_matched[r_idx] = true;
-                break; // Found a match for this refined transition
-            }
-        }
-    }
-    
-    // Check if all refined transitions found valid abstract counterparts
-    bool result = std::all_of(refined_matched.begin(), refined_matched.end(), 
-                             [](bool matched) { return matched; });
-    
-    // Debug output for failed matches
-    if (!result) {
-        std::cout << "RWTBS: Failed to match refined transitions:" << std::endl;
-        for (size_t i = 0; i < refined_matched.size(); ++i) {
-            if (!refined_matched[i]) {
-                const auto& trans = refined_path[i];
-                std::cout << "  Unmatched: " << trans.event 
-                          << " (" << (trans.is_sent ? "sent" : "received") 
-                          << ") bound=" << trans.time_bound << std::endl;
-            }
-        }
-    }
-    
-    path_cache_[key] = result;
-    return result;
-}
-
-std::string RTWBSChecker::generate_path_key(const std::vector<EventTransition>& path) {
-    std::ostringstream oss;
-    for (const auto& trans : path) {
-        oss << trans.from_state << "->" << trans.to_state 
-            << ":" << trans.event << "(" << (trans.is_sent ? "!" : "?") 
-            << "," << trans.time_bound << ");";
-    }
-    return oss.str();
-}
-
-
-
-bool RTWBSChecker::check_zone_inclusion_rtwbs(size_t refined_state_id, size_t abstract_state_id,
-                                               const TimedAutomaton& refined_automaton,const TimedAutomaton& abstract_automaton) const {
-    // Get zone states
-    const ZoneState* refined_state = refined_automaton.get_zone_state(refined_state_id);
-    const ZoneState* abstract_state = abstract_automaton.get_zone_state(abstract_state_id);
-    
-    if (!refined_state || !abstract_state) {
-        return false;  // Invalid state IDs
-    }
-    
-    // For RTWBS, we need to check that the refined zone can simulate the abstract zone
-    // This means: every timing behavior in the refined zone should have a corresponding
-    // behavior in the abstract zone that satisfies RTWBS constraints
-    
-    // Check location correspondence first
-    //if (refined_state->location_id != abstract_state->location_id) {
-    //    // Different locations may still correspond in some cases, but for simplicity
-    //    // we require same symbolic locations
-    //    return false;
-    //}
-    
-    // Check zone inclusion using UDBM
-    // For RTWBS: refined zones can be more relaxed than abstract zones
-    // This reflects the relaxed timing constraints allowed in RTWBS:
-    // - Received events can have more relaxed timing (superset zones)
-    // - The key is that behaviors are preserved under timing relaxation
-    relation_t relation = dbm_relation(refined_state->zone.data(), 
-                                     abstract_state->zone.data(), 
-                                     refined_state->dimension);
-    
-    // Accept multiple zone relations for RTWBS:
-    // - EQUAL: exact match (always valid)
-    // - SUBSET: refined is stricter (always valid) 
-    // - SUPERSET: refined is more relaxed (valid for RTWBS due to timing relaxation)
-    // Only reject DIFFERENT (incomparable zones)
-    bool zones_compatible = (relation != base_DIFFERENT);
-    
-    return zones_compatible;
-}
-
-
-bool RTWBSChecker::verify_state_correspondence(int refined_state, int abstract_state,
-                                              const TimedAutomaton& refined, 
-                                              const TimedAutomaton& abstract) {
-    StateCorrespondence corr(refined_state, abstract_state);
-    
-    if (correspondence_cache_.find(corr) != correspondence_cache_.end()) {
-        return true;
-    }
-    
-    // Full state correspondence check for RWTBS
-    // 
-    // For RWTBS, we need to verify that the refined state can simulate the abstract state
-    // while respecting the relaxed timing constraints for received events and 
-    // strict timing constraints for sent events.
-    
-    try {
-        // Ensure zone graphs are constructed for both automata
-        refined.construct_zone_graph();
-        abstract.construct_zone_graph();
-
-        // Full state correspondence check using actual zone states
-        // 
-        // For the current transition-based analysis, we primarily need to ensure
-        // that the symbolic locations correspond and the timing constraints are compatible.
-        
-        // Step 1: Check if we have corresponding zone states
-
-        const ZoneState* refined_zone_state = refined.get_zone_state(refined_state);
-        const ZoneState* abstract_zone_state = abstract.get_zone_state(abstract_state);
-        
-        bool zones_available = (refined_zone_state && abstract_zone_state);
-        bool zone_compatible = true; // Default to compatible if no zones
-        
-        if (!zones_available) {
-            // Zone states are required for proper RTWBS correspondence checking
-            // Without zones, we cannot verify the timing simulation relation
-            std::cout << "State correspondence failed: zone states not available ("
-                      << "refined=" << (refined_zone_state ? "found" : "missing") 
-                      << ", abstract=" << (abstract_zone_state ? "found" : "missing") << ")" << std::endl;
-            std::cout << "  Cannot perform proper RTWBS check without zone information" << std::endl;
-            return false;  // Fail conservatively - no unsafe assumptions
-                      
-        } else {
-            // We have actual zone states - perform zone inclusion check
-            zone_compatible = (refined_zone_state->location_id == abstract_zone_state->location_id);
-            
-            if (zone_compatible && refined_zone_state->dimension == abstract_zone_state->dimension) {
-                // Additional zone inclusion check using UDBM
-                relation_t relation = dbm_relation(refined_zone_state->zone.data(), 
-                                                 abstract_zone_state->zone.data(), 
-                                                 refined_zone_state->dimension);
-                
-                // For RTWBS: accept EQUAL, SUBSET, and SUPERSET relations
-                // Only reject DIFFERENT (incomparable zones)
-                zone_compatible = (relation != base_DIFFERENT);
-                
-                std::cout << "Zone correspondence: refined_zone simulates abstract_zone = " 
-                          << zone_compatible << " (relation=" << relation << ")" << std::endl;
-            }
-            
-            if (!zone_compatible) {
-                std::cout << "State correspondence failed: zones not compatible under RTWBS" << std::endl;
-                return false;
-            }
-        }
-        
-        // Step 2: Verify outgoing transition compatibility
-        // 
-        // Check that outgoing transitions from the refined state satisfy RWTBS constraints
-        // with respect to abstract transitions. We use the actual location IDs for this.
-        
-        int refined_location = zones_available ? refined_zone_state->location_id : refined_state;
-        int abstract_location = zones_available ? abstract_zone_state->location_id : abstract_state;
-        
-        // Get outgoing transitions from both states
-        const auto& refined_transitions = refined.get_transitions();
-        const auto& abstract_transitions = abstract.get_transitions();
-        
-        // Find transitions originating from these locations
-        std::vector<EventTransition> refined_outgoing;
-        std::vector<EventTransition> abstract_outgoing;
-        
-        for (size_t i = 0; i < refined_transitions.size(); ++i) {
-            const auto& trans = refined_transitions[i];
-            if (trans.from_location == refined_state && !trans.action.empty()) {
-                // Extract event transition info
-                std::string event_name = trans.action;
-                bool is_sent = false;
-                
-                if (event_name.back() == '!') {
-                    is_sent = true;
-                    event_name.pop_back();
-                } else if (event_name.back() == '?') {
-                    is_sent = false;
-                    event_name.pop_back();
-                }
-                
-                // Extract timing bounds
-                int32_t time_bound = dbm_INFINITY;
-                for (const auto& guard : trans.guards) {
-                    int32_t bound_value = dbm_raw2bound(guard.value);
-                    if (guard.i != 0 && guard.j == 0) {
-                        time_bound = std::min(time_bound, bound_value);
+        auto outgoing_transitions = automaton.get_outgoing_transitions(zone->location_id);
+        for (const auto& transition : outgoing_transitions) {
+            if (transition->action == TA_CONFIG.tau_action_name || (!transition->has_synchronization() && transition->action.empty())) {
+                // This is a τ-transition, compute successor
+                auto zone_after_time = automaton.time_elapse(zone->zone);
+                if (automaton.is_transition_enabled(zone_after_time, *transition)) {
+                    auto successor_zone = automaton.apply_transition(zone_after_time, *transition);
+                    successor_zone = automaton.apply_invariants(successor_zone, transition->to_location);
+                    
+                    // Find this successor in the zone graph (simplified - should be optimized)
+                    ZoneState temp_successor(transition->to_location, successor_zone, automaton.get_dimension());
+                    for (const auto& existing_zone : automaton.get_all_zone_states()) {
+                        if (temp_successor == *existing_zone && visited.find(existing_zone.get()) == visited.end()) {
+                            to_explore.push(existing_zone.get());
+                            visited.insert(existing_zone.get());
+                            break;
+                        }
                     }
                 }
-                
-                refined_outgoing.emplace_back(trans.from_location, trans.to_location, 
-                                            event_name, is_sent, time_bound);
             }
         }
-        
-        for (size_t i = 0; i < abstract_transitions.size(); ++i) {
-            const auto& trans = abstract_transitions[i];
-            if (trans.from_location == abstract_state && !trans.action.empty()) {
-                // Extract event transition info
-                std::string event_name = trans.action;
-                bool is_sent = false;
-                
-                if (event_name.back() == '!') {
-                    is_sent = true;
-                    event_name.pop_back();
-                } else if (event_name.back() == '?') {
-                    is_sent = false;
-                    event_name.pop_back();
-                }
-                
-                // Extract timing bounds
-                int32_t time_bound = dbm_INFINITY;
-                for (const auto& guard : trans.guards) {
-                    int32_t bound_value = dbm_raw2bound(guard.value);
-                    if (guard.i != 0 && guard.j == 0) {
-                        time_bound = std::min(time_bound, bound_value);
+    }
+    
+    // Now from each τ-reachable zone, try to take the desired action
+    for (const ZoneState* tau_zone : tau_reachable) {
+        auto outgoing_transitions = automaton.get_outgoing_transitions(tau_zone->location_id);
+        for (const auto& transition : outgoing_transitions) {
+            if (transition->action == action) {
+                // Found the action transition, now compute successor and follow τ-transitions
+                auto zone_after_time = automaton.time_elapse(tau_zone->zone);
+                if (automaton.is_transition_enabled(zone_after_time, *transition)) {
+                    auto successor_zone = automaton.apply_transition(zone_after_time, *transition);
+                    successor_zone = automaton.apply_invariants(successor_zone, transition->to_location);
+                    
+                    // Create temporary zone state
+                    ZoneState temp_successor(transition->to_location, successor_zone, automaton.get_dimension());
+                    
+                    // Follow τ-transitions after the action
+                    std::queue<std::pair<const ZoneState*, const Transition*>> action_successors;
+                    std::unordered_set<const ZoneState*> action_visited;
+                    
+                    // Find this successor in the zone graph and add it
+                    for (const auto& existing_zone : automaton.get_all_zone_states()) {
+                        if (temp_successor == *existing_zone) {
+                            action_successors.push({existing_zone.get(), transition});
+                            action_visited.insert(existing_zone.get());
+                            break;
+                        }
+                    }
+                    
+                    // Now follow τ-transitions from action successors
+                    while (!action_successors.empty()) {
+                        auto [current_action_zone, original_transition] = action_successors.front();
+                        action_successors.pop();
+                        weak_successors.push_back({current_action_zone, original_transition});
+                        
+                        auto action_outgoing = automaton.get_outgoing_transitions(current_action_zone->location_id);
+                        for (const auto& tau_trans : action_outgoing) {
+                            if (tau_trans->action == TA_CONFIG.tau_action_name || (!tau_trans->has_synchronization() && tau_trans->action.empty())) {
+                                auto tau_zone_after_time = automaton.time_elapse(current_action_zone->zone);
+                                if (automaton.is_transition_enabled(tau_zone_after_time, *tau_trans)) {
+                                    auto tau_successor_zone = automaton.apply_transition(tau_zone_after_time, *tau_trans);
+                                    tau_successor_zone = automaton.apply_invariants(tau_successor_zone, tau_trans->to_location);
+                                    
+                                    ZoneState temp_tau_successor(tau_trans->to_location, tau_successor_zone, automaton.get_dimension());
+                                    for (const auto& existing_zone : automaton.get_all_zone_states()) {
+                                        if (temp_tau_successor == *existing_zone && action_visited.find(existing_zone.get()) == action_visited.end()) {
+                                            action_successors.push({existing_zone.get(), original_transition});
+                                            action_visited.insert(existing_zone.get());
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
-                
-                abstract_outgoing.emplace_back(trans.from_location, trans.to_location, 
-                                             event_name, is_sent, time_bound);
             }
         }
-        
-        // Step 4: Verify RWTBS simulation relation for outgoing transitions
-        // 
-        // For each refined outgoing transition, there must exist a corresponding
-        // abstract transition that satisfies RWTBS timing constraints
-        
-        for (const auto& ref_trans : refined_outgoing) {
-            bool found_corresponding_abstract = false;
-            
-            for (const auto& abs_trans : abstract_outgoing) {
-                // Check event name match
-                if (ref_trans.event != abs_trans.event) continue;
-                
-                // Check direction match
-                if (ref_trans.is_sent != abs_trans.is_sent) continue;
-                
-                // Check RWTBS timing constraints
-                bool timing_valid = false;
-                
-                if (ref_trans.is_sent) {
-                    // Sent events: refined must be same or stricter
-                    timing_valid = (ref_trans.time_bound <= abs_trans.time_bound);
-                } else {
-                    // Received events: refined can be more relaxed
-                    timing_valid = (ref_trans.time_bound >= abs_trans.time_bound);
-                }
-                
-                if (timing_valid) {
-                    found_corresponding_abstract = true;
-                    break;
-                }
-            }
-            
-            if (!found_corresponding_abstract) {
-                std::cout << "State correspondence failed: refined transition '" 
-                          << ref_trans.event << "' (" 
-                          << (ref_trans.is_sent ? "sent" : "received") 
-                          << ") has no valid abstract counterpart" << std::endl;
-                return false;
-            }
-        }
-        
-        // Step 5: Ensure no new events are introduced
-        std::unordered_set<std::string> abstract_events;
-        for (const auto& trans : abstract_outgoing) {
-            abstract_events.insert(trans.event);
-        }
-        
-        for (const auto& trans : refined_outgoing) {
-            if (abstract_events.find(trans.event) == abstract_events.end()) {
-                std::cout << "State correspondence failed: refined introduces new event '" 
-                          << trans.event << "'" << std::endl;
-                return false;
-            }
-        }
-        
-        // If we reach here, the state correspondence is valid
-        correspondence_cache_.insert(corr);
-        last_stats_.correspondences_verified++;
-        
-        std::cout << "State correspondence verified: refined_state=" << refined_state 
-                  << " simulates abstract_state=" << abstract_state 
-                  << " (zones compatible, transitions valid)" << std::endl;
-        
-        return true;
-        
-    } catch (const std::exception& e) {
-        std::cerr << "Error in state correspondence check: " << e.what() << std::endl;
-        return false;
     }
+    
+    return weak_successors;
 }
 
+
+
+bool RTWBSChecker::check_transition_simulation(std::vector<const Transition*> refined, std::vector<const Transition*> abstract){
+
+        for (auto retined_transition : refined){
+            bool found = false;
+            for (auto abstract_transition : abstract){
+               // Add logic here to check if abstract_transition can simulate retined_transition
+               if (retined_transition->is_included(abstract_transition)) {
+                   found = true;
+                   break;
+               }
+            }
+            if (!found){
+                std::cout << "No matching abstract transition for refined transition " << retined_transition->action << std::endl;
+                return false;
+            }
+        }
+        
+        return true; // All refined transitions have matching abstract transitions
+}
+
+//                    //Condition 2: RTWBS
+//                    if (refined_transition->has_synchronization()){
+//                        //2.1 i
+//                        if (!abstract_transition->has_synchronization())
+//                            continue;
+//                        // Condition 2: If its a sent event (ending with !), then the time remain strict, lower equal
+//                        if (refined_transition->is_sender && !refined_transition->is_included(abstract_transition)){ 
+//                            continue;
+//
+//                        }
+//                        // Condition 3: If its a received event (ending with ?) then the time must be a super set
+//                        if (refined_transition->is_receiver && !refined_transition->includes(abstract_transition)){ 
+//                            continue;
+//
+//                        }
+//
+//                    }
+                    
 bool RTWBSChecker::check_rtwbs_equivalence(const TimedAutomaton& refined, 
                                           const TimedAutomaton& abstract) {
     auto start_time = std::chrono::high_resolution_clock::now();
@@ -440,145 +158,169 @@ bool RTWBSChecker::check_rtwbs_equivalence(const TimedAutomaton& refined,
     last_stats_ = CheckStatistics{0, 0, 0, 0.0};
     refined.construct_zone_graph();
     abstract.construct_zone_graph();
-    try {
-        // Extract event transitions from both automata
-        auto refined_transitions = extract_event_transitions(refined);
-        auto abstract_transitions = extract_event_transitions(abstract);
-        
-        std::cout << "RTWBS Check: Refined has " << refined_transitions.size() 
-                  << " transitions, Abstract has " << abstract_transitions.size() 
-                  << " transitions" << std::endl;
-        
-        // RWTBS Refinement Check Algorithm (based on ICSE_DT paper):
-        // 
-        // The exploration strategy mentioned in the paper is implemented in 
-        // TimedAutomaton::construct_zone_graph(), which uses BFS (breadth-first)
-        // to systematically explore the reachable state space and build zone graphs 
-        // for both the refined and abstract automata.
-        //
-        // For C' ⊑_RWTBS C (refined refines abstract), we must verify:
-        // 1. ∀ (s' →_a s₁') ∈ C', ∃ (s ⇒_a s₁) ∈ C such that s₁' ~_RWTBS s₁
-        // 2. Timing constraints: 
-        //    - Received events: I_C(μ) ⊆ I_C'(μ) 
-        //    - Sent events: I_C(μ) = I_C'(μ)
-        //
-        // This implementation operates on the transitions extracted from the
-        // zone graphs constructed via BFS exploration.
-        
-        // Group transitions by event for efficient lookup
-        std::unordered_map<std::string, std::vector<EventTransition>> abstract_by_event;
-        for (const auto& trans : abstract_transitions) {
-            abstract_by_event[trans.event].push_back(trans);
-        }
-        
-        // Check each refined transition against abstract transitions
-        bool all_transitions_valid = true;
-        
-        // Step 1: Event-level verification
-        for (const auto& ref_trans : refined_transitions) {
-            last_stats_.paths_checked++;
-            
-            // Find abstract transitions with same event
-            auto it = abstract_by_event.find(ref_trans.event); // @todo applying abstraction function
-            if (it == abstract_by_event.end()) {
-                std::cout << "RWTBS Check: Event '" << ref_trans.event 
-                          << "' not found in abstract automaton" << std::endl;
-                all_transitions_valid = false;
-                continue;
+    
+    const auto& refined_zones = refined.get_all_zone_states();
+    const auto& abstract_zones = abstract.get_all_zone_states();
+
+    // Store pairs of compatible zones: refined -> abstract
+    //std::unordered_map<size_t, std::vector<const ZoneState*>> compatible_zones;
+    std::unordered_map<size_t, bool> compatible_zones;
+    std::unordered_set<std::pair<const ZoneState*, const ZoneState*>,PairHash> R;
+    int i=0;
+    for (const auto& ref_zone : refined_zones) {
+        compatible_zones[ref_zone->hash_value] = false;
+        for (const auto& abs_zone : abstract_zones) {
+            // For RTWBS, zones from same location are always potentially compatible
+            // The actual RTWBS constraints will be checked during transition simulation
+            if (ref_zone->location_id == abs_zone->location_id) {
+                compatible_zones[ref_zone->hash_value] = true;
+                R.insert({ref_zone.get(), abs_zone.get()});
             }
+        }
+        i++;
+    }
+    
+    // Now check if all refined zones have at least one compatible abstract zone
+    for (const auto& [hash, is_compatible] : compatible_zones) {
+        if (!is_compatible) {
+            std::cout << "Not all refined zones have compatible abstract zones" << std::endl;
+            return false;
+        }
+    }
+
+    std::cout << "Proceeding with the simulation check ^\n";
+
+    
+    // Iteratively refine the simulation relation R until fixed point
+    while (true) {
+        std::unordered_set<std::pair<const ZoneState*, const ZoneState*>, PairHash> R_prime;
+        
+        // For each pair currently in the relation
+        for (const auto& [q_refined, q_abstract] : R) {
+            bool is_pair_good = true;
             
-            // Check if this refined transition satisfies RWTBS constraints
-            bool found_valid_abstract = false;
+            // Get outgoing transitions for both zones
+            auto moves_refined = refined.get_outgoing_transitions(q_refined->location_id);
+            auto moves_abstract = abstract.get_outgoing_transitions(q_abstract->location_id);
             
-            for (const auto& abs_trans : it->second) {
-                // Check timing constraints according to RWTBS rules
-                bool timing_valid = false;
+            // For EVERY move the refined automaton (spoiler) makes
+            for (const auto& refined_transition : moves_refined) {
+                bool found_matching_move = false;
                 
-                if (ref_trans.is_sent && abs_trans.is_sent) {
-                    // Sent events: I_C(μ) = I_C'(μ) - refined must be same or stricter
-                    timing_valid = (ref_trans.time_bound <= abs_trans.time_bound);
-                    
-                    std::cout << "  Sent event '" << ref_trans.event 
-                              << "': refined_bound=" << ref_trans.time_bound 
-                              << " vs abstract_bound=" << abs_trans.time_bound
-                              << " -> " << (timing_valid ? "VALID" : "INVALID") << std::endl;
-                              
-                } else if (!ref_trans.is_sent && !abs_trans.is_sent) {
-                    // Received events: I_C(μ) ⊆ I_C'(μ) - refined can be more relaxed
-                    timing_valid = (ref_trans.time_bound >= abs_trans.time_bound);
-                    
-                    std::cout << "  Received event '" << ref_trans.event 
-                              << "': refined_bound=" << ref_trans.time_bound 
-                              << " vs abstract_bound=" << abs_trans.time_bound
-                              << " -> " << (timing_valid ? "VALID" : "INVALID") << std::endl;
-                              
-                } else {
-                    // Direction mismatch between refined and abstract
-                    timing_valid = false;
-                    std::cout << "  Event '" << ref_trans.event 
-                              << "': direction mismatch (refined=" 
-                              << (ref_trans.is_sent ? "sent" : "received")
-                              << ", abstract=" 
-                              << (abs_trans.is_sent ? "sent" : "received") 
-                              << ")" << std::endl;
+                // Skip internal τ-transitions - they will be handled by weak transition relation
+                if (refined_transition->action == TA_CONFIG.tau_action_name || (!refined_transition->has_synchronization() && refined_transition->action.empty())) {
+                    continue;
                 }
                 
-                if (timing_valid) {
-                    found_valid_abstract = true;
+                // Compute weak successors for this action from current refined zone
+                auto weak_refined_successors = compute_weak_successors(refined, q_refined, refined_transition->action);
+                
+                // The abstract automaton (duplicator) must have AT LEAST ONE valid response
+                for (const auto& abstract_transition : moves_abstract) {
                     
-                    // Step 2: Verify state correspondence for the target states
-                    if (!verify_state_correspondence(ref_trans.to_state, abs_trans.to_state, 
-                                                   refined, abstract)) {
-                        std::cout << "  State correspondence failed for target states ("
-                                  << ref_trans.to_state << " -> " << abs_trans.to_state << ")" << std::endl;
-                        timing_valid = false;
-                        found_valid_abstract = false;
+                    // Condition 1: Action compatibility
+                    if (refined_transition->action != abstract_transition->action) {
+                        continue; // This move doesn't work, try the next one
                     }
                     
-                    if (timing_valid) break; // Found a valid abstract counterpart
+                    // Skip internal τ-transitions for abstract as well
+                    if (abstract_transition->action == TA_CONFIG.tau_action_name || (!abstract_transition->has_synchronization() && abstract_transition->action.empty())) {
+                        continue;
+                    }
+                    
+                    // Compute weak successors for this action from current abstract zone  
+                    auto weak_abstract_successors = compute_weak_successors(abstract, q_abstract, abstract_transition->action);
+                    // RTWBS timing constraints check
+                    bool timing_compatible = false;
+                    
+                    if (refined_transition->has_synchronization() && abstract_transition->has_synchronization()) {
+                        // Both are synchronization transitions
+                        if (refined_transition->channel == abstract_transition->channel) {
+                            if (refined_transition->is_sender && abstract_transition->is_sender) {
+                                // Sent events: refined timing must be ≤ abstract timing (strict)
+                                timing_compatible = refined_transition->is_included(abstract_transition);
+                            } else if (refined_transition->is_receiver && abstract_transition->is_receiver) {
+                                // Received events: refined timing must be ≥ abstract timing (relaxed)
+                                timing_compatible = refined_transition->includes(abstract_transition);
+                            }
+                        }
+                    } else if (!refined_transition->has_synchronization() && !abstract_transition->has_synchronization()) {
+                        // Both are internal transitions - use standard inclusion
+                        timing_compatible = refined_transition->is_included(abstract_transition);
+                    }
+                    
+                    if (!timing_compatible) {
+                        continue; // This abstract transition doesn't satisfy RTWBS constraints
+                    }
+                    
+                    // Check if weak successors are compatible
+                    bool weak_successors_compatible = false;
+                    
+                    // For each weak refined successor, check if there exists a corresponding weak abstract successor
+                    for (const auto& [weak_ref_zone, weak_ref_transition] : weak_refined_successors) {
+                        for (const auto& [weak_abs_zone, weak_abs_transition] : weak_abstract_successors) {
+                            // Check if this weak successor pair is in current relation R
+                            if (R.find({weak_ref_zone, weak_abs_zone}) != R.end()) {
+                                weak_successors_compatible = true;
+                                break;
+                            }
+                        }
+                        if (weak_successors_compatible) break;
+                    }
+                    
+                    if (weak_successors_compatible) {
+                        found_matching_move = true;
+                        break; // Found a valid abstract response
+                    }
+                }
+                
+                if (!found_matching_move) {
+                    // If abstract has no response to this refined move,
+                    // the pair is not in the simulation
+                    is_pair_good = false;
+                    break; // No need to check other refined moves
                 }
             }
             
-            if (!found_valid_abstract) {
-                std::cout << "RWTBS Check: No valid abstract transition for refined event '" 
-                          << ref_trans.event << "'" << std::endl;
-                all_transitions_valid = false;
+            // If abstract could counter all refined moves, keep the pair
+            if (is_pair_good) {
+                R_prime.insert({q_refined, q_abstract});
             }
         }
         
-        // Additional check: Ensure no new events are introduced in refined
-        std::unordered_set<std::string> abstract_events;
-        for (const auto& trans : abstract_transitions) {
-            abstract_events.insert(trans.event);
+        std::cout << "Refined relation R' has " << R_prime.size() << " pairs" << std::endl;
+        
+        // If relation did not shrink, we have reached the greatest fixed point
+        if (R == R_prime) {
+            break;
         }
         
-        for (const auto& ref_trans : refined_transitions) {
-            if (abstract_events.find(ref_trans.event) == abstract_events.end()) {
-                std::cout << "RWTBS Check: Refined introduces new event '" 
-                          << ref_trans.event << "' not in abstract" << std::endl;
-                all_transitions_valid = false;
-            }
-        }
-        
-        auto end_time = std::chrono::high_resolution_clock::now();
-        last_stats_.check_time_ms = std::chrono::duration<double, std::milli>(end_time - start_time).count();
-        
-        if (all_transitions_valid) {
-            std::cout << "RTWBS Check: All transitions satisfy RWTBS constraints" << std::endl;
-        } else {
-            std::cout << "RTWBS Check: RWTBS constraints violated" << std::endl;
-        }
-        
-        return all_transitions_valid;
-        
-    } catch (const std::exception& e) {
-        std::cerr << "RTWBS Check: Exception during check: " << e.what() << std::endl;
-        
-        auto end_time = std::chrono::high_resolution_clock::now();
-        last_stats_.check_time_ms = std::chrono::duration<double, std::milli>(end_time - start_time).count();
-        
-        return false;
+        // Otherwise, update R and continue refining
+        R = R_prime;
     }
+    
+    // Check if all initial states of refined are simulated by some initial state of abstract
+    // For now, assuming single initial state at location 0
+    bool simulation_holds = false;
+    for (const auto& [ref_zone, abs_zone] : R) {
+        if (ref_zone->location_id == 0 && abs_zone->location_id == 0) {
+            simulation_holds = true;
+            break;
+        }
+    }
+    
+    std::cout << "Final simulation relation has " << R.size() << " pairs" << std::endl;
+    std::cout << "RTWBS simulation " << (simulation_holds ? "HOLDS" : "DOES NOT HOLD") << std::endl;
+    
+    // Update statistics
+    auto end_time = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
+    last_stats_.refined_states = refined_zones.size();
+    last_stats_.abstract_states = abstract_zones.size();
+    last_stats_.simulation_pairs = R.size();
+    last_stats_.check_time_ms = duration.count();
+    
+    return simulation_holds;
 }
 
 bool RTWBSChecker::check_rtwbs_with_counterexample(const TimedAutomaton& refined, 
@@ -590,9 +332,9 @@ bool RTWBSChecker::check_rtwbs_with_counterexample(const TimedAutomaton& refined
         return true;
     }
     
-    // If check failed, try to construct a counterexample
+    /*// If check failed, try to construct a counterexample
     auto refined_transitions = extract_event_transitions(refined);
-    auto abstract_transitions = extract_event_transitions(abstract);
+    auto abstract_transitions = extract_event_transitions(abstract); 
     
     // Find the first path that doesn't have a corresponding path
     for (const auto& ref_trans : refined_transitions) {
@@ -605,7 +347,7 @@ bool RTWBSChecker::check_rtwbs_with_counterexample(const TimedAutomaton& refined
                       << " has no valid abstract correspondence" << std::endl;
             break;
         }
-    }
+    }*/
     
     return false;
 }

@@ -32,7 +32,7 @@ int main() {
     // Add transitions
     ta.add_transition(0, 1, "a");  // Initial -> Middle
     ta.add_transition(1, 2, "b");  // Middle -> Final
-    ta.add_transition(2, 0, "c");  // Final -> Initial (cycle)
+    ta.add_transition(2, 0, "");  // Final -> Initial (cycle)
     
     // Add guards to transitions (using transition indices)
     // Transition 0 (Initial -> Middle): x >= 3
@@ -87,6 +87,9 @@ int main() {
         }
         std::cout << "}\n";
     }
-    
+
+
+    ta.print_all_transitions();
+
     return 0;
 }
