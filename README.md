@@ -2,6 +2,8 @@
 
 This directory contains an implementation of RTWBS equivalence checking for timed automata, based on the research described in the ICSE_DT paper.
 
+IMPORTANT: Template parameters as well as functions are currently not supported! As well as branch point!
+
 ## Overview
 
 RTWBS (Relaxed Weak Timed Bisimulation) is a formal equivalence relation that allows for:

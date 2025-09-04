@@ -4,6 +4,8 @@
 #include <iostream>
 #include <stdexcept>
 
+#include "utils.h"
+
 namespace rtwbs {
 
 // =================================================================
@@ -18,39 +20,20 @@ System::System(const std::string& fileName) {
         std::cout << "Loading system from file: " << fileName << std::endl;
         
         // For now, we'll throw an exception indicating this needs proper UTAP integration
-        throw std::runtime_error("File parsing not yet fully implemented - use manual construction");
+        //throw std::runtime_error("File parsing not yet fully implemented - use manual construction");
         
         // Future implementation would be:
-        // int result = doc.parseXMLFile(fileName.c_str());
-        // if (result == 0) {
-        //     build_from_utap_document(doc);
-        // } else {
-        //     throw std::runtime_error("Failed to parse UPPAAL file: " + fileName);
-        // }
+         int result = parse_XML_file(fileName, doc, true);
+         if (result == 0) {
+             build_from_utap_document(doc);
+         } else {
+             throw std::runtime_error("Failed to parse UPPAAL file: " + fileName);
+         }
     } catch (const std::exception& e) {
         throw std::runtime_error("Error loading system from file '" + fileName + "': " + e.what());
     }
 }
 
-System::System(const char* xml_content) {
-    try {
-        UTAP::Document doc;
-        std::cout << "Loading system from XML content" << std::endl;
-        
-        // For now, we'll throw an exception indicating this needs proper UTAP integration
-        throw std::runtime_error("XML parsing not yet fully implemented - use manual construction");
-        
-        // Future implementation would be:
-        // int result = doc.parseXMLString(xml_content);
-        // if (result == 0) {
-        //     build_from_utap_document(doc);
-        // } else {
-        //     throw std::runtime_error("Failed to parse UPPAAL XML content");
-        // }
-    } catch (const std::exception& e) {
-        throw std::runtime_error("Error loading system from XML content: " + std::string(e.what()));
-    }
-}
 
 void System::add_automaton(std::unique_ptr<TimedAutomaton> automaton, const std::string& template_name) {
     if (!automaton) {
@@ -193,23 +176,65 @@ void System::build_from_utap_document(UTAP::Document& doc) {
     // 3. Parse the template's locations, transitions, etc.
     // 4. Add the automaton to the system
     
-    throw std::runtime_error("UTAP document parsing not yet fully implemented");
+    std::unordered_map<std::string, cindex_t> clock_map;
+    std::unordered_map<std::string, int> constants;
+    std::unordered_map<std::string, int> variables;  // Non-constant variables like 'id'
     
-    // Future implementation outline:
-    /*
-    for (const auto& template_pair : doc.getTemplates()) {
-        if (!template_pair.second) continue;
-        
-        std::string template_name = template_pair.first;
-        const auto& utap_template = *template_pair.second;
-        
-        // Create automaton from template
-        auto automaton = build_automaton_from_template(utap_template, template_name);
-        
-        // Add to system
-        add_automaton(std::move(automaton), template_name);
+    // Extract clocks from global declarations
+    auto& global_declarations = doc.get_globals();
+    cindex_t clock_count = 0;
+
+    
+    DEV_PRINT("   Analyzing global declarations..." << std::endl);
+    
+    DEV_PRINT("   Global declarations has " << global_declarations.variables.size() << " variables:" << std::endl);
+    
+    for (const auto& variable : global_declarations.variables) {
+        if (variable.uid.get_type().is_clock()) {
+            clock_count++;
+            clock_map[variable.uid.get_name()] = clock_count; // Start from 1, as 0 is the reference clock
+            DEV_PRINT("   Found clock: " << variable.uid.get_name() << " -> index " << clock_count << std::endl);
+        } else if (variable.uid.get_type().is_constant()) {
+            std::string const_name = variable.uid.get_name();
+            
+            // Skip built-in constants (they start with standard prefixes)
+            if (const_name.find("INT") == 0 || const_name.find("UINT") == 0 || 
+                const_name.find("FLT") == 0 || const_name.find("DBL") == 0 || 
+                const_name.find("M_") == 0) {
+                // Skip built-in constants
+                continue;
+            }
+            
+            // Process user-defined constants
+            int value;
+            if (EVALUATE_EXPRESSION(variable.init, value, constants, variables)) {
+                constants[const_name] = value;
+                DEV_PRINT("   Found global constant: " << const_name << " = " << value << std::endl);
+            } else {
+                DEV_PRINT("   Failed to evaluate global constant: " << const_name << std::endl);
+            }
+        } else {
+            // Save non-constant, non-clock variables (like 'id')
+            variables[variable.uid.get_name()] = 0; // Initialize to 0
+            DEV_PRINT("   Found global variable: " << variable.uid.get_name() << std::endl);
+        }
     }
-    */
+    
+    // Set dimension = reference clock (index 0) + number of clocks
+
+    //TimedAutomaton automaton(template_ref, clock_count+1, clock_map, constants, variables);
+    // Future implementation outline:
+    
+    for (const auto& template_ref : doc.get_templates()) {
+
+            
+            // Create automaton from template
+            auto automaton = 
+                std::make_unique<TimedAutomaton>(template_ref, clock_count+1, clock_map, constants, variables); 
+        // Add to system
+        add_automaton(std::move(automaton), template_ref.uid.get_name());
+    }
+    
 }
 
 

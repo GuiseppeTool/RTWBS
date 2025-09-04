@@ -190,15 +190,17 @@ add_integration_example(rtwbs_example)
 add_integration_example(system_rtwbs_example)
 add_integration_example(unit_test_example)
 add_integration_example(run_unit_tests)
-add_integration_example(debug_test9)
-
-# Copy unit_tests directory to build directory
+add_integration_example(run_automata)
+add_integration_example(run_uppaal_benchmarks)
+# Copy assets directory to build directory
 add_custom_target(copy_unit_tests ALL
     COMMAND ${CMAKE_COMMAND} -E copy_directory
-    ${CMAKE_CURRENT_SOURCE_DIR}/unit_tests
-    ${CMAKE_CURRENT_BINARY_DIR}/unit_tests
-    COMMENT "Copying unit_tests directory to build directory"
+    ${CMAKE_CURRENT_SOURCE_DIR}/assets
+    ${CMAKE_CURRENT_BINARY_DIR}/assets
+    COMMENT "Copying assets directory to build directory"
 )
+
+
 
 # Make run_unit_tests depend on copying unit tests
 add_dependencies(run_unit_tests copy_unit_tests)

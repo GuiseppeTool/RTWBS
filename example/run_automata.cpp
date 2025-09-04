@@ -3,12 +3,17 @@
 #include <iostream>
 #include <exception>
 
-int main() {
+int main(int argc, char* argv[]) {
     try {
-        std::cout << "Testing problematic Test 9: Cyclic Resets..." << std::endl;
+        std::string filename = "assets/unit_tests/fischer.xml";
+        if (argc > 1) {
+            filename = std::string(argv[1]);
+        }
+        
+        std::cout << "Loading " << filename << std::endl;
         
         std::cout << "Loading XML file..." << std::endl;
-        rtwbs::TimedAutomaton automaton(std::string("unit_tests/test09_cyclic_resets.xml"));
+        rtwbs::TimedAutomaton automaton(filename);
         
         std::cout << "Automaton loaded successfully!" << std::endl;
         std::cout << "Dimension: " << automaton.get_dimension() << " clocks" << std::endl;
@@ -18,6 +23,12 @@ int main() {
         
         std::cout << "Zone graph construction completed!" << std::endl;
         automaton.print_statistics();
+
+        rtwbs::RTWBSChecker checker;
+        std::cout << "Running self-equivalence check..." << std::endl;
+        bool equivalent = checker.check_rtwbs_equivalence(automaton, automaton);
+        std::cout << "Self-equivalence result: " << (equivalent ? "EQUIVALENT" : "NOT EQUIVALENT") << std::endl;
+        checker.print_statistics();
         
         return 0;
     } catch (const std::exception& e) {

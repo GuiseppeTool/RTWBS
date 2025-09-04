@@ -156,7 +156,7 @@ bool RTWBSChecker::check_rtwbs_equivalence(const TimedAutomaton& refined,
     auto start_time = std::chrono::high_resolution_clock::now();
     
     // Reset statistics
-    last_stats_ = CheckStatistics{0, 0, 0, 0.0};
+    last_stats_ = CheckStatistics{0, 0, 0, 0.0, 0};
     refined.construct_zone_graph();
     abstract.construct_zone_graph();
     
@@ -320,6 +320,8 @@ bool RTWBSChecker::check_rtwbs_equivalence(const TimedAutomaton& refined,
     last_stats_.abstract_states = abstract_zones.size();
     last_stats_.simulation_pairs = R.size();
     last_stats_.check_time_ms = duration.count();
+    last_stats_.memory_usage_bytes = R.size() * sizeof(std::pair<const ZoneState*, const ZoneState*>) +
+                                   compatible_zones.size() * (sizeof(size_t) + sizeof(bool));
     
     return simulation_holds;
 }

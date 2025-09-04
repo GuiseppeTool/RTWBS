@@ -1,6 +1,8 @@
 # Build directories
 build/
 build/**
+release/**
+release/
 ICSE_DT/** 
 old/** */
 # External dependencies (should be installed separately)

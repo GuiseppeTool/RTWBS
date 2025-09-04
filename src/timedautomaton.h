@@ -10,6 +10,8 @@
 #include <functional>
 #include <string>
 
+#include "macros.h"
+
 #include "dbm/dbm.h"
 #include "dbm/fed.h"
 #include "dbm/constraints.h"
@@ -163,12 +165,24 @@ private:
     std::vector<std::vector<int>> zone_transitions_;  // adjacency list: state_id -> list of successor state_ids
     std::queue<int> waiting_list_;
     bool constructed_;
-    std::vector<std::string> clocks_;
+    //std::vector<std::string> clocks_;
+    std::unordered_map<std::string, cindex_t> clock_map_;
+    std::unordered_map<std::string, int> constants_;
+    std::unordered_map<std::string, int> variables_;  // Non-constant variables like 'id'
 public:
-    explicit TimedAutomaton() : dimension_(0) {}
 
-    explicit TimedAutomaton(const UTAP::Template& template_ref, int dimensions, const std::vector<std::string>& global_clocks):constructed_(false) {
-        build_from_template(template_ref, dimensions, global_clocks);
+    const std::unordered_map<std::string, int>& get_variables() const { return variables_; }
+    const std::unordered_map<std::string, cindex_t>& get_clock_map() const { return clock_map_; }
+    const std::unordered_map<std::string, int>& get_constants() const { return constants_; }
+
+    void set_constant(const std::string& name, int value) {
+        constants_[name] = value;
+    }
+    explicit TimedAutomaton() : dimension_(0) {}
+    explicit TimedAutomaton(const UTAP::Template& template_ref, int dimensions, const std::unordered_map<std::string, cindex_t>& clock_map,
+    const std::unordered_map<std::string, int>& constants,
+    const std::unordered_map<std::string, int>& variables):constructed_(false) {
+        build_from_template(template_ref, dimensions, clock_map, constants, variables);
     }
     /**
      * Constructor
@@ -202,16 +216,34 @@ private:
     bool evaluate_expression(const UTAP::Expression& expr, int& result);
     bool parse_clock_constraint_from_expr(const UTAP::Expression& expr, std::string& clock_name, 
                                          std::string& op, int& value);
+    bool parse_variable_constraint_from_expr(const UTAP::Expression& expr, std::string& var_name, 
+                                           std::string& op, int& value);
+    bool evaluate_variable_constraint(const std::string& var_name, const std::string& op, int value) const;
+    
+    // New functions for handling complex expressions
+    struct Constraint {
+        std::string name;
+        std::string op;
+        int value;
+        bool is_clock;
+    };
+    
+    bool extract_all_constraints(const UTAP::Expression& expr, std::vector<Constraint>& constraints);
+    bool evaluate_complex_guard(const UTAP::Expression& expr);
+    
     void add_dbm_constraint(const std::string& clock_name, const std::string& op, int value,
                            std::unordered_map<std::string, cindex_t>& clock_map,
                            int location_id = -1, size_t transition_idx = -1);
     bool parse_clock_reset_from_expr(const UTAP::Expression& expr, std::string& clock_name, int& value);
+    bool parse_variable_assignment_from_expr(const UTAP::Expression& expr, std::string& var_name, int& value);
     bool parse_synchronization_from_expr(const UTAP::Expression& expr, std::string& channel, bool& is_sender);
     //bool is_valid_clock(const std::string& clock_name) const;
     void build_from_utap_document(UTAP::Document& doc);
     
 public:
-    void build_from_template(const UTAP::Template& template_ref, int dimensions, const std::vector<std::string>& global_clocks);
+    void build_from_template(const UTAP::Template& template_ref, int dimensions, const std::unordered_map<std::string, cindex_t>& clock_map,
+    const std::unordered_map<std::string, int>& constants,
+    const std::unordered_map<std::string, int>& variables);
     /**
      * Add a location to the automaton
      */

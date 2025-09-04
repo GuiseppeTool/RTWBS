@@ -126,6 +126,7 @@ public:
         size_t abstract_states;
         size_t simulation_pairs;
         double check_time_ms;
+        size_t memory_usage_bytes;
     };
 
 
@@ -140,6 +141,7 @@ public:
         std::cout << "  Abstract States: " << last_stats_.abstract_states << std::endl;
         std::cout << "  Simulation Pairs: " << last_stats_.simulation_pairs << std::endl;
         std::cout << "  Check Time: " << last_stats_.check_time_ms << " ms" << std::endl;
+        std::cout << "  Memory Usage: " << last_stats_.memory_usage_bytes / 1024 << " KB" << std::endl;
     }
 
     /**

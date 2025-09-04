@@ -168,63 +168,63 @@ public:
         {
             // Test 1: Simple Sequential Automaton
             print_test_start("Test 1: Simple Sequential");
-            TestResult result1 = test_single_automaton("Test 1: Simple Sequential", "unit_tests/test01_simple_sequential.xml");
+            TestResult result1 = test_single_automaton("Test 1: Simple Sequential", "assets/unit_tests/test01_simple_sequential.xml");
             results_.push_back(result1);
             print_test_result(result1);
         }
         {
             // Test 2: Multi-Clock System
             print_test_start("Test 2: Multi-Clock System");
-            TestResult result2 = test_single_automaton("Test 2: Multi-Clock System", "unit_tests/test02_multi_clock.xml");
+            TestResult result2 = test_single_automaton("Test 2: Multi-Clock System", "assets/unit_tests/test02_multi_clock.xml");
             results_.push_back(result2);
             print_test_result(result2);
         }
         {
         // Test 3: Basic Synchronization
         print_test_start("Test 3: Basic Synchronization");
-        TestResult result3 = test_single_automaton("Test 3: Basic Synchronization", "unit_tests/test03_basic_sync.xml");
+        TestResult result3 = test_single_automaton("Test 3: Basic Synchronization", "assets/unit_tests/test03_basic_sync.xml");
         results_.push_back(result3);
         print_test_result(result3);
         }
         {
         // Test 4: Complex State Space
         print_test_start("Test 4: Complex State Space");
-        TestResult result4 = test_single_automaton("Test 4: Complex State Space", "unit_tests/test04_complex_states.xml");
+        TestResult result4 = test_single_automaton("Test 4: Complex State Space", "assets/unit_tests/test04_complex_states.xml");
         results_.push_back(result4);
         print_test_result(result4);
         }
         {
         // Test 5: Multi-Channel Communication
         print_test_start("Test 5: Multi-Channel Comm");
-        TestResult result5 = test_single_automaton("Test 5: Multi-Channel Communication", "unit_tests/test05_multi_channel.xml");
+        TestResult result5 = test_single_automaton("Test 5: Multi-Channel Communication", "assets/unit_tests/test05_multi_channel.xml");
         results_.push_back(result5);
         print_test_result(result5);
         }
         {
         // Test 6: RTWBS Receiver Test (single automaton first)
         print_test_start("Test 6: RTWBS Receiver Model");
-        TestResult result6 = test_single_automaton("Test 6: RTWBS Receiver Model", "unit_tests/test06_rtwbs_receiver.xml");
+        TestResult result6 = test_single_automaton("Test 6: RTWBS Receiver Model", "assets/unit_tests/test06_rtwbs_receiver.xml");
         results_.push_back(result6);
         print_test_result(result6);
         }
         {
         // Test 7: RTWBS Sender Test (single automaton first)
         print_test_start("Test 7: RTWBS Sender Model");
-        TestResult result7 = test_single_automaton("Test 7: RTWBS Sender Model", "unit_tests/test07_rtwbs_sender.xml");
+        TestResult result7 = test_single_automaton("Test 7: RTWBS Sender Model", "assets/unit_tests/test07_rtwbs_sender.xml");
         results_.push_back(result7);
         print_test_result(result7);
         }
         {
         // Test 8: Dense Clock Constraints
         print_test_start("Test 8: Dense Clock Constraints");
-        TestResult result8 = test_single_automaton("Test 8: Dense Clock Constraints", "unit_tests/test08_dense_clocks.xml");
+        TestResult result8 = test_single_automaton("Test 8: Dense Clock Constraints", "assets/unit_tests/test08_dense_clocks.xml");
         results_.push_back(result8);
         print_test_result(result8);
         }
         {
         // Test 9: Cyclic Behavior with Resets (Known to cause memory corruption)
         print_test_start("Test 9: Cyclic Resets");
-        TestResult result9 = test_single_automaton("Test 9: Cyclic Resets", "unit_tests/test09_cyclic_resets.xml");
+        TestResult result9 = test_single_automaton("Test 9: Cyclic Resets", "assets/unit_tests/test09_cyclic_resets.xml");
         //result9.passed = false;
         //result9.error_message = "Known memory corruption issue (heap corruption in zone graph construction)";
         results_.push_back(result9);
@@ -233,7 +233,7 @@ public:
         {
         // Test 10: Comprehensive Stress Test
         print_test_start("Test 10: Stress Test");
-        TestResult result10 = test_single_automaton("Test 10: Stress Test", "unit_tests/test10_stress_test.xml");
+        TestResult result10 = test_single_automaton("Test 10: Stress Test", "assets/unit_tests/test10_stress_test.xml");
         results_.push_back(result10);
         print_test_result(result10);
         }
