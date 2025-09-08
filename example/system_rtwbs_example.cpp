@@ -1,7 +1,5 @@
 #include <iostream>
-#include "../src/timedautomaton.h"
-#include "../src/system.h"
-#include "../src/rtwbs.h"
+#include "rtwbs.h"
 
 using namespace rtwbs;
 

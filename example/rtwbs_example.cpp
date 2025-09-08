@@ -1,6 +1,6 @@
 #include <iostream>
-#include "../src/timedautomaton.h"
-#include "../src/rtwbs.h"
+
+#include "rtwbs.h"
 
 using namespace rtwbs; // Use the rtwbs namespace
 

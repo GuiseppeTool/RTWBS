@@ -4,7 +4,7 @@
   
   <declaration>
 int id;
-const int k = 2;
+const int k = 3;
 </declaration>
   
   <template>
@@ -15,7 +15,6 @@ const int k = 2;
     
     <declaration>
 clock x;
-const int pid=1;
 </declaration>
     
     <location id="id2" x="216" y="176">
@@ -108,13 +107,17 @@ id:= pid</label>
     </transition>
   
   </template>
-  
+
   <instantiation>P1 := P( 1 );
 P2 := P( 2 );
 P3 := P( 3 );
 P4 := P( 4 );</instantiation>
   
   <system>system P1, P2, P3, P4;</system>
-
+  <queries>
+  <query>
+    <formula>A[] not deadlock</formula>
+  </query>
+</queries>
 </nta>
 

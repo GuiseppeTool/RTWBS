@@ -1,5 +1,5 @@
-#ifndef RTWBS_H
-#define RTWBS_H
+#ifndef RTWBS_CORE_H
+#define RTWBS_CORE_H
 
 #include "timedautomaton.h"
 #include "configs.h"
@@ -9,6 +9,7 @@
 #include <vector>
 #include <queue>
 #include <functional>
+#include <fstream>
 
 namespace rtwbs {
 
@@ -20,6 +21,74 @@ struct PairHash {
         return h1 ^ (h2 << 1);
     }
 };
+
+    /**
+     * Get statistics about the last refinement check
+     */
+    struct CheckStatistics {
+    size_t refined_states;
+    size_t abstract_states;
+    size_t simulation_pairs;
+    double check_time_ms;
+    size_t memory_usage_bytes;
+
+    // Overload + operator to combine statistics
+    CheckStatistics operator+(const CheckStatistics& other) const {
+        return CheckStatistics{
+            refined_states + other.refined_states,
+            abstract_states + other.abstract_states,
+            simulation_pairs + other.simulation_pairs,
+            check_time_ms + other.check_time_ms,
+            memory_usage_bytes + other.memory_usage_bytes
+        };
+    }
+
+    // Overload += operator for convenience
+    CheckStatistics& operator+=(const CheckStatistics& other) {
+        refined_states += other.refined_states;
+        abstract_states += other.abstract_states;
+        simulation_pairs += other.simulation_pairs;
+        check_time_ms += other.check_time_ms;
+        memory_usage_bytes += other.memory_usage_bytes;
+        return *this;
+    }
+    void print() const {
+        std::cout << "RTWBS Check Statistics:" << std::endl;
+        std::cout << "  Refined States: " << refined_states << std::endl;
+        std::cout << "  Abstract States: " << abstract_states << std::endl;
+        std::cout << "  Simulation Pairs: " << simulation_pairs << std::endl;
+        std::cout << "  Check Time: " << check_time_ms << " ms" << std::endl;
+        std::cout << "  Memory Usage: " << memory_usage_bytes / 1024 << " KB" << std::endl;
+    }
+    
+    // Write CSV header
+    static void write_csv_header(std::ofstream& file) {
+        file << "model_name,refined_states,abstract_states,simulation_pairs,check_time_ms,memory_usage_bytes,memory_usage_kb" << std::endl;
+    }
+    
+    // Append statistics to CSV file
+    void append_to_csv(std::ofstream& file, const std::string& model_name) const {
+        file << model_name << ","
+             << refined_states << ","
+             << abstract_states << ","
+             << simulation_pairs << ","
+             << check_time_ms << ","
+             << memory_usage_bytes << ","
+             << (memory_usage_bytes / 1024.0) << std::endl;
+    }
+    //overload << operator for easy printing
+    friend std::ostream& operator<<(std::ostream& os, const CheckStatistics& stats) {
+        os << "RTWBS Check Statistics:" << std::endl;
+        os << "  Refined States: " << stats.refined_states << std::endl;
+        os << "  Abstract States: " << stats.abstract_states << std::endl;
+        os << "  Simulation Pairs: " << stats.simulation_pairs << std::endl ;
+        os << "  Check Time: " << stats.check_time_ms << " ms" <<   std::endl;  
+        os << "  Memory Usage: " << stats.memory_usage_bytes / 1024 << " KB" << std::endl;
+        return os;   
+    } 
+};
+
+
 /**
  * RTWBS (Relaxed Weak Timed Bisimulation) Equivalence Checker
  * 
@@ -92,6 +161,12 @@ private:
                                    const TimedAutomaton& refined_automaton,const TimedAutomaton& abstract_automaton) const{};
 */
 public:
+    RTWBSChecker()
+    {
+        path_cache_.clear();
+        correspondence_cache_.clear();
+        last_stats_=CheckStatistics{0, 0, 0, 0.0, 0};
+    }
     /**
      * Check if refined automaton is RTWBS-equivalent to abstract automaton
      * 
@@ -118,16 +193,6 @@ public:
      */
     void clear_caches();
     
-    /**
-     * Get statistics about the last refinement check
-     */
-    struct CheckStatistics {
-        size_t refined_states;
-        size_t abstract_states;
-        size_t simulation_pairs;
-        double check_time_ms;
-        size_t memory_usage_bytes;
-    };
 
 
 
@@ -136,12 +201,7 @@ public:
     CheckStatistics get_last_check_statistics() const;
     void print_statistics() const
     {
-        std::cout << "RTWBS Check Statistics:" << std::endl;
-        std::cout << "  Refined States: " << last_stats_.refined_states << std::endl;
-        std::cout << "  Abstract States: " << last_stats_.abstract_states << std::endl;
-        std::cout << "  Simulation Pairs: " << last_stats_.simulation_pairs << std::endl;
-        std::cout << "  Check Time: " << last_stats_.check_time_ms << " ms" << std::endl;
-        std::cout << "  Memory Usage: " << last_stats_.memory_usage_bytes / 1024 << " KB" << std::endl;
+        last_stats_.print();
     }
 
     /**
@@ -176,6 +236,13 @@ public:
     bool check_rtwbs_equivalence_detailed(const System& system_refined, 
                                          const System& system_abstract,
                                          std::vector<SystemCheckResult>& results);
+    void reset()
+    {
+        last_stats_=CheckStatistics{0, 0, 0, 0.0, 0};
+         path_cache_.clear();
+        correspondence_cache_.clear();
+        
+    }
 
 private:
     mutable CheckStatistics last_stats_;
@@ -183,4 +250,4 @@ private:
 
 } // namespace rtwbs
 
-#endif // RTWBS_H
+#endif // RTWBS_CORE_H

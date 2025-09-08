@@ -11,6 +11,7 @@
 #include <string>
 
 #include "macros.h"
+#include "context.h"
 
 #include "dbm/dbm.h"
 #include "dbm/fed.h"
@@ -166,23 +167,25 @@ private:
     std::queue<int> waiting_list_;
     bool constructed_;
     //std::vector<std::string> clocks_;
-    std::unordered_map<std::string, cindex_t> clock_map_;
-    std::unordered_map<std::string, int> constants_;
-    std::unordered_map<std::string, int> variables_;  // Non-constant variables like 'id'
+    //std::unordered_map<std::string, cindex_t> clock_map_;
+    //std::unordered_map<std::string, double> constants_;
+    //std::unordered_map<std::string, double> variables_;  // Non-constant variables like 'id'
+
+
+    Context context_;
 public:
 
-    const std::unordered_map<std::string, int>& get_variables() const { return variables_; }
-    const std::unordered_map<std::string, cindex_t>& get_clock_map() const { return clock_map_; }
-    const std::unordered_map<std::string, int>& get_constants() const { return constants_; }
+    const std::unordered_map<std::string, double>& get_variables() const { return context_.variables_; }
+    const std::unordered_map<std::string, cindex_t>& get_clock_map() const { return context_.clocks_; }
+    const std::unordered_map<std::string, double>& get_constants() const { return context_.constants_; }
 
     void set_constant(const std::string& name, int value) {
-        constants_[name] = value;
+        context_.constants_[name] = value;
     }
     explicit TimedAutomaton() : dimension_(0) {}
-    explicit TimedAutomaton(const UTAP::Template& template_ref, int dimensions, const std::unordered_map<std::string, cindex_t>& clock_map,
-    const std::unordered_map<std::string, int>& constants,
-    const std::unordered_map<std::string, int>& variables):constructed_(false) {
-        build_from_template(template_ref, dimensions, clock_map, constants, variables);
+    explicit TimedAutomaton(const UTAP::Template& template_ref, int dimensions, 
+         Context context):constructed_(false),context_(context) {
+        build_from_template(template_ref, dimensions);
     }
     /**
      * Constructor
@@ -237,13 +240,12 @@ private:
     bool parse_clock_reset_from_expr(const UTAP::Expression& expr, std::string& clock_name, int& value);
     bool parse_variable_assignment_from_expr(const UTAP::Expression& expr, std::string& var_name, int& value);
     bool parse_synchronization_from_expr(const UTAP::Expression& expr, std::string& channel, bool& is_sender);
+    bool detect_and_expand_function_calls(const UTAP::Expression& expr, std::string& expanded_expr);
     //bool is_valid_clock(const std::string& clock_name) const;
     void build_from_utap_document(UTAP::Document& doc);
     
 public:
-    void build_from_template(const UTAP::Template& template_ref, int dimensions, const std::unordered_map<std::string, cindex_t>& clock_map,
-    const std::unordered_map<std::string, int>& constants,
-    const std::unordered_map<std::string, int>& variables);
+    void build_from_template(const UTAP::Template& template_ref, int dimensions);
     /**
      * Add a location to the automaton
      */

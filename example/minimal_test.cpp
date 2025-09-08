@@ -1,4 +1,4 @@
-#include "../src/timedautomaton.h"
+#include "rtwbs.h"
 #include <iostream>
 
 int main() {

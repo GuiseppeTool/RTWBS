@@ -1,0 +1,18 @@
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+
+# Find required dependencies
+find_dependency(PkgConfig)
+
+# Include the targets file
+include("${CMAKE_CURRENT_LIST_DIR}/RTWBSTargets.cmake")
+
+# Set the found flag
+set(RTWBS_FOUND TRUE)
+
+# Set library and include directories
+get_target_property(RTWBS_INCLUDE_DIRS rtwbs INTERFACE_INCLUDE_DIRECTORIES)
+get_target_property(RTWBS_LIBRARIES rtwbs INTERFACE_LINK_LIBRARIES)
+
+check_required_components(RTWBS)

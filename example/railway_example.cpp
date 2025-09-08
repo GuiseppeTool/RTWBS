@@ -2,7 +2,7 @@
 #include <vector>
 #include "dbm/dbm.h"
 #include "dbm/constraints.h"
-#include "timedautomaton.h"
+#include "rtwbs.h"
 
 using namespace rtwbs;
 

@@ -1,4 +1,4 @@
-#include "rtwbs.h"
+#include "rtwbs/core.h"
 
 #include <chrono>
 #include <algorithm>
@@ -156,7 +156,10 @@ bool RTWBSChecker::check_rtwbs_equivalence(const TimedAutomaton& refined,
     auto start_time = std::chrono::high_resolution_clock::now();
     
     // Reset statistics
-    last_stats_ = CheckStatistics{0, 0, 0, 0.0, 0};
+    //last_stats_ = CheckStatistics{0, 0, 0, 0.0, 0};
+
+    size_t peak_memory_this_check = 0;
+                                            // Track memory for THIS check only (reset each time)
     refined.construct_zone_graph();
     abstract.construct_zone_graph();
     
@@ -168,6 +171,10 @@ bool RTWBSChecker::check_rtwbs_equivalence(const TimedAutomaton& refined,
     std::unordered_map<size_t, bool> compatible_zones;
     std::unordered_set<std::pair<const ZoneState*, const ZoneState*>,PairHash> R;
     int i=0;
+    size_t base_memory = refined_zones.size() * sizeof(ZoneState*) + 
+                        abstract_zones.size() * sizeof(ZoneState*);
+    peak_memory_this_check = base_memory;
+
     for (const auto& ref_zone : refined_zones) {
         compatible_zones[ref_zone->hash_value] = false;
         for (const auto& abs_zone : abstract_zones) {
@@ -195,6 +202,7 @@ bool RTWBSChecker::check_rtwbs_equivalence(const TimedAutomaton& refined,
     // Iteratively refine the simulation relation R until fixed point
     while (true) {
         std::unordered_set<std::pair<const ZoneState*, const ZoneState*>, PairHash> R_prime;
+        
         
         // For each pair currently in the relation
         for (const auto& [q_refined, q_abstract] : R) {
@@ -289,8 +297,12 @@ bool RTWBSChecker::check_rtwbs_equivalence(const TimedAutomaton& refined,
             }
         }
         
-        std::cout << "Refined relation R' has " << R_prime.size() << " pairs" << std::endl;
-        
+        DEV_PRINT("Refined relation R' has " << R_prime.size() << " pairs" << std::endl);
+        size_t current_memory = base_memory +
+                               R.size() * sizeof(std::pair<const ZoneState*, const ZoneState*>) +
+                               R_prime.size() * sizeof(std::pair<const ZoneState*, const ZoneState*>) +
+                               compatible_zones.size() * (sizeof(size_t) + sizeof(bool));
+        peak_memory_this_check = std::max(peak_memory_this_check, current_memory);
         // If relation did not shrink, we have reached the greatest fixed point
         if (R == R_prime) {
             break;
@@ -316,13 +328,12 @@ bool RTWBSChecker::check_rtwbs_equivalence(const TimedAutomaton& refined,
     // Update statistics
     auto end_time = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
-    last_stats_.refined_states = refined_zones.size();
-    last_stats_.abstract_states = abstract_zones.size();
-    last_stats_.simulation_pairs = R.size();
-    last_stats_.check_time_ms = duration.count();
-    last_stats_.memory_usage_bytes = R.size() * sizeof(std::pair<const ZoneState*, const ZoneState*>) +
-                                   compatible_zones.size() * (sizeof(size_t) + sizeof(bool));
-    
+    last_stats_.refined_states += refined_zones.size();
+    last_stats_.abstract_states += abstract_zones.size();
+    last_stats_.simulation_pairs += R.size();
+    last_stats_.check_time_ms += duration.count();
+    last_stats_.memory_usage_bytes += peak_memory_this_check; //+compatible_zones.size() * (sizeof(size_t) + sizeof(bool));
+
     return simulation_holds;
 }
 
@@ -360,7 +371,7 @@ void RTWBSChecker::clear_caches() {
     correspondence_cache_.clear();
 }
 
-RTWBSChecker::CheckStatistics RTWBSChecker::get_last_check_statistics() const {
+CheckStatistics RTWBSChecker::get_last_check_statistics() const {
     return last_stats_;
 }
 
@@ -451,7 +462,7 @@ bool RTWBSChecker::check_rtwbs_equivalence_detailed(const System& system_refined
         result.is_equivalent = check_rtwbs_with_counterexample(
             refined_automaton, abstract_automaton, result.counterexample);
         
-        result.statistics = get_last_check_statistics();
+        result.statistics += get_last_check_statistics();
         
         std::cout << "Result: " << (result.is_equivalent ? "EQUIVALENT" : "NOT EQUIVALENT") << std::endl;
         

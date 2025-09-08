@@ -1,6 +1,6 @@
-#include "timedautomaton.h"
+#include "rtwbs/timedautomaton.h"
 
-#include "utils.h"
+#include "rtwbs/context.h"
 #include "utap/utap.hpp"
 #include <iostream>
 #include <sstream>
@@ -38,7 +38,7 @@ TimedAutomaton::TimedAutomaton(const std::string& fileName):constructed_(false)
 {
     // Create a UTAP document and parse the XML
     UTAP::Document doc;
-    int res = parse_XML_file(fileName, doc, true);
+    int res = parse_XML_file(fileName, doc, false);
     if (res != 0) {
         throw std::runtime_error("Failed to parse XML file: " + fileName);
     }
@@ -55,127 +55,41 @@ void TimedAutomaton::build_from_utap_document(UTAP::Document& doc) {
     // Debug: Check document-level information
     DEV_PRINT("   Document has " << doc.get_templates().size() << " templates" << std::endl);
     
-    // Check if there are processes (instantiated templates)
-    //auto& processes = doc.get_processes();
-    //std::cout << "   Document has " << processes.size() << " instantiated processes" << std::endl;
-    //for (const auto& process : processes) {
-    //    std::cout << "     Process: " << process.uid.get_name() << std::endl;
-    //    std::cout << "       Process parameters frame size: " << process.parameters.get_size() << std::endl;
-    //    std::cout << "       Process unbound parameters: " << process.unbound << std::endl;
-    //    std::cout << "       Process arguments: " << process.arguments << std::endl;
-    //    
-    //    // Check parameter mapping
-    //    std::cout << "       Process parameter mapping:" << std::endl;
-    //    for (const auto& [symbol, expression] : process.mapping) {
-    //        std::cout << "         " << symbol.get_name() << " -> " << expression.str() << std::endl;
-    //    }
-    //}
-    
     // Get the first template
     auto& templates = doc.get_templates();
     auto& template_ref = templates.front();
 
-    // Debug: More detailed template inspection
-    //std::cout << "   Template name: " << template_ref.uid.get_name() << std::endl;
-    //std::cout << "   Template unbound parameters: " << template_ref.unbound << std::endl;
-    //std::cout << "   Template arguments: " << template_ref.arguments << std::endl;
-    //std::cout << "   Template parameters frame size: " << template_ref.parameters.get_size() << std::endl;
-    //
-    //// Let's also check the instance mapping (parameters to arguments)
-    //std::cout << "   Template parameter mapping size: " << template_ref.mapping.size() << std::endl;
-    //for (const auto& [symbol, expression] : template_ref.mapping) {
-    //    std::cout << "     Mapping: " << symbol.get_name() << " -> " << expression.str() << std::endl;
-    //}
 
-
-    // Create clock name to index mapping
-    std::unordered_map<std::string, cindex_t> clock_map;
-    std::unordered_map<std::string, int> constants;
-    std::unordered_map<std::string, int> variables;  // Non-constant variables like 'id'
-    
-    // Extract clocks from global declarations
+    // Parse global declarations first
     auto& global_declarations = doc.get_globals();
-    cindex_t clock_count = 0;
+    context_.parse_global_declarations(global_declarations);
 
-    
-    DEV_PRINT("   Analyzing global declarations..." << std::endl);
-    
-    DEV_PRINT("   Global declarations has " << global_declarations.variables.size() << " variables:" << std::endl);
-    
-    for (const auto& variable : global_declarations.variables) {
-        if (variable.uid.get_type().is_clock()) {
-            clock_count++;
-            clock_map[variable.uid.get_name()] = clock_count; // Start from 1, as 0 is the reference clock
-            DEV_PRINT("   Found clock: " << variable.uid.get_name() << " -> index " << clock_count << std::endl);
-        } else if (variable.uid.get_type().is_constant()) {
-            std::string const_name = variable.uid.get_name();
-            
-            // Skip built-in constants (they start with standard prefixes)
-            if (const_name.find("INT") == 0 || const_name.find("UINT") == 0 || 
-                const_name.find("FLT") == 0 || const_name.find("DBL") == 0 || 
-                const_name.find("M_") == 0) {
-                // Skip built-in constants
-                continue;
-            }
-            
-            // Process user-defined constants
-            int value;
-            if (evaluate_expression(variable.init, value)) {
-                constants[const_name] = value;
-                DEV_PRINT("   Found global constant: " << const_name << " = " << value << std::endl);
-            } else {
-                DEV_PRINT("   Failed to evaluate global constant: " << const_name << std::endl);
-            }
-        } else {
-            // Save non-constant, non-clock variables (like 'id')
-            variables[variable.uid.get_name()] = 0; // Initialize to 0
-            DEV_PRINT("   Found global variable: " << variable.uid.get_name() << std::endl);
-        }
-    }
-    
-    // Set dimension = reference clock (index 0) + number of clocks
-    
-    build_from_template(template_ref, clock_count+1, clock_map, constants, variables);
+    // Build the automaton using the global context
+    build_from_template(template_ref, 0); // Pass 0 as placeholder, dimension will be calculated inside
 }
-void TimedAutomaton::build_from_template(const UTAP::Template& template_ref, int dimensions, 
-    const std::unordered_map<std::string, cindex_t>& clock_map,
-    const std::unordered_map<std::string, int>& constants,
-    const std::unordered_map<std::string, int>& variables
-){
-    constants_ = constants;
-    variables_ = variables;
-    
-    // Copy global clocks to member clock_map_
-    clock_map_.clear();
-    for (const auto& clock_pair : clock_map) {
-        clock_map_[clock_pair.first] = clock_pair.second;
-        DEV_PRINT("   Added global clock to clock_map_: " << clock_pair.first << " -> " << clock_pair.second << std::endl);
-    }
-    
-    // Recalculate dimension: reference + global clocks + template clocks
+
+
+
+
+
+void TimedAutomaton::build_from_template(const UTAP::Template& template_ref, int initial_dimensions) {
+    // Count template clocks and add them to Context
     int template_clock_count = 0;
     for (const auto& variable : template_ref.variables) {
         if (variable.uid.get_type().is_clock()) {
-            clock_map_[variable.uid.get_name()] = dimensions++;
             template_clock_count++;
-            DEV_PRINT("   Found template clock: " << variable.uid.get_name() << std::endl);
-        } else if (variable.uid.get_type().is_constant()) {
-            int value;
-            if (EVALUATE_EXPRESSION(variable.init, value, constants_, variables_)) {
-                constants_[variable.uid.get_name()] = value;
-                DEV_PRINT("   Found template constant: " << variable.uid.get_name() << " = " << value << std::endl);
-            } else {
-                DEV_PRINT("   Failed to evaluate template constant: " << variable.uid.get_name() << std::endl);
-            }
-        } else {
-            // Save non-constant, non-clock template variables
-            variables_[variable.uid.get_name()] = 0; // Initialize to 0
-            DEV_PRINT("   Found template variable: " << variable.uid.get_name() << std::endl);
         }
+        context_.parse_declaration(variable);
+    }
+    
+    // Parse template functions
+    DEV_PRINT("   Template has " << template_ref.functions.size() << " functions:" << std::endl);
+    for (const auto& function : template_ref.functions) {
+        context_.parse_function(function);
     }
 
-    // Process template parameters (they should be treated as variables)
-    DEV_PRINT("\n   Template has " << template_ref.unbound << " unbound parameters" << std::endl);
+    // Process template parameters
+    DEV_PRINT("   Template has " << template_ref.unbound << " unbound parameters" << std::endl);
     if (template_ref.parameters.get_size() > 0) {
         DEV_PRINT("   Template has " << template_ref.parameters.get_size() << " parameters:" << std::endl);
 
@@ -184,45 +98,30 @@ void TimedAutomaton::build_from_template(const UTAP::Template& template_ref, int
             DEV_PRINT("   Template Parameter: " << param.get_name() 
                       << ", type: " << param.get_type().str() << std::endl);
 
-            // Parameters are treated as variables
-            if (!param.get_type().is_clock() && !param.get_type().is_constant()) {
-                variables_[param.get_name()] = 0; // Initialize to 0
-                DEV_PRINT("   Found template parameter (treated as variable): " << param.get_name() << std::endl);
-            } else if (param.get_type().is_constant()) {
-                // Parameter constants - note: symbols don't have init expressions directly
-                DEV_PRINT("   Found template parameter constant: " << param.get_name() << " (value to be determined)" << std::endl);
-                // For now, we'll skip evaluating parameter constants since they don't have init expressions
-                constants_[param.get_name()] = 0; // Default value
-            } else if (param.get_type().is_clock()) {
+            if (param.get_type().is_clock()) {
                 // Clock parameters
-                clock_map_[param.get_name()] = dimensions++;
+                std::string param_name = param.get_name();
+                context_.clocks_[param_name] = context_.next_clock_index_++;
                 template_clock_count++;
-                DEV_PRINT("   Found template parameter clock: " << param.get_name() << std::endl);
+                DEV_PRINT("   Found template parameter clock: " << param_name << std::endl);
+            } else if (param.get_type().is_constant()) {
+                // Parameter constants
+                context_.constants_[param.get_name()] = 0.0; // Default value
+                DEV_PRINT("   Found template parameter constant: " << param.get_name() << " (value to be determined)" << std::endl);
+            } else {
+                // Other parameters treated as variables
+                context_.variables_[param.get_name()] = 0.0; // Initialize to 0
+                DEV_PRINT("   Found template parameter (treated as variable): " << param.get_name() << std::endl);
             }
         }
     }
 
-    int total_clocks = (dimensions - 1) + template_clock_count; // (dimensions-1) is global clocks from constructor
-    dimension_ = dimensions + template_clock_count; // +1 for reference clock
-
-    DEV_PRINT("   Creating automaton with dimension " << dimension_ << " (" << total_clocks << " clocks + reference)" << std::endl);
-    DEV_PRINT("   Global clocks: " << (dimensions - 1) << ", Template clocks: " << template_clock_count << ", Total dimension: " << dimension_ << std::endl);
-
-
-    DEV_PRINT("   Template has " << template_ref.variables.size() << " variables:" << std::endl);
-    DEV_PRINT("   Template frame has " << template_ref.frame.get_size() << " symbols:" << std::endl);
-    DEV_PRINT("   Template parameters frame has " << template_ref.parameters.get_size() << " symbols:" << std::endl);
-
-    // Debug: List all frame symbols to see if parameters are mixed in
-    DEV_PRINT("   Template frame symbols:" << std::endl);
-    for (size_t i = 0; i < template_ref.frame.get_size(); ++i) {
-        const auto& symbol = template_ref.frame[i];
-        DEV_PRINT("     Frame Symbol " << i << ": " << symbol.get_name() 
-                  << ", type: " << symbol.get_type().str() 
-                  << ", is_clock: " << symbol.get_type().is_clock()
-                  << ", is_constant: " << symbol.get_type().is_constant() << std::endl);
-    }
+    // Calculate final dimension: reference clock (0) + all clocks
+    dimension_ = context_.next_clock_index_; // next_clock_index_ tracks the total number of clocks + 1
     
+    DEV_PRINT("   Total clocks found: " << (context_.next_clock_index_ - 1) << std::endl);
+    DEV_PRINT("   Setting dimension to: " << dimension_ << std::endl);
+
 
 
     
@@ -249,22 +148,9 @@ void TimedAutomaton::build_from_template(const UTAP::Template& template_ref, int
             int value;
 
             if (parse_clock_constraint_from_expr(template_ref.locations[i].invariant, clock_name, op, value)) {
-                DEV_PRINT("     Clock constraint parsed: " << clock_name << " " << op << " " << value << std::endl);
-                DEV_PRINT("     Checking if clock '" << clock_name << "' is in global_clocks..." << std::endl);
-                bool in_global =  clock_map.find(clock_name) != clock_map.end();
-                DEV_PRINT("     In global_clocks: " << (in_global ? "YES" : "NO") << std::endl);
-
-                DEV_PRINT("     Checking if clock '" << clock_name << "' is in private_clocks_..." << std::endl);
-                bool in_private =  clock_map_.find(clock_name) != clock_map_.end();
-                DEV_PRINT("     In private_clocks_: " << (in_private ? "YES" : "NO") << std::endl);
-
-
-                if (in_global || in_private) {
-                    if(in_global && !in_private){
-                      clock_map_[clock_name] = clock_map.at(clock_name);  
-                    }
+                if (context_.clocks_.find(clock_name) != context_.clocks_.end()) {
                     DEV_PRINT("     Parsed invariant: " << clock_name << " " << op << " " << value << std::endl);
-                    add_dbm_constraint(clock_name, op, value, clock_map_, loc_int_id, -1);
+                    add_dbm_constraint(clock_name, op, value, context_.clocks_, loc_int_id, -1);
                     DEV_PRINT("     Added invariant constraint to location" << std::endl);
                 } else {
                     DEV_PRINT("     Clock validation failed - not in both lists" << std::endl);
@@ -304,56 +190,66 @@ void TimedAutomaton::build_from_template(const UTAP::Template& template_ref, int
             std::string assign_str = edge.assign.str();
             DEV_PRINT("     Assignment: " << assign_str << std::endl);
             
-            // Try to parse as clock reset first
-            std::string reset_clock_name;
-            int reset_value;
-            
-            if (parse_clock_reset_from_expr(edge.assign, reset_clock_name, reset_value)) {
-                DEV_PRINT("     Parsed reset: " << reset_clock_name << " := " << reset_value << std::endl);
-                // Check if this is actually a clock
-                if (clock_map_.find(reset_clock_name) != clock_map_.end()) {
-                    cindex_t clock_idx = clock_map_[reset_clock_name];
-                    // Only handle resets to 0 (standard timed automata behavior)
-                    if (reset_value == 0) {
-                        // Add transition first, then the reset
-                        add_transition(source_int, target_int, action);
-                        add_reset(i, clock_idx);
-                        DEV_PRINT("     Added reset to transition: " << reset_clock_name << " -> 0" << std::endl);
-                    } else {
-                        DEV_PRINT("     Warning: Non-zero reset value " << reset_value << " not supported" << std::endl);
-                        add_transition(source_int, target_int, action);
-                    }
-                } else {
-                    // Check if it's a variable assignment
-                    if (variables_.find(reset_clock_name) != variables_.end()) {
-                        variables_[reset_clock_name] = reset_value;
-                        DEV_PRINT("     Parsed variable assignment: " << reset_clock_name << " := " << reset_value << std::endl);
-                        add_transition(source_int, target_int, action);
-                    } else {
-                        // Not a clock or known variable, use assignment as action name
-                        action = assign_str;
-                        add_transition(source_int, target_int, action);
-                    }
-                }
+            // Check for function calls and expand them
+            std::string expanded_assign;
+            if (detect_and_expand_function_calls(edge.assign, expanded_assign)) {
+                DEV_PRINT("     Expanded assignment: " << expanded_assign << std::endl);
+                // Use the expanded version as the action
+                action = expanded_assign;
+                add_transition(source_int, target_int, action);
             } else {
-                // Try to parse as variable assignment
-                std::string var_name;
-                int var_value;
+                // No function calls found, proceed with original parsing logic
+                // Try to parse as clock reset first
+                std::string reset_clock_name;
+                int reset_value;
                 
-                if (parse_variable_assignment_from_expr(edge.assign, var_name, var_value)) {
-                    if (variables_.find(var_name) != variables_.end()) {
-                        variables_[var_name] = var_value;
-                        DEV_PRINT("     Parsed variable assignment: " << var_name << " := " << var_value << std::endl);
-                        add_transition(source_int, target_int, action);
+                if (parse_clock_reset_from_expr(edge.assign, reset_clock_name, reset_value)) {
+                    DEV_PRINT("     Parsed reset: " << reset_clock_name << " := " << reset_value << std::endl);
+                    // Check if this is actually a clock
+                    if (context_.clocks_.find(reset_clock_name) != context_.clocks_.end()) {
+                        cindex_t clock_idx = context_.clocks_[reset_clock_name];
+                        // Only handle resets to 0 (standard timed automata behavior)
+                        if (reset_value == 0) {
+                            // Add transition first, then the reset
+                            add_transition(source_int, target_int, action);
+                            add_reset(i, clock_idx);
+                            DEV_PRINT("     Added reset to transition: " << reset_clock_name << " -> 0" << std::endl);
+                        } else {
+                            DEV_PRINT("     Warning: Non-zero reset value " << reset_value << " not supported" << std::endl);
+                            add_transition(source_int, target_int, action);
+                        }
                     } else {
-                        // Unknown variable, use assignment as action name
+                        // Check if it's a variable assignment
+                        if (context_.variables_.find(reset_clock_name) != context_.variables_.end()) {
+                            context_.variables_[reset_clock_name] = reset_value;
+                            DEV_PRINT("     Parsed variable assignment: " << reset_clock_name << " := " << reset_value << std::endl);
+                            add_transition(source_int, target_int, action);
+                        } else {
+                            // Not a clock or known variable, use assignment as action name
+                            action = assign_str;
+                            add_transition(source_int, target_int, action);
+                        }
+                    }
+                } else {
+                    // Try to parse as variable assignment
+                    std::string var_name;
+                    int var_value;
+                    
+                    if (parse_variable_assignment_from_expr(edge.assign, var_name, var_value)) {
+                        if (context_.variables_.find(var_name) != context_.variables_.end()) {
+                            context_.variables_[var_name] = var_value;
+                            DEV_PRINT("     Parsed variable assignment: " << var_name << " := " << var_value << std::endl);
+                            add_transition(source_int, target_int, action);
+                        } else {
+                            // Unknown variable, use assignment as action name
+                            action = assign_str;
+                            add_transition(source_int, target_int, action);
+                        }
+                    } else {
+                        // Use assignment as action name
                         action = assign_str;
                         add_transition(source_int, target_int, action);
                     }
-                } else {
-                    // Use assignment as action name
-                    action = assign_str;
-                    add_transition(source_int, target_int, action);
                 }
             }
         } else {
@@ -381,8 +277,8 @@ void TimedAutomaton::build_from_template(const UTAP::Template& template_ref, int
             for (const auto& constraint : constraints) {
                 if (constraint.is_clock) {
                     // This is a clock constraint - add it to the DBM
-                    if (clock_map_.find(constraint.name) != clock_map_.end()) {
-                        add_dbm_constraint(constraint.name, constraint.op, constraint.value, clock_map_, -1, i);
+                    if (context_.clocks_.find(constraint.name) != context_.clocks_.end()) {
+                        add_dbm_constraint(constraint.name, constraint.op, constraint.value, context_.clocks_, -1, i);
                         has_clock_constraints = true;
                         DEV_PRINT("     Added clock constraint: " << constraint.name << " " 
                                  << constraint.op << " " << constraint.value << std::endl);
@@ -407,8 +303,8 @@ void TimedAutomaton::build_from_template(const UTAP::Template& template_ref, int
                 
                 // Try clock constraint parsing
                 if (parse_clock_constraint_from_expr(edge.guard, clock_name, op, value) 
-                    && clock_map_.find(clock_name) != clock_map_.end()) {
-                    add_dbm_constraint(clock_name, op, value, clock_map_, -1, i);
+                    && context_.clocks_.find(clock_name) != context_.clocks_.end()) {
+                    add_dbm_constraint(clock_name, op, value, context_.clocks_, -1, i);
                     DEV_PRINT("     Added fallback clock constraint: " << clock_name << " " << op << " " << value << std::endl);
                     has_clock_constraints = true;
                 }
@@ -480,13 +376,13 @@ bool TimedAutomaton::evaluate_expression(const UTAP::Expression& expr, int& resu
             auto symbol = expr.get_symbol();
             if (symbol.get_type().is_integer()) {
                 // Check if it's a known constant
-                if (constants_.count(symbol.get_name())) {
-                    result = constants_.at(symbol.get_name());
+                if (context_.constants_.count(symbol.get_name())) {
+                    result = context_.constants_.at(symbol.get_name());
                     return true;
                 }
                 // Check if it's a known variable
-                if (variables_.count(symbol.get_name())) {
-                    result = variables_.at(symbol.get_name());
+                if (context_.variables_.count(symbol.get_name())) {
+                    result = context_.variables_.at(symbol.get_name());
                     return true;
                 }
                 // For integer variables with initializers
@@ -602,7 +498,7 @@ bool TimedAutomaton::parse_clock_constraint_from_expr(const UTAP::Expression& ex
             std::string identifier_name = left.get_symbol().get_name();
             
             // Check if this identifier is a clock (we need to check both global and template clocks)
-            if (clock_map_.find(identifier_name) != clock_map_.end()) {
+            if (context_.clocks_.find(identifier_name) != context_.clocks_.end()) {
                 clock_name = identifier_name;
                 
                 // Evaluate right side
@@ -618,7 +514,7 @@ bool TimedAutomaton::parse_clock_constraint_from_expr(const UTAP::Expression& ex
             std::string identifier_name = right.get_symbol().get_name();
             
             // Check if this identifier is a clock
-            if (clock_map_.find(identifier_name) != clock_map_.end()) {
+            if (context_.clocks_.find(identifier_name) != context_.clocks_.end()) {
                 clock_name = identifier_name;
                 
                 // Evaluate left side and flip the operator
@@ -773,10 +669,10 @@ bool TimedAutomaton::parse_variable_constraint_from_expr(const UTAP::Expression&
             std::string identifier_name = left.get_symbol().get_name();
             
             // Check if this identifier is a variable or constant (not a clock)
-            if ((variables_.find(identifier_name) != variables_.end() || 
-                 constants_.find(identifier_name) != constants_.end()) &&
-                clock_map_.find(identifier_name) == clock_map_.end()) {
-                
+            if ((context_.variables_.find(identifier_name) != context_.variables_.end() || 
+                 context_.constants_.find(identifier_name) != context_.constants_.end()) &&
+                context_.clocks_.find(identifier_name) == context_.clocks_.end()) {
+
                 var_name = identifier_name;
                 
                 // Evaluate right side
@@ -792,10 +688,10 @@ bool TimedAutomaton::parse_variable_constraint_from_expr(const UTAP::Expression&
             std::string identifier_name = right.get_symbol().get_name();
             
             // Check if this identifier is a variable or constant (not a clock)
-            if ((variables_.find(identifier_name) != variables_.end() || 
-                 constants_.find(identifier_name) != constants_.end()) &&
-                clock_map_.find(identifier_name) == clock_map_.end()) {
-                
+            if ((context_.variables_.find(identifier_name) != context_.variables_.end() || 
+                 context_.constants_.find(identifier_name) != context_.constants_.end()) &&
+                context_.clocks_.find(identifier_name) == context_.clocks_.end()) {
+
                 var_name = identifier_name;
                 
                 // Evaluate left side and flip the operator
@@ -822,16 +718,16 @@ bool TimedAutomaton::parse_variable_constraint_from_expr(const UTAP::Expression&
 
 bool TimedAutomaton::evaluate_variable_constraint(const std::string& var_name, const std::string& op, int value) const {
     // Check if variable exists in our variable map
-    if (variables_.find(var_name) == variables_.end() && constants_.find(var_name) == constants_.end()) {
+    if (context_.variables_.find(var_name) == context_.variables_.end() && context_.constants_.find(var_name) == context_.constants_.end()) {
         DEV_PRINT("     Variable " << var_name << " not found in variables or constants" << std::endl);
         return false;
     }
     
     int var_value;
-    if (variables_.find(var_name) != variables_.end()) {
-        var_value = variables_.at(var_name);
+    if (context_.variables_.find(var_name) != context_.variables_.end()) {
+        var_value = context_.variables_.at(var_name);
     } else {
-        var_value = constants_.at(var_name);
+        var_value = context_.constants_.at(var_name);
     }
     
     DEV_PRINT("     Evaluating variable constraint: " << var_name << " (" << var_value << ") " << op << " " << value << std::endl);
@@ -913,8 +809,8 @@ bool TimedAutomaton::extract_all_constraints(const UTAP::Expression& expr, std::
                 constraint.op = op;
                 constraint.value = value;
                 // Check if this is a clock
-                constraint.is_clock = (clock_map_.find(name) != clock_map_.end());
-                
+                constraint.is_clock = (context_.clocks_.find(name) != context_.clocks_.end());
+
                 constraints.push_back(constraint);
                 DEV_PRINT("     Extracted constraint: " << name << " " << op << " " << value 
                          << " (is_clock: " << constraint.is_clock << ")" << std::endl);
@@ -939,8 +835,8 @@ bool TimedAutomaton::extract_all_constraints(const UTAP::Expression& expr, std::
                 constraint.op = op;
                 constraint.value = value;
                 // Check if this is a clock
-                constraint.is_clock = (clock_map_.find(name) != clock_map_.end());
-                
+                constraint.is_clock = (context_.clocks_.find(name) != context_.clocks_.end());
+
                 constraints.push_back(constraint);
                 DEV_PRINT("     Extracted flipped constraint: " << name << " " << op << " " << value 
                          << " (is_clock: " << constraint.is_clock << ")" << std::endl);
@@ -1005,9 +901,9 @@ bool TimedAutomaton::evaluate_complex_guard(const UTAP::Expression& expr) {
             std::string name = left.get_symbol().get_name();
             
             // Check if it's a variable (not a clock)
-            if ((variables_.find(name) != variables_.end() || constants_.find(name) != constants_.end()) &&
-                clock_map_.find(name) == clock_map_.end()) {
-                
+            if ((context_.variables_.find(name) != context_.variables_.end() || context_.constants_.find(name) != context_.constants_.end()) &&
+                context_.clocks_.find(name) == context_.clocks_.end()) {
+
                 int value;
                 if (evaluate_expression(right, value)) {
                     return evaluate_variable_constraint(name, op, value);
@@ -1018,10 +914,10 @@ bool TimedAutomaton::evaluate_complex_guard(const UTAP::Expression& expr) {
         // Try right side as identifier too
         if (right.get_kind() == UTAP::Constants::IDENTIFIER) {
             std::string name = right.get_symbol().get_name();
-            
-            if ((variables_.find(name) != variables_.end() || constants_.find(name) != constants_.end()) &&
-                clock_map_.find(name) == clock_map_.end()) {
-                
+
+            if ((context_.variables_.find(name) != context_.variables_.end() || context_.constants_.find(name) != context_.constants_.end()) &&
+                context_.clocks_.find(name) == context_.clocks_.end()) {
+
                 int value;
                 if (evaluate_expression(left, value)) {
                     // Flip operator
@@ -1513,6 +1409,61 @@ void TimedAutomaton::print_all_transitions() const {
     for (const auto& transition : transitions_) {
         std::cout << "  " << transition.from_location << " --(" << transition.action << ")--> " << transition.to_location << "\n";
     }
+}
+
+bool TimedAutomaton::detect_and_expand_function_calls(const UTAP::Expression& expr, std::string& expanded_expr) {
+    if (expr.empty()) {
+        expanded_expr = "";
+        return false;
+    }
+    
+    // Check if this is a function call
+    if (expr.get_kind() == UTAP::Constants::FUN_CALL) {
+        // Extract function name
+        if (expr.get_size() > 0 && expr[0].get_kind() == UTAP::Constants::IDENTIFIER) {
+            std::string func_name = expr[0].get_symbol().get_name();
+            
+            // Check if we have this function in our context
+            if (context_.functions_.count(func_name)) {
+                const auto& func_info = context_.functions_[func_name];
+                
+                DEV_PRINT("     Found function call: " << func_name << std::endl);
+                DEV_PRINT("     Function body: " << func_info.body << std::endl);
+                
+                // For now, just expand with the function body
+                // In a more sophisticated implementation, you would:
+                // 1. Extract function arguments from expr[1], expr[2], etc.
+                // 2. Substitute parameter names with argument values in the body
+                // 3. Handle recursive function calls
+                
+                expanded_expr = func_info.body;
+                return true;
+            } else {
+                DEV_PRINT("     Unknown function call: " << func_name << std::endl);
+            }
+        }
+    } else {
+        // Check recursively for function calls in sub-expressions
+        bool found_any = false;
+        std::string result = expr.str(); // Start with original expression
+        
+        for (size_t i = 0; i < expr.get_size(); ++i) {
+            std::string sub_expanded;
+            if (detect_and_expand_function_calls(expr[i], sub_expanded)) {
+                found_any = true;
+                // In a full implementation, you'd replace the sub-expression
+                // with the expanded version in the result string
+            }
+        }
+        
+        if (found_any) {
+            expanded_expr = result;
+            return true;
+        }
+    }
+    
+    expanded_expr = expr.str();
+    return false;
 }
 
 } // namespace rtwbs

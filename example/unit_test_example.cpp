@@ -1,5 +1,4 @@
-#include "../src/timedautomaton.h"
-#include "../src/rtwbs.h"
+#include "rtwbs.h"
 #include <iostream>
 #include <exception>
 

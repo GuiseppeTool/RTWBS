@@ -35,9 +35,7 @@ $(RELEASE_DIR)/Makefile: CMakeLists.txt
 		-DCMAKE_EXE_LINKER_FLAGS_RELEASE="-flto"
 
 # A 'clean' target to remove the build directory
-clean:
-	@echo "--- Cleaning build directory ---"
-	@rm -rf $(BUILD_DIR)
+clean: clean-debug clean-release
 
 # A 'clean-release' target to remove the release directory
 clean-release:
@@ -45,9 +43,9 @@ clean-release:
 	@rm -rf $(RELEASE_DIR)
 
 # Clean everything
-clean-all: clean clean-release
-	@echo "--- Cleaned all build directories ---"
-
+clean-debug: 
+	@echo "--- Cleaning debug directory ---"
+	@rm -rf $(BUILD_DIR)
 # Rebuild target to force cmake and then make
 rebuild: clean all
 
@@ -57,7 +55,7 @@ rebuild-release: clean-release release
 
 
 # Phony targets
-.PHONY: all clean clean-release clean-all rebuild rebuild-release release
+.PHONY: all clean clean-release clean-debug rebuild rebuild-release release
 
 example/debug_test9.o: example/debug_test9.cpp.o
 .PHONY : example/debug_test9.o

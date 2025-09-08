@@ -4,10 +4,17 @@ build/**
 release/**
 release/
 ICSE_DT/** 
-old/** */
+old/**
+ICSE_DT
+old/
+
 # External dependencies (should be installed separately)
 UDBM/
 utap/
 
+#results folder for now
+results/
+results/**
 
-*.a
+
+.vscode/
