@@ -66,6 +66,9 @@ if (is_equivalent) {
 ## Building and Running
 
 ```bash
+
+./setup.sh
+
 # Build the RTWBS 
 make release
 
