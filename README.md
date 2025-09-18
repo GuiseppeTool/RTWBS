@@ -67,12 +67,11 @@ if (is_equivalent) {
 ## Building and Running
 
 ```bash
-# Build the RTWBS example
-cd build
-make rtwbs_example
+# Build the RTWBS 
+make release
 
-# Run the example
-./rtwbs_example
+# Run the benchmarks
+./release/benchmarks/run_all
 ```
 
 ## Implementation Notes
