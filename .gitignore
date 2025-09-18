@@ -7,6 +7,7 @@ ICSE_DT/**
 old/**
 ICSE_DT
 old/
+examples/
 
 # External dependencies (should be installed separately)
 UDBM/
@@ -19,3 +20,4 @@ RTWBS/
 RTWBS/**
 
 .vscode/
+run_all

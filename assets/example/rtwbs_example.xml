@@ -1,0 +1,42 @@
+<?xml version="1.0"?>
+<!-- Two templates: Abstract (A) and Refined (R) to showcase RTWBS rules -->
+<nta>
+  <declaration>clock x; chan recv; chan send;</declaration>
+  <template>
+    <name>Abstract</name>
+    <location id="A0" x="0" y="0"><name>A0</name></location>
+    <location id="A1" x="200" y="0"><name>A1</name></location>
+    <location id="A2" x="400" y="0"><name>A2</name></location>
+    <init ref="A0"/>
+    <transition>
+      <source ref="A0"/><target ref="A1"/>
+      <label kind="guard">x &lt;= 5</label>
+      <label kind="synchronisation">recv?</label>
+    </transition>
+    <transition>
+      <source ref="A1"/><target ref="A2"/>
+      <label kind="guard">x &lt;= 10</label>
+      <label kind="synchronisation">send!</label>
+      <label kind="assignment">x := 0</label>
+    </transition>
+  </template>
+  <template>
+    <name>Refined</name>
+    <location id="R0" x="0" y="100"><name>R0</name></location>
+    <location id="R1" x="200" y="100"><name>R1</name></location>
+    <location id="R2" x="400" y="100"><name>R2</name></location>
+    <init ref="R0"/>
+    <transition>
+      <source ref="R0"/><target ref="R1"/>
+      <label kind="guard">x &lt;= 8</label>
+      <label kind="synchronisation">recv?</label>
+    </transition>
+    <transition>
+      <source ref="R1"/><target ref="R2"/>
+      <label kind="guard">x &lt;= 7</label>
+      <label kind="synchronisation">send!</label>
+      <label kind="assignment">x := 0</label>
+    </transition>
+  </template>
+  <system>process A = Abstract(); process R = Refined(); system A, R;</system>
+</nta>

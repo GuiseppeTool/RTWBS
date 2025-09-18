@@ -218,35 +218,10 @@ function(add_benchmark BENCHMARK_NAME)
 endfunction()
 
 
-# Create UDBM example executables
-add_udbm_example(simple_example)
-
-# Create integration examples (need both UTAP and UDBM + timedautomaton.cpp)
-add_integration_example(railway_example)
-add_integration_example(zonegraph_example)
-
-# Create UTAP example executables
-add_utap_example(utap_example)
-
-# Create integration example executable
-add_integration_example(integration_example)
-
-add_integration_example(integration_example_2)
-
-add_integration_example(synchronization_example)
-
-add_integration_example(simple_sync_test)
-
-add_integration_example(minimal_test)
-
-add_integration_example(single_transition_test)
-
-add_integration_example(rtwbs_example)
-add_integration_example(system_rtwbs_example)
-add_integration_example(unit_test_example)
-add_integration_example(run_unit_tests)
-add_integration_example(run_automata)
-add_integration_example(run_uppaal_benchmarks)
+# New curated examples directory (legacy examples removed / deprecated)
+add_integration_example(dbm_example)
+add_integration_example(weak_successors_example)
+add_integration_example(rtwbs_equivalence_example)
 # Copy assets directory to build directory
 # Must be able to specify which subfolder according to the target
 
@@ -280,11 +255,7 @@ add_benchmark(run_ASTRail)
 add_benchmark(run_FMICS2021)
 
 
-# Make run_unit_tests depend on copying unit tests
-add_dependencies(run_unit_tests copy_assets_examples)
-add_dependencies(run_uppaal_benchmarks copy_assets_examples)
-
-# Make benchmarks depend on copying assets
+# Benchmarks depend on assets copy
 add_dependencies(run_all copy_assets_benchmarks)
 add_dependencies(run_ASTRail copy_assets_benchmarks)
 add_dependencies(run_FMICS2021 copy_assets_benchmarks)
@@ -300,18 +271,14 @@ message(STATUS "XML2 Library: ${XML2_LIBRARY}")
 message(STATUS "Y Library: ${Y_LIBRARY}")
 
 # Add a custom target to build all examples
-add_custom_target(examples 
-    DEPENDS simple_example railway_example zonegraph_example utap_example integration_example integration_example_2 rtwbs_example system_rtwbs_example unit_test_example run_unit_tests
-)
+add_custom_target(examples DEPENDS dbm_example weak_successors_example rtwbs_equivalence_example)
 
 # Add a custom target to build all benchmarks
 add_custom_target(benchmarks 
     DEPENDS run_all run_ASTRail run_FMICS2021
 )
 
-add_dependencies(run_all copy_assets_benchmarks)
-add_dependencies(run_ASTRail copy_assets_benchmarks)
-add_dependencies(run_FMICS2021 copy_assets_benchmarks)
+# (already added above)
 
 
 # Install configuration

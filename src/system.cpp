@@ -57,6 +57,9 @@ System::System(const std::string& fileName) {
 
 }
 
+// Convenience overload to allow passing C-string paths directly
+System::System(const char* fileNameCStr) : System(std::string(fileNameCStr)) {}
+
 
 void System::add_automaton(std::unique_ptr<TimedAutomaton> automaton, const std::string& template_name) {
     if (!automaton) {

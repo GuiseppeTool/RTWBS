@@ -1,0 +1,36 @@
+<?xml version="1.0"?>
+<!-- Minimal TA for demonstrating DBM operations on a single clock x -->
+<nta>
+  <declaration>// Global declarations
+clock x;
+  </declaration>
+  <template>
+    <name>DBMOps</name>
+    <location id="id0" x="0" y="0">
+      <name>Init</name>
+      <label kind="invariant">x &lt;= 10</label>
+    </location>
+    <location id="id1" x="200" y="0">
+      <name>Mid</name>
+      <label kind="invariant">x &lt;= 15</label>
+    </location>
+    <location id="id2" x="400" y="0">
+      <name>End</name>
+    </location>
+    <init ref="id0"/>
+    <transition>
+      <source ref="id0"/>
+      <target ref="id1"/>
+      <label kind="guard">x &lt;= 5</label>
+      <label kind="synchronisation">step?</label>
+    </transition>
+    <transition>
+      <source ref="id1"/>
+      <target ref="id2"/>
+      <label kind="guard">x &lt;= 12</label>
+      <label kind="assignment">x := 0</label>
+      <label kind="synchronisation">done!</label>
+    </transition>
+  </template>
+  <system>process P = DBMOps(); system P;</system>
+</nta>

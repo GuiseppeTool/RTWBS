@@ -17,6 +17,8 @@ release: $(RELEASE_DIR)/Makefile
 	@echo "--- Building RELEASE in $(RELEASE_DIR) with $(NPROC) cores ---"
 	@echo "--- Release build: DEV_MODE=OFF, optimizations enabled ---"
 	$(MAKE) -C $(RELEASE_DIR) -j$(NPROC)
+	@echo "Copy the release run_all binary from benchmarks/run_all to the main directory"
+	@cp $(RELEASE_DIR)/benchmarks/run_all ./run_all
 
 # Rule to run cmake and generate the Makefile in the build directory (development)
 $(BUILD_DIR)/Makefile: CMakeLists.txt

@@ -70,6 +70,6 @@ if (is_equivalent) {
 make release
 
 # Run the benchmarks
-./release/benchmarks/run_all
+./run_all
 ```
 

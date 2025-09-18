@@ -153,7 +153,13 @@ public:
     void print_statistics() const { last_stats_.print(); }
     void reset() { last_stats_ = CheckStatistics{0,0,0,0.0,0}; }
 
-private:
+
+
+protected: // allow example subclasses to access optimisation helpers (didactic)
+// ---- Cached semantic helpers ----
+    const std::vector<const ZoneState*>& tau_closure_cached(const TimedAutomaton& ta, const ZoneState* start);
+    const std::vector<const ZoneState*>& weak_observable_successors_cached(const TimedAutomaton& ta, const ZoneState* start, const std::string& action);
+private: 
     mutable CheckStatistics last_stats_;
 
     // ===== Optimisation Data Structures =====
@@ -195,13 +201,30 @@ private:
     // Worklist for localised re-validation
     std::queue<PairKey> worklist_;
 
-    // ---- Cached semantic helpers ----
-    const std::vector<const ZoneState*>& tau_closure_cached(const TimedAutomaton& ta, const ZoneState* start);
-    const std::vector<const ZoneState*>& weak_observable_successors_cached(const TimedAutomaton& ta, const ZoneState* start, const std::string& action);
-
     // Reset caches & structures between top-level checks
     void clear_optimisation_state();
+
+
+
+private:
 };
+
+
+
+
+
+class ExposedChecker : public RTWBSChecker {
+public:
+    // Provide wrappers that call the private cached methods via a public facade.
+    const std::vector<const ZoneState*>& tau_closure(const TimedAutomaton& ta, const ZoneState* z){
+        return tau_closure_cached(ta, z); // friendship not granted: adjust visibility if needed
+    }
+    const std::vector<const ZoneState*>& weak_successors(const TimedAutomaton& ta, const ZoneState* z, const std::string& act){
+        return weak_observable_successors_cached(ta, z, act);
+    }
+};
+
+
 
 } // namespace rtwbs
 

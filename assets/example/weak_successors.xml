@@ -1,0 +1,43 @@
+<?xml version="1.0"?>
+<!-- TA to illustrate weak successors with tau loops -->
+<nta>
+  <declaration>clock x;
+chan a; chan tau;
+  </declaration>
+  <template>
+    <name>WeakSucc</name>
+    <location id="l0" x="0" y="0">
+      <name>L0</name>
+      <label kind="invariant">x &lt;= 20</label>
+    </location>
+    <location id="l1" x="200" y="0">
+      <name>L1</name>
+    </location>
+    <location id="l2" x="400" y="0">
+      <name>L2</name>
+    </location>
+    <init ref="l0"/>
+    <!-- internal tau loop allowing delay under guard x < 7 -->
+    <transition>
+      <source ref="l0"/>
+      <target ref="l0"/>
+      <label kind="guard">x &lt; 7</label>
+      <label kind="synchronisation">tau?</label>
+    </transition>
+    <!-- observable a after delays -->
+    <transition>
+      <source ref="l0"/>
+      <target ref="l1"/>
+      <label kind="guard">x &lt;= 10</label>
+      <label kind="synchronisation">a!</label>
+    </transition>
+    <!-- another internal after a -->
+    <transition>
+      <source ref="l1"/>
+      <target ref="l2"/>
+      <label kind="guard">x &lt;= 12</label>
+      <label kind="synchronisation">tau?</label>
+    </transition>
+  </template>
+  <system>process P = WeakSucc(); system P;</system>
+</nta>
