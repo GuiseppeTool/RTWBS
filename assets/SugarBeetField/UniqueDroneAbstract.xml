@@ -1,0 +1,230 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.6//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_6.dtd'>
+<nta>
+	<declaration>// --- Simplified Global Declarations ---
+// --- Constants ---
+const int DRONE_MAX_POWER = 100;
+const int LOW_POWER_THRESHOLD = 10;
+const int CRUISING_POWER_COST = 2; // Power consumed per time unit while cruising/waiting
+const int SPRAYING_POWER_COST = 4; // Extra power cost for one spray action
+const int MISSION_CYCLES = 5; // Drone must complete this many spray cycles to finish
+const int NUM_DRONES=2;
+// --- System State Variables ---
+bool near_organic_farm[NUM_DRONES];
+bool isSpraying[NUM_DRONES];
+bool pest_emergency = false; // Set to 'true' to allow spraying near farms
+
+
+// --- RTWBS TIMING BOUNDS (ABSTRACT MODEL - STRICT) ---
+const int PLANT_DETECTION_SEND_BOUND = 2; // Drone must send plantReached within 2 time units (STRICT)
+const int CONTROLLER_RESPONSE_BOUND = 3; // Controller must respond within 3 time units (STRICT)
+const int DRONE_RECEIVE_BOUND = 3; // Drone must receive response within 3 time units (STRICT)
+
+
+// Drone's internal state
+int power = DRONE_MAX_POWER;
+int sprayCycles = 0;
+
+chan nearFarm[NUM_DRONES];
+chan isSprayingNearFarm[NUM_DRONES];
+clock timeNearFarm;
+
+
+
+chan plantReached;
+chan spray;
+chan notspray;</declaration>
+	<template>
+		<name>Drone</name>
+		<parameter>int id</parameter>
+		<declaration>clock t;
+clock canLeave;
+clock x;</declaration>
+		<location id="id0" x="-1045" y="-348">
+			<name x="-1055" y="-382">Idle</name>
+			<label kind="exponentialrate" x="-1126" y="-343">0.00001</label>
+			<committed/>
+		</location>
+		<location id="id1" x="-588" y="-348">
+			<name x="-688" y="-323">Cruising</name>
+			<label kind="invariant" x="-654" y="-340">x &lt;= 1</label>
+		</location>
+		<location id="id2" x="-187" y="-348">
+			<name x="-272" y="-340">Spraying</name>
+			<label kind="invariant" x="-197" y="-330">t &lt;= 2</label>
+		</location>
+		<location id="id3" x="120" y="-158">
+			<name x="86" y="-141">Error_LowPower</name>
+		</location>
+		<location id="id4" x="-986" y="-229">
+			<name x="-1028" y="-276">Finished</name>
+		</location>
+		<location id="id5" x="-192" y="-634">
+			<name x="-382" y="-663">WaitingForDetection</name>
+			<label kind="invariant" x="-170" y="-625">x&lt;=1</label>
+		</location>
+		<location id="id6" x="-595" y="-629">
+			<committed/>
+		</location>
+		<init ref="id0"/>
+		<transition id="id7">
+			<source ref="id1"/>
+			<target ref="id6"/>
+			<label kind="guard" x="-646" y="-484">t&gt;=1</label>
+			<label kind="assignment" x="-637" y="-518">t:=0</label>
+		</transition>
+		<transition id="id8">
+			<source ref="id5"/>
+			<target ref="id1"/>
+			<label kind="guard" x="-535" y="-578">power - SPRAYING_POWER_COST&gt;= 
+LOW_POWER_THRESHOLD</label>
+			<label kind="synchronisation" x="-391" y="-484">notspray?</label>
+		</transition>
+		<transition id="id9">
+			<source ref="id1"/>
+			<target ref="id3"/>
+			<label kind="guard" x="-562" y="-71">power &lt;=LOW_POWER_THRESHOLD</label>
+			<nail x="-580" y="-86"/>
+			<nail x="94" y="-92"/>
+		</transition>
+		<transition id="id10">
+			<source ref="id5"/>
+			<target ref="id3"/>
+			<label kind="guard" x="-42" y="-705">power &lt;=LOW_POWER_THRESHOLD
+or
+power - SPRAYING_POWER_COST&lt;= LOW_POWER_THRESHOLD</label>
+			<nail x="357" y="-637"/>
+			<nail x="374" y="-161"/>
+		</transition>
+		<transition id="id11">
+			<source ref="id5"/>
+			<target ref="id2"/>
+			<label kind="guard" x="-161" y="-569">power - SPRAYING_POWER_COST&gt;= LOW_POWER_THRESHOLD</label>
+			<label kind="synchronisation" x="-161" y="-518">spray?</label>
+			<label kind="assignment" x="-178" y="-493">isSpraying[id] = true,
+power -= SPRAYING_POWER_COST+3,
+t := 0</label>
+		</transition>
+		<transition id="id12">
+			<source ref="id5"/>
+			<target ref="id5"/>
+			<label kind="guard" x="-255" y="-782">power&gt;=LOW_POWER_THRESHOLD</label>
+			<label kind="assignment" x="-255" y="-765">power -= CRUISING_POWER_COST,
+x := 0</label>
+			<nail x="-246" y="-714"/>
+			<nail x="-161" y="-714"/>
+		</transition>
+		<transition id="id13">
+			<source ref="id1"/>
+			<target ref="id3"/>
+			<label kind="guard" x="-535" y="-159">power - SPRAYING_POWER_COST&lt;= LOW_POWER_THRESHOLD</label>
+			<nail x="-582" y="-161"/>
+		</transition>
+		<transition id="id14">
+			<source ref="id2"/>
+			<target ref="id3"/>
+			<label kind="guard" x="-78" y="-214">power &lt;= LOW_POWER_THRESHOLD</label>
+			<nail x="-93" y="-348"/>
+			<nail x="-93" y="-160"/>
+		</transition>
+		<transition id="id15">
+			<source ref="id1"/>
+			<target ref="id4"/>
+			<label kind="guard" x="-926" y="-212">sprayCycles &gt;= MISSION_CYCLES</label>
+			<nail x="-586" y="-229"/>
+		</transition>
+		<transition id="id16">
+			<source ref="id6"/>
+			<target ref="id5"/>
+			<label kind="synchronisation" x="-552" y="-654">plantReached!</label>
+		</transition>
+		<transition id="id17">
+			<source ref="id2"/>
+			<target ref="id1"/>
+			<label kind="assignment" x="-484" y="-340">isSpraying[id] = false,
+t := 0,x:=0</label>
+		</transition>
+		<transition id="id18">
+			<source ref="id1"/>
+			<target ref="id1"/>
+			<label kind="guard" x="-960" y="-399">power &gt;= LOW_POWER_THRESHOLD</label>
+			<label kind="assignment" x="-960" y="-442">power -= CRUISING_POWER_COST*3,
+x := 0</label>
+			<nail x="-722" y="-348"/>
+			<nail x="-722" y="-416"/>
+		</transition>
+		<transition id="id19">
+			<source ref="id0"/>
+			<target ref="id1"/>
+			<label kind="assignment" x="-986" y="-340">power = DRONE_MAX_POWER,
+sprayCycles = 0,
+t := 0,x:=0</label>
+		</transition>
+	</template>
+	<template>
+		<name>Controller</name>
+		<parameter>int mID</parameter>
+		<declaration>clock c;
+clock processing_timer; // Timer for controller processing (STRICT bound)</declaration>
+		<location id="id20" x="-1768" y="-510">
+			<name x="-1818" y="-540">Ready</name>
+		</location>
+		<location id="id21" x="-1496" y="-510">
+			<name x="-1572" y="-544">Processing</name>
+			<label kind="invariant" x="-1470" y="-527">processing_timer &lt;= CONTROLLER_RESPONSE_BOUND</label>
+		</location>
+		<location id="id22" x="-1300" y="-578">
+			<name x="-1350" y="-608">DecideSpray</name>
+			<committed/>
+		</location>
+		<location id="id23" x="-1283" y="-450">
+			<name x="-1333" y="-430">DecideNoSpray</name>
+			<committed/>
+		</location>
+		<init ref="id20"/>
+		<transition id="id24">
+			<source ref="id23"/>
+			<target ref="id20"/>
+			<nail x="-1768" y="-450"/>
+		</transition>
+		<transition id="id25">
+			<source ref="id22"/>
+			<target ref="id20"/>
+			<nail x="-1768" y="-578"/>
+		</transition>
+		<transition id="id26">
+			<source ref="id20"/>
+			<target ref="id21"/>
+			<label kind="synchronisation" x="-1725" y="-544">plantReached?</label>
+			<label kind="assignment" x="-1750" y="-510">c:=0,
+processing_timer = 0</label>
+		</transition>
+		<transition id="id27">
+			<source ref="id21"/>
+			<target ref="id22"/>
+			<label kind="guard" x="-1317" y="-561">processing_timer &lt;= CONTROLLER_RESPONSE_BOUND</label>
+			<label kind="synchronisation" x="-1478" y="-561">spray!</label>
+		</transition>
+		<transition id="id28">
+			<source ref="id21"/>
+			<target ref="id23"/>
+			<label kind="guard" x="-1450" y="-480">processing_timer &lt;= CONTROLLER_RESPONSE_BOUND</label>
+			<label kind="synchronisation" x="-1385" y="-510">notspray!</label>
+		</transition>
+	</template>
+	<system>
+
+a= Drone(0);
+obs = Controller(0);
+a2= Drone(0);
+system a, obs;
+</system>
+	<queries>
+		<query>
+			<formula>A[] deadlock imply a.Finished or a.Error_LowPower</formula>
+			<comment/>
+			<result outcome="success" type="quality" timestamp="2025-09-09 14:57:18 +0200">
+			</result>
+		</query>
+	</queries>
+</nta>

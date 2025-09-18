@@ -3,13 +3,25 @@
 
 int main(int argc, char* argv[]) {
     try {
-        std::vector<std::string> filenames = {
-            "modelMitigation.xml", "modelLowerMaxLostMsgFastVerification.xml", "modelLowerMaxLostMsg.xml", "modelConfStandard.xml", "modelNoTransmissionDelayThreat.xml", "modelFastVerification.xml", "modelLowerSNMax.xml",
-
-
+        std::cout << "\n=== Testing RTWBS with different file types ===" << std::endl;
+        
+        // Test 1: Truly identical files (should be EQUIVALENT)
+        std::cout << "\n--- Test 1: Truly identical files ---" << std::endl;
+        std::vector<std::string> identical_files = {
+            "modelConfStandard.xml", 
+            "modelConfStandard_identical.xml"
         };
-        rtwbs::self_equivalence_checks(filenames,"assets/FMICS2021/", "results/","benchmark_results_");
-        rtwbs::comparison_checks(filenames,"assets/FMICS2021/","results/","comparison_results_");
+        rtwbs::comparison_checks(identical_files,"assets/FMICS2021/","results/","identical_test_");
+        
+        // Test 2: Files with formatting differences (currently NOT EQUIVALENT)
+        std::cout << "\n--- Test 2: Files with formatting differences ---" << std::endl;
+        std::vector<std::string> formatted_files = {
+            "modelConfStandard.xml", 
+            "modelConfStandard copy.xml"
+        };
+        rtwbs::comparison_checks(formatted_files,"assets/FMICS2021/","results/","formatted_test_");
+        
+      
         return 0;
     } catch (const std::exception& e) {
         std::cerr << "Error: " << e.what() << std::endl;

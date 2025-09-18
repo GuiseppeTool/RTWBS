@@ -15,6 +15,7 @@ utap/
 #results folder for now
 results/
 results/**
-
+RTWBS/
+RTWBS/**
 
 .vscode/

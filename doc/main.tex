@@ -1,0 +1,36 @@
+% RTWBS Timed Automata Documentation
+\documentclass[11pt,a4paper]{article}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{microtype}
+\usepackage{hyperref}
+\usepackage{cleveref}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{enumitem}
+\usepackage{tabularx}
+\usepackage{tikz}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usepackage{geometry}
+\geometry{margin=2.5cm}
+\lstdefinelanguage{C++Extra}[]{C++}{morekeywords={dbm_up,dbm_constrain1,dbm_close,dbm_isEmpty,dbm_extrapolateMaxBounds}}
+\lstset{language=C++Extra,basicstyle=\ttfamily\small,keywordstyle=\color{blue!70!black},commentstyle=\color{green!40!black},stringstyle=\color{red!60!black},breaklines=true,tabsize=2,showstringspaces=false,frame=single}
+\title{RTWBS Timed Automata: Theory to Implementation}
+\author{Project Documentation}
+\date{\today}
+\begin{document}
+\maketitle
+\tableofcontents
+\clearpage
+\input{src/01_dbm}
+\input{src/02_time_elapse}
+\input{src/03_zone_graph}
+\input{src/04_rtwbs_theory}
+\input{src/05_game_algorithm}
+\input{src/06_mapping_code}
+\input{src/07_future_work}
+\end{document}

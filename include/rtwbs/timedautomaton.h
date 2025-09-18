@@ -25,9 +25,14 @@ namespace UTAP {
     class Document;
     class Expression;
     class Template;
+    class Location;
+    class Edge;
 }
 
 namespace rtwbs {
+
+// Forward declaration for constraint parsing
+struct Constraint;
 
 /**
  * Represents a discrete location in a timed automaton
@@ -154,6 +159,7 @@ private:
     std::vector<Location> locations_;
     std::vector<Transition> transitions_;
     std::unordered_map<int, std::vector<int>> outgoing_transitions_;  // location_id -> transition indices
+    std::unordered_map<std::string, int> location_map_;               // location name -> location id mapping
     
     // Synchronization support
     std::unordered_set<std::string> channels_;                        // Set of declared channels
@@ -166,6 +172,13 @@ private:
     std::vector<std::vector<int>> zone_transitions_;  // adjacency list: state_id -> list of successor state_ids
     std::queue<int> waiting_list_;
     bool constructed_;
+    
+    // Timing constraint constants for candidate-delay method
+    std::set<int> timing_constants_;                              // All timing constants from guards and invariants
+    // Per-clock maximal constant (M(x)) needed for correct k-extrapolation
+    std::vector<int32_t> clock_max_bounds_; // size == dimension_, index 0 unused (ref clock)
+    // Per-clock minimal lower bound L(x) collected from constraints x >= c / x > c / x == c
+    std::vector<int32_t> clock_min_lower_bounds_; // size == dimension_, index 0 unused
     //std::vector<std::string> clocks_;
     //std::unordered_map<std::string, cindex_t> clock_map_;
     //std::unordered_map<std::string, double> constants_;
@@ -178,6 +191,19 @@ public:
     const std::unordered_map<std::string, double>& get_variables() const { return context_.variables_; }
     const std::unordered_map<std::string, cindex_t>& get_clock_map() const { return context_.clocks_; }
     const std::unordered_map<std::string, double>& get_constants() const { return context_.constants_; }
+    
+    /**
+     * Get all timing constants from guards and invariants for candidate-delay method
+     */
+    const std::set<int>& get_timing_constants() const { return timing_constants_; }
+
+    /*
+    * get max timing constant
+    */
+    int get_max_timing_constant() const {
+        if (timing_constants_.empty()) return -1;  // Meaningful value indicating no constants present
+        return *std::max_element(timing_constants_.begin(), timing_constants_.end());
+    }
 
     void set_constant(const std::string& name, int value) {
         context_.constants_[name] = value;
@@ -208,6 +234,9 @@ public:
      * Get the dimension (number of clocks + 1)
      */
     cindex_t get_dimension() const { return dimension_; }
+
+    const std::vector<int32_t>& get_clock_max_bounds() const { return clock_max_bounds_; }
+    const std::vector<int32_t>& get_clock_lower_bounds() const { return clock_min_lower_bounds_; }
 
 
     std::vector<const Transition*> get_outgoing_transitions(int location_id) const;
@@ -312,6 +341,11 @@ public:
     std::vector<raw_t> time_elapse(const std::vector<raw_t>& zone) const;
     
     /**
+     * Apply time elapse to a zone by a specific delay
+     */
+    std::vector<raw_t> time_elapse(const std::vector<raw_t>& zone, double delay) const;
+    
+    /**
      * Apply invariant constraints to a zone
      */
     std::vector<raw_t> apply_invariants(const std::vector<raw_t>& zone, int location_id) const;
@@ -359,6 +393,12 @@ public:
      */
     const ZoneState* get_zone_state(size_t state_id) const;
     
+    /**
+     * Find existing zone state by location and zone (optimized hash lookup)
+     * Returns the zone state pointer if found, nullptr if not found
+     */
+    const ZoneState* find_zone_state(int location_id, const std::vector<raw_t>& zone) const;
+    
     const std::vector<std::unique_ptr<ZoneState>>& get_all_zone_states() const { return states_; }
 
 private:
@@ -371,6 +411,29 @@ private:
      * Explore all successors of a state
      */
     void explore_state(int state_id);
+    
+    // Helper functions for build_from_template
+    void parse_template_declarations(const UTAP::Template& template_ref);
+    void parse_template_parameters(const UTAP::Template& template_ref);
+    void finalize_dimension();
+    void build_locations(const UTAP::Template& template_ref);
+    void build_transitions(const UTAP::Template& template_ref);
+    
+    // Location and transition parsing helpers
+    void parse_location_invariant(const UTAP::Location& location, int loc_int_id);
+    bool get_edge_locations(const UTAP::Edge& edge, std::string& source_id, std::string& target_id);
+    std::string parse_edge_assignment(const UTAP::Edge& edge, size_t edge_index);
+    std::string handle_clock_reset(const std::string& clock_name, int reset_value, 
+                                 size_t edge_index, const std::string& assign_str);
+    std::string handle_variable_assignment(const std::string& var_name, int var_value, 
+                                         const std::string& assign_str);
+    bool parse_edge_guard(const UTAP::Edge& edge, size_t edge_index);
+    bool parse_guard_fallback(const UTAP::Expression& guard, size_t edge_index, bool& has_clock_constraints);
+    void parse_edge_synchronization(const UTAP::Edge& edge, size_t edge_index);
+    
+    // Constraint extraction and evaluation helpers
+    bool evaluate_variable_constraint(const std::string& var_name, const std::string& op, int value);
+    bool evaluate_comparison(double lhs, const std::string& op, int rhs);
 };
 
 } // namespace rtwbs

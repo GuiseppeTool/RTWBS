@@ -148,24 +148,11 @@ int main() {
         checker.print_statistics();    
         std::cout << std::endl;
         
-        // Test 2: Invalid refinement
-        std::cout << "=== Test 2: Invalid RTWBS Refinement ===" << std::endl;
-        
-        std::vector<rtwbs::EventTransition> counterexample;
-        bool is_invalid_valid = checker.check_rtwbs_with_counterexample(invalid, abstract, counterexample);
-        
-        std::cout << "Result: " << (is_invalid_valid ? "VALID" : "INVALID") << " refinement" << std::endl;
-        
-        if (!counterexample.empty()) {
-            std::cout << "Counterexample found:" << std::endl;
-            for (const auto& trans : counterexample) {
-                std::cout << "  Event: " << trans.event 
-                          << " (" << (trans.is_sent ? "sent" : "received") << ")"
-                          << " with bound " << trans.time_bound << std::endl;
-            }
-        }
-        
-        checker.print_statistics();
+    // Test 2: Invalid refinement (no counterexample collection in new API)
+    std::cout << "=== Test 2: Invalid RTWBS Refinement ===" << std::endl;
+    bool invalid_ok = checker.check_rtwbs_equivalence(invalid, abstract);
+    std::cout << "Result: " << (invalid_ok ? "VALID" : "INVALID") << " refinement" << std::endl;
+    checker.print_statistics();
         
         std::cout << std::endl;
         

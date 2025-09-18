@@ -4,7 +4,7 @@
 
 int main(int argc, char* argv[]) {
     try {
-        std::string filename = "assets/unit_tests/fischer.xml";
+        std::string filename = "assets/FMICS2021/modelConfStandard.xml";
         if (argc > 1) {
             filename = std::string(argv[1]);
         }

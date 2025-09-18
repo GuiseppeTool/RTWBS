@@ -234,13 +234,7 @@ int main() {
                       << " (" << result.template_name_refined << " ≼ " << result.template_name_abstract << "): "
                       << (result.is_equivalent ? "EQUIVALENT" : "NOT EQUIVALENT") << std::endl;
             
-            if (!result.is_equivalent && !result.counterexample.empty()) {
-                std::cout << "  Counterexample events: ";
-                for (const auto& event : result.counterexample) {
-                    std::cout << event.event << " ";
-                }
-                std::cout << std::endl;
-            }
+            // Counterexample reporting removed in new simplified API
             
             std::cout << "  Statistics: " << result.statistics.refined_states 
                       << " refined states, " << result.statistics.abstract_states 

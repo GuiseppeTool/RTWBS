@@ -22,6 +22,19 @@ file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/benchmarks)
 # Development mode option (ON by default)
 option(DEV_MODE "Enable development mode with debug prints" ON)
 
+# Set build type and compile flags
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE Debug)
+endif()
+
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    set(CMAKE_CXX_FLAGS_DEBUG "-g -O0 -DDEBUG")
+    message(STATUS "Debug build: ON (debug symbols enabled)")
+else()
+    set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
+    message(STATUS "Release build: ON (optimizations enabled)")
+endif()
+
 if(DEV_MODE)
     message(STATUS "Development mode: ON (debug prints enabled)")
     add_definitions(-DDEV_MODE=1)

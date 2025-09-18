@@ -1,0 +1,377 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.6//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_6.dtd'>
+<nta>
+	<declaration>// Global declarations for Sugar Beet Field Abstract Model
+
+// Constants
+const int NUM_DRONES = 3;
+const int TRUCK_INTERVAL = 240; // 4 hours in minutes
+const int TRUCK_STAY_DURATION = 20; // minutes
+
+// Timing bounds (abstract model - strict)
+const int MONITORING_SEND_BOUND = 120; // 2 minutes after landing
+const int MONITORING_RECEIVE_BOUND = 120; // same as send in abstract
+const int PEST_ACK_SEND_BOUND = 300; // 5 minutes
+const int PEST_ACK_RECEIVE_BOUND = 300; // same as send in abstract
+const int SPRAYING_START_BOUND = 600; // 10 minutes
+const int SPRAYING_DURATION = 1200; // 20 minutes from start
+const int DOCKING_REQUEST_BOUND = 180; // 3 minutes
+const int DOCKING_RESPONSE_SEND_BOUND = 120; // 2 minutes
+const int DOCKING_RESPONSE_RECEIVE_BOUND = 120; // same as send in abstract
+const int SAMPLE_TRANSFER_DURATION = 300; // 5 minutes
+
+// Communication channels
+broadcast chan takeoff[NUM_DRONES];
+broadcast chan land[NUM_DRONES];
+broadcast chan monitoring_report[NUM_DRONES];
+broadcast chan pest_detected[NUM_DRONES];
+broadcast chan pest_ack[NUM_DRONES];
+broadcast chan spray_start[NUM_DRONES];
+broadcast chan spray_complete[NUM_DRONES];
+broadcast chan truck_arrive;
+broadcast chan truck_leave;
+broadcast chan docking_request[NUM_DRONES];
+broadcast chan docking_response[NUM_DRONES];
+broadcast chan transfer_complete[NUM_DRONES];
+
+// Global state
+bool controller_available = true;
+bool truck_present = false;
+bool pest_outbreak = false;
+
+// Drone states
+typedef struct {
+    bool in_flight;
+    bool has_samples;
+    bool pest_detected_flag;
+    bool spray_acknowledged;
+    bool docked;
+} drone_state_t;
+
+drone_state_t drone_states[NUM_DRONES];
+</declaration>
+	<template>
+		<name x="5" y="5">Drone</name>
+		<parameter>const int id</parameter>
+		<declaration>// Local declarations for Drone template
+clock x; // local clock for timing constraints
+bool monitoring_sent = false;
+bool pest_request_sent = false;
+bool docking_request_sent = false;
+</declaration>
+		<location id="id0" x="-756" y="-204">
+			<name x="-766" y="-238">Idle</name>
+		</location>
+		<location id="id1" x="-552" y="-204">
+			<name x="-586" y="-238">InFlight</name>
+			<label kind="invariant" x="-569" y="-187">x &lt;= 60</label>
+		</location>
+		<location id="id2" x="-161" y="-297">
+			<name x="-186" y="-331">Landed</name>
+			<label kind="invariant" x="-136" y="-297">x &lt;= MONITORING_SEND_BOUND</label>
+		</location>
+		<location id="id3" x="86" y="-441">
+			<name x="42" y="-475">MonitoringReported</name>
+		</location>
+		<location id="id4" x="-161" y="-68">
+			<name x="-280" y="-76">PestDetected</name>
+			<label kind="invariant" x="-399" y="-59">x &lt;= PEST_ACK_RECEIVE_BOUND</label>
+		</location>
+		<location id="id5" x="238" y="-68">
+			<name x="127" y="-59">SprayAcknowledged</name>
+			<label kind="invariant" x="145" y="-34">x &lt;= SPRAYING_START_BOUND</label>
+		</location>
+		<location id="id6" x="365" y="-238">
+			<name x="331" y="-280">Spraying</name>
+			<label kind="invariant" x="297" y="-221">x &lt;= SPRAYING_DURATION</label>
+		</location>
+		<location id="id7" x="620" y="-238">
+			<name x="569" y="-272">SprayComplete</name>
+		</location>
+		<location id="id8" x="620" y="-68">
+			<name x="637" y="-85">WaitingForTruck</name>
+			<label kind="invariant" x="637" y="-68">x &lt;= 300</label>
+		</location>
+		<location id="id9" x="619" y="25">
+			<name x="578" y="42">DockingRequested</name>
+			<label kind="invariant" x="612" y="59">x &lt;= DOCKING_RESPONSE_RECEIVE_BOUND</label>
+		</location>
+		<location id="id10" x="255" y="25">
+			<name x="265" y="42">Docked</name>
+			<label kind="invariant" x="8" y="51">x &lt;= SAMPLE_TRANSFER_DURATION</label>
+		</location>
+		<location id="id11" x="254" y="204">
+			<name x="272" y="204">TransferComplete</name>
+		</location>
+		<init ref="id0"/>
+		<transition id="id13">
+			<source ref="id0"/>
+			<target ref="id1"/>
+			<label kind="synchronisation" x="-663" y="-195">takeoff[id]!</label>
+			<label kind="assignment" x="-731" y="-289">x = 0,
+drone_states[id].in_flight = true</label>
+		</transition>
+		<transition id="id14">
+			<source ref="id1"/>
+			<target ref="id2"/>
+			<label kind="guard" x="-322" y="-322">x &gt;= 30</label>
+			<label kind="synchronisation" x="-297" y="-297">land[id]!</label>
+			<label kind="assignment" x="-493" y="-204">x = 0, 
+drone_states[id].in_flight = false,
+drone_states[id].has_samples = true</label>
+			<nail x="-552" y="-297"/>
+		</transition>
+		<transition id="id15">
+			<source ref="id2"/>
+			<target ref="id3"/>
+			<label kind="guard" x="-297" y="-424">!monitoring_sent &amp;&amp; id != 0</label>
+			<label kind="synchronisation" x="-297" y="-407">monitoring_report[id]!</label>
+			<label kind="assignment" x="-331" y="-390">monitoring_sent = true, x = 0</label>
+		</transition>
+		<transition id="id15b">
+			<source ref="id2"/>
+			<target ref="id3"/>
+			<label kind="guard" x="-297" y="-356">!monitoring_sent &amp;&amp; id == 0 &amp;&amp; !drone_states[id].pest_detected_flag</label>
+			<label kind="synchronisation" x="-297" y="-339">monitoring_report[id]!</label>
+			<label kind="assignment" x="-331" y="-322">monitoring_sent = true, x = 0</label>
+		</transition>
+		<transition id="id17a">
+			<source ref="id3"/>
+			<target ref="id8"/>
+			<label kind="guard" x="297" y="-331">monitoring_sent</label>
+		</transition>
+		<transition id="id18">
+			<source ref="id2"/>
+			<target ref="id4"/>
+			<label kind="guard" x="-144" y="-246">id == 0</label>
+			<label kind="assignment" x="-153" y="-221">pest_outbreak = true, 
+drone_states[id].pest_detected_flag = true</label>
+		</transition>
+		<transition id="id19">
+			<source ref="id4"/>
+			<target ref="id4"/>
+			<label kind="guard" x="-161" y="-34">!pest_request_sent</label>
+			<label kind="synchronisation" x="-161" y="-17">pest_detected[id]!</label>
+			<label kind="assignment" x="-195" y="0">pest_request_sent = true</label>
+			<nail x="8" y="-68"/>
+			<nail x="8" y="-17"/>
+			<nail x="-161" y="-17"/>
+		</transition>
+		<transition id="id20">
+			<source ref="id4"/>
+			<target ref="id5"/>
+			<label kind="synchronisation" x="0" y="-93">pest_ack[id]?</label>
+			<label kind="assignment" x="-144" y="-119">drone_states[id].spray_acknowledged = true,
+ x = 0</label>
+		</transition>
+		<transition id="id21">
+			<source ref="id5"/>
+			<target ref="id6"/>
+			<label kind="synchronisation" x="187" y="-263">spray_start[id]!</label>
+			<label kind="assignment" x="255" y="-229">x = 0</label>
+			<nail x="238" y="-238"/>
+		</transition>
+		<transition id="id22">
+			<source ref="id6"/>
+			<target ref="id7"/>
+			<label kind="guard" x="391" y="-263">x &gt;= SPRAYING_DURATION</label>
+			<label kind="synchronisation" x="425" y="-238">spray_complete[id]!</label>
+		</transition>
+		<transition id="id23">
+			<source ref="id7"/>
+			<target ref="id8"/>
+			<label kind="assignment" x="629" y="-178">drone_states[id].pest_detected_flag = false</label>
+		</transition>
+		<transition id="id23a">
+			<source ref="id8"/>
+			<target ref="id8"/>
+			<label kind="synchronisation" x="688" y="-110">truck_arrive?</label>
+			<label kind="assignment" x="688" y="-93">x = 0</label>
+			<nail x="688" y="-68"/>
+			<nail x="688" y="-34"/>
+			<nail x="620" y="-34"/>
+		</transition>
+		<transition id="id24">
+			<source ref="id8"/>
+			<target ref="id9"/>
+			<label kind="guard" x="-102" y="25">truck_present &amp;&amp; x &lt;= DOCKING_REQUEST_BOUND</label>
+			<label kind="synchronisation" x="263" y="68">docking_request[id]!</label>
+			<label kind="assignment" x="629" y="-25">docking_request_sent = true, x = 0</label>
+		</transition>
+		<transition id="id25">
+			<source ref="id9"/>
+			<target ref="id10"/>
+			<label kind="synchronisation" x="340" y="0">docking_response[id]?</label>
+			<label kind="assignment" x="331" y="25">drone_states[id].docked = true, 
+x = 0</label>
+		</transition>
+		<transition id="id26">
+			<source ref="id10"/>
+			<target ref="id11"/>
+			<label kind="guard" x="263" y="102">x &gt;= SAMPLE_TRANSFER_DURATION</label>
+			<label kind="synchronisation" x="263" y="119">transfer_complete[id]!</label>
+			<label kind="assignment" x="272" y="144">drone_states[id].has_samples = false, 
+drone_states[id].docked = false</label>
+		</transition>
+		<transition id="id26a">
+			<source ref="id8"/>
+			<target ref="id0"/>
+			<label kind="guard" x="420" y="136">x &gt;= 300</label>
+			<label kind="assignment" x="420" y="153">monitoring_sent = false, pest_request_sent = false, docking_request_sent = false</label>
+			<nail x="620" y="204"/>
+			<nail x="-756" y="204"/>
+		</transition>
+		<transition id="id27">
+			<source ref="id11"/>
+			<target ref="id0"/>
+			<label kind="assignment" x="-493" y="204">monitoring_sent = false, pest_request_sent = false, docking_request_sent = false</label>
+			<nail x="-756" y="204"/>
+		</transition>
+	</template>
+	<template>
+		<name x="5" y="5">Controller</name>
+		<declaration>// Local declarations for Controller
+clock y; // controller clock
+int pending_monitoring_reports = 0;
+int pending_pest_requests = 0;
+bool processing_request = false;
+</declaration>
+		<location id="id28" x="-467" y="-153">
+			<name x="-450" y="-170">Ready</name>
+		</location>
+		<location id="id29" x="-467" y="-289">
+			<name x="-476" y="-323">ProcessingMonitoring</name>
+			<label kind="invariant" x="-450" y="-289">y &lt;= 30</label>
+		</location>
+		<location id="id30" x="-467" y="-17">
+			<name x="-620" y="-25">ProcessingPest</name>
+			<label kind="invariant" x="-714" y="0">y &lt;= PEST_ACK_SEND_BOUND</label>
+		</location>
+		<location id="id31" x="-263" y="-17">
+			<name x="-221" y="-25">PestAckSent</name>
+		</location>
+		<init ref="id28"/>
+		<transition id="id32">
+			<source ref="id28"/>
+			<target ref="id29"/>
+			<label kind="select" x="-450" y="-229">i : int[0, NUM_DRONES-1]</label>
+			<label kind="synchronisation" x="-442" y="-212">monitoring_report[i]?</label>
+			<label kind="assignment" x="-433" y="-263">y = 0, processing_request = true</label>
+		</transition>
+		<transition id="id33">
+			<source ref="id29"/>
+			<target ref="id28"/>
+			<label kind="guard" x="-620" y="-229">y &gt;= 10</label>
+			<label kind="assignment" x="-765" y="-255">processing_request = false</label>
+			<nail x="-544" y="-289"/>
+			<nail x="-544" y="-153"/>
+		</transition>
+		<transition id="id34">
+			<source ref="id28"/>
+			<target ref="id30"/>
+			<label kind="select" x="-680" y="-136">i : int[0, NUM_DRONES-1]</label>
+			<label kind="synchronisation" x="-646" y="-110">pest_detected[i]?</label>
+			<label kind="assignment" x="-756" y="-93">y = 0, processing_request = true</label>
+		</transition>
+		<transition id="id35">
+			<source ref="id30"/>
+			<target ref="id31"/>
+			<label kind="select" x="-476" y="0">i : int[0, NUM_DRONES-1]</label>
+			<label kind="synchronisation" x="-416" y="-34">pest_ack[i]!</label>
+			<label kind="assignment" x="-399" y="-17">y = 0</label>
+		</transition>
+		<transition id="id36">
+			<source ref="id31"/>
+			<target ref="id28"/>
+			<label kind="assignment" x="-374" y="-110">processing_request = false</label>
+		</transition>
+	</template>
+	<template>
+		<name x="5" y="5">Truck</name>
+		<declaration>// Local declarations for Truck
+clock z; // truck clock
+int docking_responses_sent = 0;
+bool accepting_docking = true;
+</declaration>
+		<location id="id37" x="-900" y="-416">
+			<name x="-985" y="-425">Absent</name>
+			<label kind="invariant" x="-1036" y="-399">z &lt;= 10</label>
+		</location>
+		<location id="id38" x="-569" y="-416">
+			<name x="-552" y="-416">Present</name>
+			<label kind="invariant" x="-620" y="-399">z &lt;= TRUCK_STAY_DURATION</label>
+		</location>
+		<location id="id39" x="-144" y="-416">
+			<name x="-195" y="-399">ProcessingDocking</name>
+			<label kind="invariant" x="-263" y="-382">z &lt;= DOCKING_RESPONSE_SEND_BOUND</label>
+		</location>
+		<init ref="id37"/>
+		<transition id="id40">
+			<source ref="id37"/>
+			<target ref="id38"/>
+			<label kind="guard" x="-858" y="-442">z &gt;= 5</label>
+			<label kind="synchronisation" x="-696" y="-442">truck_arrive!</label>
+			<label kind="assignment" x="-824" y="-408">truck_present = true,
+z = 0, 
+accepting_docking = true</label>
+		</transition>
+		<transition id="id41">
+			<source ref="id38"/>
+			<target ref="id39"/>
+			<label kind="select" x="-416" y="-518">i : int[0, NUM_DRONES-1]</label>
+			<label kind="synchronisation" x="-407" y="-493">docking_request[i]?</label>
+			<label kind="assignment" x="-246" y="-493">z = 0</label>
+			<nail x="-569" y="-493"/>
+			<nail x="-144" y="-493"/>
+		</transition>
+		<transition id="id42">
+			<source ref="id39"/>
+			<target ref="id38"/>
+			<label kind="select" x="-399" y="-408">i : int[0, NUM_DRONES-1]</label>
+			<label kind="synchronisation" x="-424" y="-442">docking_response[i]!</label>
+			<label kind="assignment" x="-433" y="-391">docking_responses_sent++</label>
+		</transition>
+		<transition id="id43">
+			<source ref="id38"/>
+			<target ref="id37"/>
+			<label kind="guard" x="-892" y="-518">z &gt;= TRUCK_STAY_DURATION</label>
+			<label kind="synchronisation" x="-688" y="-510">truck_leave!</label>
+			<label kind="assignment" x="-832" y="-578">truck_present = false, 
+z = 0, 
+docking_responses_sent = 0</label>
+			<nail x="-569" y="-493"/>
+			<nail x="-900" y="-493"/>
+		</transition>
+	</template>
+	<system>// System instantiation
+// Instantiate drones
+Drone0 = Drone(0);
+Drone1 = Drone(1);
+Drone2 = Drone(2);
+
+// Instantiate controller and truck
+ControllerInstance = Controller();
+TruckInstance = Truck();
+
+// System composition
+system Drone0, Drone1, Drone2, ControllerInstance, TruckInstance;
+</system>
+	<queries>
+		<query>
+			<formula>A[] not deadlock</formula>
+			<comment>Verify that the system is deadlock-free</comment>
+			<result outcome="failure" type="quality" timestamp="2025-09-09 13:23:46 +0200">
+			</result>
+		</query>
+		<query>
+			<formula>A[] (drone_states[0].in_flight imply Drone0.x &lt;= 60) and (drone_states[1].in_flight imply Drone1.x &lt;= 60) and (drone_states[2].in_flight imply Drone2.x &lt;= 60)</formula>
+			<comment>Flight duration constraint</comment>
+		</query>
+		<query>
+			<formula>A[] (truck_present imply TruckInstance.z &lt;= TRUCK_STAY_DURATION)</formula>
+			<comment>Truck stay duration constraint</comment>
+			<result outcome="success" type="quality" timestamp="2025-09-09 13:23:48 +0200">
+			</result>
+		</query>
+	</queries>
+</nta>

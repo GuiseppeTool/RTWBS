@@ -1,0 +1,41 @@
+% Section 2: Time Elapse
+\section{Time Elapse Semantics}
+\subsection{Theory}
+Given a zone Z, its time successor Up(Z) is the largest set reachable by letting all clocks advance synchronously by any non-negative real delay d while remaining within location invariants Inv(l):
+\[
+Up(Z) = \{ v + d \mid v \in Z, d \in \mathbb{R}_{\ge 0}, \forall t \in [0,d]: v+t \models Inv(l) \}
+\]
+In DBM terms, Up removes upper-bounds of the form \(x_i - x_0 \le c\) (i.e., constraints on absolute clock values), except those imposed indirectly by invariants. Differences \(x_i - x_j\) remain invariant under uniform delay, so relative constraints are preserved.
+
+\subsection{Finiteness: Extrapolation and LU Bounds}
+To guarantee a finite symbolic state space, extrapolation widens bounds above per-clock maximal constants (collected from guards/invariants). LU-extrapolation uses lower L(x) and upper U(x) to generalize bounds individually per clock, leading to coarser but finite partition of time.
+
+\subsection{Implementation Details}
+Relevant code (excerpt) from \texttt{time\_elapse}:
+\begin{lstlisting}
+std::vector<raw_t> TimedAutomaton::time_elapse(const std::vector<raw_t>& zone) const {
+    std::vector<raw_t> result = zone;
+    dbm_up(result.data(), dimension_);
+    if (!clock_max_bounds_.empty() && clock_max_bounds_.size() == dimension_) {
+        int global_max = get_max_timing_constant();
+        std::vector<int32_t> U = clock_max_bounds_;
+        std::vector<int32_t> L = clock_min_lower_bounds_;
+        for (cindex_t i = 1; i < dimension_; ++i) {
+            if (U[i] <= 0) U[i] = global_max;
+        }
+        dbm_extrapolateMaxBounds(result.data(), dimension_, U.data());
+    }
+    return result;
+}
+\end{lstlisting}
+Steps:
+\begin{enumerate}
+  \item Copy zone to mutable buffer.
+  \item Apply \texttt{dbm\_up} (canonical Up). Distances to reference loosen.
+  \item Determine per-clock maximal bounds (fallback to global max if missing).
+    \item Apply Max-bounds extrapolation: any \(x_i\) upper value beyond \(U[i]\) replaced by \(\infty\).
+\end{enumerate}
+Error handling ensures mismatched dimensions or negative delays yield empty zones.
+
+\subsection{Fixed Delay Variant}
+The overload with a concrete delay \(d\) approximates exact passage by first applying general \(\mathrm{Up}(Z)\) then optionally constraining with coarse bounds expressing that at least \(d\) time has elapsed. For large delays \(> 1000\) this degenerates to standard \(\mathrm{Up}\) (abstraction).

@@ -1,0 +1,479 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.1//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_2.dtd'>
+<nta>
+	<declaration>// Global declarations for Sugar Beet Field Refined Model
+
+// Constants
+const int NUM_DRONES = 3;
+const int TRUCK_INTERVAL = 240; // 4 hours in minutes
+const int TRUCK_STAY_DURATION = 20; // minutes
+
+// RTWBS Timing bounds (refined model - relaxed receive bounds)
+// Send bounds remain strict (same as abstract)
+const int MONITORING_SEND_BOUND = 120; // 2 minutes after landing (STRICT)
+const int MONITORING_RECEIVE_BOUND = 180; // 3 minutes (RELAXED from 2 min)
+const int PEST_ACK_SEND_BOUND = 300; // 5 minutes (STRICT)
+const int PEST_ACK_RECEIVE_BOUND = 420; // 7 minutes (RELAXED from 5 min)
+const int SPRAYING_START_BOUND = 600; // 10 minutes (STRICT)
+const int SPRAYING_DURATION = 1200; // 20 minutes from start (STRICT)
+const int DOCKING_REQUEST_BOUND = 180; // 3 minutes (STRICT)
+const int DOCKING_RESPONSE_SEND_BOUND = 120; // 2 minutes (STRICT)
+const int DOCKING_RESPONSE_RECEIVE_BOUND = 240; // 4 minutes (RELAXED from 2 min)
+const int SAMPLE_TRANSFER_DURATION = 300; // 5 minutes (STRICT)
+
+// Additional refined model parameters
+const int CONTROLLER_BUFFER_DELAY = 60; // Buffer processing delay
+const int NETWORK_ARBITRATION_DELAY = 30; // Network queue delay
+const int INTERNAL_PROCESSING_DELAY = 45; // Internal processing delay
+
+// Communication channels
+chan takeoff[NUM_DRONES];
+chan land[NUM_DRONES];
+chan monitoring_report[NUM_DRONES];
+chan pest_detected[NUM_DRONES];
+chan pest_ack[NUM_DRONES];
+chan spray_start[NUM_DRONES];
+chan spray_complete[NUM_DRONES];
+chan truck_arrive;
+chan truck_leave;
+chan docking_request[NUM_DRONES];
+chan docking_response[NUM_DRONES];
+chan transfer_complete[NUM_DRONES];
+
+// Internal refined channels for buffering
+chan internal_monitoring[NUM_DRONES];
+chan internal_pest_ack[NUM_DRONES];
+chan internal_docking_response[NUM_DRONES];
+
+// Synchronization for communication exclusivity
+chan transmit_mutex;
+urgent chan release_mutex;
+
+// Global state with refined model extensions
+bool controller_available = true;
+bool truck_present = false;
+int active_transmissions = 0;
+bool pest_outbreak = false;
+int buffer_load = 0;
+int network_congestion = 0;
+
+// Drone states
+typedef struct {
+    bool in_flight;
+    bool has_samples;
+    bool pest_detected_flag;
+    bool spray_acknowledged;
+    bool docked;
+    bool buffering_delay_active;
+} drone_state_t;
+
+drone_state_t drone_states[NUM_DRONES];
+
+// Buffer management
+typedef struct {
+    int message_type; // 0=monitoring, 1=pest, 2=docking
+    int drone_id;
+    int timestamp;
+    bool processed;
+} message_buffer_t;
+
+message_buffer_t message_buffer[10];
+int buffer_size = 0;
+</declaration>
+	<template>
+		<name x="5" y="5">Drone</name>
+		<parameter>const int id</parameter>
+		<declaration>// Local declarations for Drone template
+clock x; // local clock for timing constraints
+bool monitoring_sent = false;
+bool pest_request_sent = false;
+bool docking_request_sent = false;
+bool can_transmit = false;
+clock buffering_timer; // for buffering delays
+</declaration>
+		<location id="id0" x="-680" y="-204">
+			<name x="-690" y="-238">Idle</name>
+		</location>
+		<location id="id1" x="-476" y="-204">
+			<name x="-486" y="-238">InFlight</name>
+			<label kind="invariant" x="-528" y="-187">x &lt;= 60</label>
+		</location>
+		<location id="id2" x="-272" y="-204">
+			<name x="-297" y="-238">Landed</name>
+			<label kind="invariant" x="-331" y="-187">x &lt;= MONITORING_SEND_BOUND</label>
+		</location>
+		<location id="id3" x="-68" y="-204">
+			<name x="-112" y="-238">MonitoringReported</name>
+		</location>
+		<location id="id4" x="-272" y="-68">
+			<name x="-331" y="-51">PestDetected</name>
+			<label kind="invariant" x="-365" y="-34">x &lt;= PEST_ACK_RECEIVE_BOUND</label>
+		</location>
+		<location id="id5" x="-68" y="-68">
+			<name x="-112" y="-51">SprayAcknowledged</name>
+			<label kind="invariant" x="-161" y="-34">x &lt;= SPRAYING_START_BOUND</label>
+		</location>
+		<location id="id6" x="136" y="-68">
+			<name x="146" y="-76">Spraying</name>
+			<label kind="invariant" x="146" y="-59">x &lt;= SPRAYING_DURATION</label>
+		</location>
+		<location id="id7" x="340" y="-68">
+			<name x="350" y="-76">SprayComplete</name>
+		</location>
+		<location id="id8" x="-68" y="68">
+			<name x="-127" y="85">WaitingForTruck</name>
+		</location>
+		<location id="id9" x="136" y="68">
+			<name x="146" y="85">DockingRequested</name>
+			<label kind="invariant" x="146" y="102">x &lt;= DOCKING_RESPONSE_RECEIVE_BOUND</label>
+		</location>
+		<location id="id10" x="340" y="68">
+			<name x="350" y="85">Docked</name>
+			<label kind="invariant" x="350" y="102">x &lt;= SAMPLE_TRANSFER_DURATION</label>
+		</location>
+		<location id="id11" x="136" y="204">
+			<name x="146" y="221">TransferComplete</name>
+		</location>
+		<location id="id12" x="-272" y="-340">
+			<name x="-331" y="-357">RequestingTransmission</name>
+		</location>
+		<location id="id13" x="-68" y="-340">
+			<name x="-127" y="-357">WaitingBuffering</name>
+			<label kind="invariant" x="-178" y="-323">buffering_timer &lt;= CONTROLLER_BUFFER_DELAY</label>
+		</location>
+		<location id="id14" x="-272" y="204">
+			<name x="-331" y="221">NetworkDelayed</name>
+			<label kind="invariant" x="-382" y="238">buffering_timer &lt;= NETWORK_ARBITRATION_DELAY</label>
+		</location>
+		<init ref="id0"/>
+		<transition>
+			<source ref="id0"/>
+			<target ref="id1"/>
+			<label kind="synchronisation" x="-612" y="-221">takeoff[id]!</label>
+			<label kind="assignment" x="-612" y="-204">x = 0, drone_states[id].in_flight = true</label>
+		</transition>
+		<transition>
+			<source ref="id1"/>
+			<target ref="id2"/>
+			<label kind="guard" x="-408" y="-221">x &gt;= 30</label>
+			<label kind="synchronisation" x="-408" y="-204">land[id]!</label>
+			<label kind="assignment" x="-408" y="-187">x = 0, drone_states[id].in_flight = false, drone_states[id].has_samples = true</label>
+		</transition>
+		<transition>
+			<source ref="id2"/>
+			<target ref="id12"/>
+			<label kind="guard" x="-340" y="-289">!monitoring_sent</label>
+			<label kind="assignment" x="-340" y="-272">can_transmit = false</label>
+		</transition>
+		<transition>
+			<source ref="id12"/>
+			<target ref="id13"/>
+			<label kind="synchronisation" x="-212" y="-357">transmit_mutex?</label>
+			<label kind="assignment" x="-212" y="-340">can_transmit = true, buffering_timer = 0</label>
+		</transition>
+		<transition>
+			<source ref="id13"/>
+			<target ref="id3"/>
+			<label kind="guard" x="-17" y="-306">can_transmit &amp;&amp; buffering_timer &gt;= random(CONTROLLER_BUFFER_DELAY)</label>
+			<label kind="synchronisation" x="-17" y="-289">monitoring_report[id]!</label>
+			<label kind="assignment" x="-17" y="-272">monitoring_sent = true, x = 0</label>
+		</transition>
+		<transition>
+			<source ref="id3"/>
+			<target ref="id8"/>
+			<label kind="synchronisation" x="-34" y="-136">release_mutex!</label>
+		</transition>
+		<transition>
+			<source ref="id2"/>
+			<target ref="id4"/>
+			<label kind="guard" x="-255" y="-153">random(100) &lt; 20</label>
+			<label kind="assignment" x="-255" y="-136">pest_outbreak = true, drone_states[id].pest_detected_flag = true</label>
+		</transition>
+		<transition>
+			<source ref="id4"/>
+			<target ref="id14"/>
+			<label kind="synchronisation" x="-323" y="85">pest_detected[id]!</label>
+			<label kind="assignment" x="-323" y="102">pest_request_sent = true, buffering_timer = 0</label>
+		</transition>
+		<transition>
+			<source ref="id14"/>
+			<target ref="id4"/>
+			<label kind="guard" x="-408" y="119">buffering_timer &gt;= NETWORK_ARBITRATION_DELAY</label>
+		</transition>
+		<transition>
+			<source ref="id4"/>
+			<target ref="id5"/>
+			<label kind="synchronisation" x="-204" y="-85">pest_ack[id]?</label>
+			<label kind="assignment" x="-204" y="-68">drone_states[id].spray_acknowledged = true, x = 0</label>
+		</transition>
+		<transition>
+			<source ref="id5"/>
+			<target ref="id6"/>
+			<label kind="synchronisation" x="17" y="-85">spray_start[id]!</label>
+			<label kind="assignment" x="17" y="-68">x = 0</label>
+		</transition>
+		<transition>
+			<source ref="id6"/>
+			<target ref="id7"/>
+			<label kind="guard" x="204" y="-85">x &gt;= SPRAYING_DURATION</label>
+			<label kind="synchronisation" x="204" y="-68">spray_complete[id]!</label>
+		</transition>
+		<transition>
+			<source ref="id7"/>
+			<target ref="id8"/>
+			<label kind="assignment" x="170" y="-17">drone_states[id].pest_detected_flag = false</label>
+		</transition>
+		<transition>
+			<source ref="id8"/>
+			<target ref="id9"/>
+			<label kind="guard" x="17" y="51">truck_present &amp;&amp; x &lt;= DOCKING_REQUEST_BOUND</label>
+			<label kind="synchronisation" x="17" y="68">docking_request[id]!</label>
+			<label kind="assignment" x="17" y="85">docking_request_sent = true, x = 0</label>
+		</transition>
+		<transition>
+			<source ref="id9"/>
+			<target ref="id10"/>
+			<label kind="synchronisation" x="204" y="51">docking_response[id]?</label>
+			<label kind="assignment" x="204" y="68">drone_states[id].docked = true, x = 0</label>
+		</transition>
+		<transition>
+			<source ref="id10"/>
+			<target ref="id11"/>
+			<label kind="guard" x="204" y="119">x &gt;= SAMPLE_TRANSFER_DURATION</label>
+			<label kind="synchronisation" x="204" y="136">transfer_complete[id]!</label>
+			<label kind="assignment" x="204" y="153">drone_states[id].has_samples = false, drone_states[id].docked = false</label>
+		</transition>
+		<transition>
+			<source ref="id11"/>
+			<target ref="id0"/>
+			<label kind="assignment" x="-127" y="238">monitoring_sent = false, pest_request_sent = false, docking_request_sent = false</label>
+		</transition>
+	</template>
+	<template>
+		<name x="5" y="5">Controller</name>
+		<declaration>// Local declarations for Controller with buffering
+clock y; // controller clock
+clock buffer_clock; // for internal processing delays
+int pending_monitoring_reports = 0;
+int pending_pest_requests = 0;
+bool processing_request = false;
+int internal_queue_size = 0;
+</declaration>
+		<location id="id15" x="-204" y="-136">
+			<name x="-214" y="-170">Ready</name>
+		</location>
+		<location id="id16" x="0" y="-136">
+			<name x="-51" y="-170">ProcessingMonitoring</name>
+			<label kind="invariant" x="-85" y="-119">y &lt;= MONITORING_RECEIVE_BOUND</label>
+		</location>
+		<location id="id17" x="-204" y="0">
+			<name x="-255" y="17">ProcessingPest</name>
+			<label kind="invariant" x="-289" y="34">y &lt;= PEST_ACK_SEND_BOUND</label>
+		</location>
+		<location id="id18" x="0" y="0">
+			<name x="10" y="-8">PestAckBuffering</name>
+			<label kind="invariant" x="10" y="9">buffer_clock &lt;= INTERNAL_PROCESSING_DELAY</label>
+		</location>
+		<location id="id19" x="204" y="0">
+			<name x="214" y="-8">PestAckSent</name>
+		</location>
+		<location id="id20" x="0" y="-272">
+			<name x="-76" y="-289">MonitoringBuffering</name>
+			<label kind="invariant" x="-119" y="-272">buffer_clock &lt;= CONTROLLER_BUFFER_DELAY</label>
+		</location>
+		<init ref="id15"/>
+		<transition>
+			<source ref="id15"/>
+			<target ref="id20"/>
+			<label kind="select" x="-136" y="-238">i : int[0, NUM_DRONES-1]</label>
+			<label kind="synchronisation" x="-136" y="-221">monitoring_report[i]?</label>
+			<label kind="assignment" x="-136" y="-204">buffer_clock = 0, internal_queue_size++</label>
+		</transition>
+		<transition>
+			<source ref="id20"/>
+			<target ref="id16"/>
+			<label kind="guard" x="-68" y="-221">buffer_clock &gt;= CONTROLLER_BUFFER_DELAY</label>
+			<label kind="assignment" x="-68" y="-204">y = 0, processing_request = true</label>
+		</transition>
+		<transition>
+			<source ref="id16"/>
+			<target ref="id15"/>
+			<label kind="guard" x="-136" y="-102">y &gt;= 30</label>
+			<label kind="assignment" x="-136" y="-85">processing_request = false, internal_queue_size--</label>
+		</transition>
+		<transition>
+			<source ref="id15"/>
+			<target ref="id17"/>
+			<label kind="select" x="-289" y="-85">i : int[0, NUM_DRONES-1]</label>
+			<label kind="synchronisation" x="-289" y="-68">pest_detected[i]?</label>
+			<label kind="assignment" x="-289" y="-51">y = 0, processing_request = true</label>
+		</transition>
+		<transition>
+			<source ref="id17"/>
+			<target ref="id18"/>
+			<label kind="assignment" x="-136" y="17">buffer_clock = 0</label>
+		</transition>
+		<transition>
+			<source ref="id18"/>
+			<target ref="id19"/>
+			<label kind="guard" x="68" y="-25">buffer_clock &gt;= INTERNAL_PROCESSING_DELAY</label>
+			<label kind="select" x="68" y="-8">i : int[0, NUM_DRONES-1]</label>
+			<label kind="synchronisation" x="68" y="9">pest_ack[i]!</label>
+		</transition>
+		<transition>
+			<source ref="id19"/>
+			<target ref="id15"/>
+			<label kind="assignment" x="68" y="-119">processing_request = false</label>
+		</transition>
+	</template>
+	<template>
+		<name x="5" y="5">Truck</name>
+		<declaration>// Local declarations for Truck with internal queueing
+clock z; // truck clock
+clock internal_processing; // for internal truck delays
+int docking_responses_sent = 0;
+bool accepting_docking = true;
+int internal_truck_queue = 0;
+</declaration>
+		<location id="id21" x="-204" y="-136">
+			<name x="-214" y="-170">Absent</name>
+			<label kind="invariant" x="-255" y="-119">z &lt;= TRUCK_INTERVAL</label>
+		</location>
+		<location id="id22" x="0" y="-136">
+			<name x="-10" y="-170">Present</name>
+			<label kind="invariant" x="-51" y="-119">z &lt;= TRUCK_STAY_DURATION</label>
+		</location>
+		<location id="id23" x="0" y="0">
+			<name x="-51" y="17">ProcessingDocking</name>
+			<label kind="invariant" x="-119" y="34">z &lt;= DOCKING_RESPONSE_SEND_BOUND</label>
+		</location>
+		<location id="id24" x="204" y="0">
+			<name x="214" y="17">InternalQueueing</name>
+			<label kind="invariant" x="214" y="34">internal_processing &lt;= NETWORK_ARBITRATION_DELAY</label>
+		</location>
+		<init ref="id21"/>
+		<transition>
+			<source ref="id21"/>
+			<target ref="id22"/>
+			<label kind="guard" x="-136" y="-170">z &gt;= TRUCK_INTERVAL</label>
+			<label kind="synchronisation" x="-136" y="-153">truck_arrive!</label>
+			<label kind="assignment" x="-136" y="-136">truck_present = true, z = 0, accepting_docking = true</label>
+		</transition>
+		<transition>
+			<source ref="id22"/>
+			<target ref="id23"/>
+			<label kind="select" x="-85" y="-85">i : int[0, NUM_DRONES-1]</label>
+			<label kind="synchronisation" x="-85" y="-68">docking_request[i]?</label>
+			<label kind="assignment" x="-85" y="-51">z = 0, internal_truck_queue++</label>
+		</transition>
+		<transition>
+			<source ref="id23"/>
+			<target ref="id24"/>
+			<label kind="assignment" x="68" y="-17">internal_processing = 0</label>
+		</transition>
+		<transition>
+			<source ref="id24"/>
+			<target ref="id22"/>
+			<label kind="guard" x="119" y="-102">internal_processing &gt;= NETWORK_ARBITRATION_DELAY</label>
+			<label kind="select" x="119" y="-85">i : int[0, NUM_DRONES-1]</label>
+			<label kind="synchronisation" x="119" y="-68">docking_response[i]!</label>
+			<label kind="assignment" x="119" y="-51">docking_responses_sent++, internal_truck_queue--</label>
+		</transition>
+		<transition>
+			<source ref="id22"/>
+			<target ref="id21"/>
+			<label kind="guard" x="-136" y="-102">z &gt;= TRUCK_STAY_DURATION</label>
+			<label kind="synchronisation" x="-136" y="-85">truck_leave!</label>
+			<label kind="assignment" x="-136" y="-68">truck_present = false, z = 0, docking_responses_sent = 0, internal_truck_queue = 0</label>
+		</transition>
+	</template>
+	<template>
+		<name x="5" y="5">TransmissionArbiter</name>
+		<declaration>// Enhanced transmission arbiter with congestion modeling
+int transmission_queue[NUM_DRONES];
+int queue_head = 0;
+int queue_tail = 0;
+bool mutex_held = false;
+clock congestion_timer; // models network congestion
+int congestion_level = 0;
+</declaration>
+		<location id="id25" x="0" y="0">
+			<name x="-59" y="17">Arbitrating</name>
+		</location>
+		<location id="id26" x="204" y="0">
+			<name x="214" y="17">CongestionDelay</name>
+			<label kind="invariant" x="214" y="34">congestion_timer &lt;= NETWORK_ARBITRATION_DELAY</label>
+		</location>
+		<init ref="id25"/>
+		<transition>
+			<source ref="id25"/>
+			<target ref="id26"/>
+			<label kind="guard" x="68" y="-25">!mutex_held &amp;&amp; congestion_level &gt; 2</label>
+			<label kind="assignment" x="68" y="-8">congestion_timer = 0</label>
+		</transition>
+		<transition>
+			<source ref="id26"/>
+			<target ref="id25"/>
+			<label kind="guard" x="68" y="51">congestion_timer &gt;= NETWORK_ARBITRATION_DELAY</label>
+			<label kind="synchronisation" x="68" y="68">transmit_mutex!</label>
+			<label kind="assignment" x="68" y="85">mutex_held = true, congestion_level = 0</label>
+		</transition>
+		<transition>
+			<source ref="id25"/>
+			<target ref="id25"/>
+			<label kind="guard" x="-102" y="-51">!mutex_held &amp;&amp; congestion_level &lt;= 2</label>
+			<label kind="synchronisation" x="-102" y="-34">transmit_mutex!</label>
+			<label kind="assignment" x="-102" y="-17">mutex_held = true</label>
+			<nail x="-68" y="-34"/>
+			<nail x="68" y="-34"/>
+		</transition>
+		<transition>
+			<source ref="id25"/>
+			<target ref="id25"/>
+			<label kind="synchronisation" x="-102" y="119">release_mutex?</label>
+			<label kind="assignment" x="-102" y="136">mutex_held = false, congestion_level++</label>
+			<nail x="-68" y="102"/>
+			<nail x="68" y="102"/>
+		</transition>
+	</template>
+	<system>// System instantiation
+// Instantiate drones
+Drone0 = Drone(0);
+Drone1 = Drone(1);
+Drone2 = Drone(2);
+
+// Instantiate controller, truck, and arbiter
+ControllerInstance = Controller();
+TruckInstance = Truck();
+ArbiterInstance = TransmissionArbiter();
+
+// System composition
+system Drone0, Drone1, Drone2, ControllerInstance, TruckInstance, ArbiterInstance;
+</system>
+	<queries>
+		<query>
+			<formula>A[] not deadlock</formula>
+			<comment>Verify that the system is deadlock-free</comment>
+		</query>
+		<query>
+			<formula>A[] (forall (i : int[0, NUM_DRONES-1]) drone_states[i].in_flight imply Drone(i).x &lt;= 60)</formula>
+			<comment>Flight duration constraint</comment>
+		</query>
+		<query>
+			<formula>A[] (truck_present imply TruckInstance.z &lt;= TRUCK_STAY_DURATION)</formula>
+			<comment>Truck stay duration constraint</comment>
+		</query>
+		<query>
+			<formula>A[] (active_transmissions &lt;= 1)</formula>
+			<comment>Mutual exclusion for transmissions</comment>
+		</query>
+		<query>
+			<formula>A[] (ControllerInstance.internal_queue_size &lt;= 5)</formula>
+			<comment>Controller buffer bounds</comment>
+		</query>
+		<query>
+			<formula>A[] (TruckInstance.internal_truck_queue &lt;= 3)</formula>
+			<comment>Truck internal queue bounds</comment>
+		</query>
+	</queries>
+</nta>

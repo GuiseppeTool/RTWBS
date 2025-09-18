@@ -1,0 +1,43 @@
+% Section 6: Mapping Theory to Code
+\section{Mapping: Theory \texorpdfstring{$\leftrightarrow$}{<->} Implementation}
+\subsection{DBM Layer}
+\begin{tabular}{ll}
+Theory Concept & Code Primitive \\\hline
+Zone initialization & dbm\_init \newline (time\_elapse prep) \\
+Closure & dbm\_close (implied inside guard/reset helpers) \\
+Up operation & dbm\_up (inside time\_elapse) \\
+Guard intersection & dbm\_constrain1 (timing\_ok / enabling) \\
+Extrapolation & dbm\_extrapolateMaxBounds (time\_elapse) \\
+Inclusion test & dbm\_relation (timing\_ok) \\
+\end{tabular}
+
+\subsection{Zone Graph}
+\begin{itemize}
+  \item BFS list: \texttt{waiting\_list\_}
+  \item Canonical state store: \texttt{state\_map\_} (hash of ZoneState)
+  \item Successor expansion: \texttt{explore\_state}
+  \item Transition enablement: \texttt{is\_transition\_enabled}
+\end{itemize}
+
+\subsection{Weak Semantics}
+\begin{description}
+  \item[$\tau$-closure] Function: \texttt{tau\_closure}. BFS over internal edges applying invariants + time + transitions.
+  \item[Weak successors] \texttt{weak\_observable\_successors}: $\tau^* a \tau^*$ pattern.
+\end{description}
+
+\subsection{Timing Side Conditions}
+Function \texttt{timing\_ok}: constructs enabling zones $(Up((Z\cup Inv)\cup g))$ and compares with inclusion direction based on synchronization kind.
+
+\subsection{Game Loop}
+Function \texttt{RTWBSChecker::check\_rtwbs\_equivalence}: greatest fixed point elimination. Relation container: unordered\_set of pairs with custom hash.
+
+\subsection{Statistics}
+Accumulated in \texttt{last\_stats\_}: refined/abstract state counts, surviving relation size, wall-clock time, approximate memory.
+
+\subsection{Potential Extensions}
+\begin{itemize}
+  \item Counterexample reconstruction: store witness abstract matches; backtrack on failure.
+  \item On-demand zone expansion: lazily build successors only when needed.
+  \item Partitioned relation: per-location buckets to reduce scan cost.
+  \item LU-extrapolation refinement: integrate lower bounds L for more precision.
+\end{itemize}

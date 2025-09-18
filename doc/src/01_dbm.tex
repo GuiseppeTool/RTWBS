@@ -1,0 +1,91 @@
+% Section 1: DBM Theory and Usage
+\section{Difference Bound Matrices (DBM)}
+\subsection{Mathematical Foundations}
+A \emph{zone} over a finite set of clocks \(C = \{x_1,\dots,x_n\}\) is a set of clock valuations satisfying conjunctions of constraints of the form:
+\[ x_i - x_j \ \triangleleft\ c \quad (0 \le i,j \le n,\; c \in \mathbb{Z},\; \triangleleft \in \{<,\le\}) \]
+with the special clock \(x_0\) fixed to 0. Zones are convex polyhedra in \(\mathbb{R}_{\ge 0}^n\).
+
+A Difference Bound Matrix (DBM) is an \((n+1)\times(n+1)\) matrix \(M\) where each entry \(M[i,j]\) encodes a constraint \(x_i - x_j \triangleleft c\). The canonical form (a closed DBM) ensures minimal bounds by computing the all-pairs shortest paths closure (Floyd–Warshall variant). The empty zone is detected if any diagonal entry violates \(x_i - x_i \le 0\).
+
+\subsection{Core Operations}
+Let \(D\) denote a DBM:
+\begin{itemize}
+  \item \textbf{Initialization} (Zero zone): All clocks equal 0: \(x_i = 0\). DBM: \(M[i,0] = (0,\le)\), \(M[0,i] = (0,\le)\).
+  \item \textbf{Up} (Time elapse): Removes upper bounds that prevent uniform time increase while preserving differences: formally \(\mathrm{Up}(Z) = \{\, v + d \mid v\in Z,\; d\in \mathbb{R}_{\ge 0}\,\}\) restricted by invariants.
+  \item \textbf{Guard intersection}: Add constraint \(x_i - x_j \triangleleft c\) by tightening \(M[i,j]\).
+  \item \textbf{Reset} of clock \(x_k\): Replace constraints involving \(x_k\) by those implied from setting \(x_k := 0\) (i.e., \(x_k\) becomes aligned with reference \(x_0\) after closure and guard application).
+  \item \textbf{Invariants}: Intersect zone with location invariant constraints before allowing time to pass or after transitions.
+  \item \textbf{Extrapolation}: Abstract zone by widening bounds exceeding maximal constants (LU / Max-bounds) to ensure finiteness of the symbolic state space.
+\end{itemize}
+
+\subsection{Relations Between DBMs}
+Given two canonical DBMs \(D_1\) and \(D_2\) over same dimension:
+\begin{itemize}
+  \item Inclusion: \(D_1 \subseteq D_2\) iff for all \(i,j\): \(bound(D_1[i,j]) \le bound(D_2[i,j])\).
+  \item Equality: Mutual inclusion.
+  \item Emptiness: Diagonal \(M[i,i]\) strictly negative (encoded sentinel) after closure.
+\end{itemize}
+
+\subsection{Closure Algorithm}
+Closure computes minimal constraints: for all \(i,j,k\), update \(M[i,j] = \min(M[i,j], M[i,k] + M[k,j])\). Complexity: \(O(n^3)\), with \(n = |C|+1\). Needed after each batch of constraint tightenings (guards, resets) to maintain canonical form.
+
+\subsection{Finiteness via Extrapolation}
+For timed automata with maximal constant K (from guards/invariants), zone graph may still explode. Extrapolation enforces an abstraction: if an upper-bound exceeds K, replace it by \(\infty\); if a lower-bound is below -K adjust to -K. LU-extrapolation refines this using per-clock separate lower (L) and upper (U) bounds.
+
+\subsection{Implementation Touchpoints}
+In code, helper calls include:
+\begin{lstlisting}
+dbm_init(zone.data(), dim);       // zero zone
+if(!dbm_close(zone.data(), dim))  // closure / emptiness
+    ...
+dbm_up(zone.data(), dim);         // Up operation
+dbm_constrain1(zone.data(), dim, i, j, value); // add guard
+// resets handled in apply_transition (not shown here)
+dbm_extrapolateMaxBounds(zone.data(), dim, U.data()); // widening
+\end{lstlisting}
+All operations act in-place on the contiguous matrix (\texttt{std::vector\textless raw\_t\textgreater}). Canonical pointers are not stored; structural sharing is avoided for simplicity.
+
+\subsection{Worked Example (2 Clocks)}
+Consider clocks $x$ and $y$ with reference $x_0=0$. Start in the zero zone (both clocks 0). We apply:
+\begin{enumerate}
+  \item Guard $x \le 5$.
+  \item Guard $y - x < 3$.
+  \item Invariant at location: $y \le 7$.
+  \item Time elapse (Up).
+  \item Reset $x$ (e.g. transition resets $x$).
+  \item Extrapolation with $U(x)=U(y)=5$.
+\end{enumerate}
+
+We encode each DBM entry as $(c,\prec)$ where $\prec \in \{<,\le\}$. Initial (zero) DBM (row index $i$, column $j$ encodes $x_i - x_j \prec c$):
+\begin{center}
+\begin{tabular}{c|ccc}
+ & $x_0$ & $x$ & $y$ \\\hline
+$x_0$ & $(0,\le)$ & $(0,\le)$ & $(0,\le)$ \\
+$x$   & $(0,\le)$ & $(0,\le)$ & $(0,\le)$ \\
+$y$   & $(0,\le)$ & $(0,\le)$ & $(0,\le)$ \\
+\end{tabular}
+\end{center}
+
+After applying guard $x \le 5$: tighten entry for $x - x_0$ giving $(5,\le)$. Guard $y - x < 3$ tightens $M[y,x]$ to $(3,<)$. Closure propagates $y - x_0 < 8$ but invariant $y \le 7$ later tightens to $(7,\le)$. Time elapse (Up) removes upper bounds from the reference to allow delay: entries of form $x_i - x_0 \prec c$ with $i>0$ may widen to $(\infty,\le)$ except those restricted by invariants (so $y$ retains $\le 7$). Reset $x$ sets $x=0$: copy row/column of $x_0$ except constraints involving other clocks; closure re-tightens $y - x < 3$.
+
+Final (simplified) canonical constraints before extrapolation (assuming invariant applied):
+\[
+  x \le 5,\quad y \le 7,\quad y - x < 3,\quad x \ge 0,\; y \ge 0.
+\]
+Extrapolation with upper bound 5 widens $y \le 7$ to $y < \infty$ (since $7>5$) but keeps $x \le 5$. Thus we obtain an abstracted zone ensuring finiteness.
+
+\paragraph{Code Trace.} The sequence in code:
+\begin{lstlisting}[language=C++]
+dbm_init(dbm.data(), dim);          // zero
+dbm_constrain1(dbm.data(), dim, X, 0, pack_le(5));      // x <= 5
+dbm_constrain1(dbm.data(), dim, Y, X, pack_lt(3));      // y - x < 3
+dbm_close(dbm.data(), dim);                         // closure
+apply_invariant(dbm, loc_inv);                      // y <= 7
+dbm_up(dbm.data(), dim);                            // Up
+reset_clock(dbm, X);                                // x := 0
+dbm_close(dbm.data(), dim);
+dbm_extrapolateMaxBounds(dbm.data(), dim, U.data());    // extrapolate
+\end{lstlisting}
+This mirrors the theoretical progression: guard intersection, closure, invariant, Up, reset, closure, extrapolation.
+
+\paragraph{Emptiness Corner Case.} If we also added guard $y - x < 0$ after $y - x < 3$, closure would derive $y - y < 0$ (diagonal negative) and report emptiness.

@@ -38,7 +38,7 @@ TimedAutomaton::TimedAutomaton(const std::string& fileName):constructed_(false)
 {
     // Create a UTAP document and parse the XML
     UTAP::Document doc;
-    int res = parse_XML_file(fileName, doc, false);
+    int res = parse_XML_file(fileName, doc, true);
     if (res != 0) {
         throw std::runtime_error("Failed to parse XML file: " + fileName);
     }
@@ -73,12 +73,25 @@ void TimedAutomaton::build_from_utap_document(UTAP::Document& doc) {
 
 
 void TimedAutomaton::build_from_template(const UTAP::Template& template_ref, int initial_dimensions) {
-    // Count template clocks and add them to Context
-    int template_clock_count = 0;
+    DEV_PRINT("Building automaton from template: " << template_ref.uid.get_name() << std::endl);
+    
+    // Phase 1: Parse template declarations and functions
+    parse_template_declarations(template_ref);
+    
+    // Phase 2: Parse template parameters
+    parse_template_parameters(template_ref);
+    
+    // Phase 3: Set automaton dimension
+    finalize_dimension();
+    
+    // Phase 4: Build automaton structure
+    build_locations(template_ref);
+    build_transitions(template_ref);
+}
+
+void TimedAutomaton::parse_template_declarations(const UTAP::Template& template_ref) {
+    // Parse template variables
     for (const auto& variable : template_ref.variables) {
-        if (variable.uid.get_type().is_clock()) {
-            template_clock_count++;
-        }
         context_.parse_declaration(variable);
     }
     
@@ -87,276 +100,348 @@ void TimedAutomaton::build_from_template(const UTAP::Template& template_ref, int
     for (const auto& function : template_ref.functions) {
         context_.parse_function(function);
     }
+}
 
-    // Process template parameters
+void TimedAutomaton::parse_template_parameters(const UTAP::Template& template_ref) {
     DEV_PRINT("   Template has " << template_ref.unbound << " unbound parameters" << std::endl);
-    if (template_ref.parameters.get_size() > 0) {
-        DEV_PRINT("   Template has " << template_ref.parameters.get_size() << " parameters:" << std::endl);
+    
+    if (template_ref.parameters.get_size() == 0) {
+        return;
+    }
+    
+    DEV_PRINT("   Template has " << template_ref.parameters.get_size() << " parameters:" << std::endl);
+    
+    for (size_t i = 0; i < template_ref.parameters.get_size(); ++i) {
+        const auto& param = template_ref.parameters[i];
+        std::string param_name = param.get_name();
+        
+        DEV_PRINT("   Template Parameter: " << param_name 
+                  << ", type: " << param.get_type().str() << std::endl);
 
-        for (size_t i = 0; i < template_ref.parameters.get_size(); ++i) {
-            const auto& param = template_ref.parameters[i];
-            DEV_PRINT("   Template Parameter: " << param.get_name() 
-                      << ", type: " << param.get_type().str() << std::endl);
-
-            if (param.get_type().is_clock()) {
-                // Clock parameters
-                std::string param_name = param.get_name();
-                context_.clocks_[param_name] = context_.next_clock_index_++;
-                template_clock_count++;
-                DEV_PRINT("   Found template parameter clock: " << param_name << std::endl);
-            } else if (param.get_type().is_constant()) {
-                // Parameter constants
-                context_.constants_[param.get_name()] = 0.0; // Default value
-                DEV_PRINT("   Found template parameter constant: " << param.get_name() << " (value to be determined)" << std::endl);
-            } else {
-                // Other parameters treated as variables
-                context_.variables_[param.get_name()] = 0.0; // Initialize to 0
-                DEV_PRINT("   Found template parameter (treated as variable): " << param.get_name() << std::endl);
-            }
+        if (param.get_type().is_clock()) {
+            context_.clocks_[param_name] = context_.next_clock_index_++;
+            DEV_PRINT("   Found template parameter clock: " << param_name << std::endl);
+        } else if (param.get_type().is_constant()) {
+            context_.constants_[param_name] = 0.0; // Default value
+            DEV_PRINT("   Found template parameter constant: " << param_name << " (value to be determined)" << std::endl);
+        } else {
+            context_.variables_[param_name] = 0.0; // Initialize to 0
+            DEV_PRINT("   Found template parameter (treated as variable): " << param_name << std::endl);
         }
     }
+}
 
-    // Calculate final dimension: reference clock (0) + all clocks
-    dimension_ = context_.next_clock_index_; // next_clock_index_ tracks the total number of clocks + 1
+void TimedAutomaton::finalize_dimension() {
+    // Calculate final dimension: reference clock (0) + all discovered clocks
+    dimension_ = context_.next_clock_index_;
     
     DEV_PRINT("   Total clocks found: " << (context_.next_clock_index_ - 1) << std::endl);
     DEV_PRINT("   Setting dimension to: " << dimension_ << std::endl);
 
+    clock_max_bounds_.assign(dimension_, 0); // initialize per-clock maxima (0 for ref clock)
+    clock_min_lower_bounds_.assign(dimension_, 0); // initialize per-clock minima (0 default)
+}
 
-
+void TimedAutomaton::build_locations(const UTAP::Template& template_ref) {
+    location_map_.clear();
     
-    // Add locations
-    std::unordered_map<std::string, int> location_map;
-
     for (size_t i = 0; i < template_ref.locations.size(); ++i) {
-        std::string loc_id = template_ref.locations[i].uid.get_name();
-        std::string loc_name = loc_id;
-        
+        const auto& location = template_ref.locations[i];
+        std::string loc_id = location.uid.get_name();
         int loc_int_id = static_cast<int>(i);
-        location_map[loc_id] = loc_int_id;
-        add_location(loc_int_id, loc_name);
         
-        DEV_PRINT("   Added location: " << loc_name << " (ID: " << loc_id << " -> " << loc_int_id << ")" << std::endl);
+        location_map_[loc_id] = loc_int_id;
+        add_location(loc_int_id, loc_id);
         
-        // Parse and add location invariants
-        if (!template_ref.locations[i].invariant.empty()) {
-            std::string invariant_str = template_ref.locations[i].invariant.str();
-            DEV_PRINT("     Invariant: " << invariant_str << std::endl);
-            
-            std::string clock_name;
-            std::string op;
-            int value;
+        DEV_PRINT("   Added location: " << loc_id << " (ID: " << loc_int_id << ")" << std::endl);
+        
+        // Parse location invariants
+        parse_location_invariant(location, loc_int_id);
+    }
+}
 
-            if (parse_clock_constraint_from_expr(template_ref.locations[i].invariant, clock_name, op, value)) {
-                if (context_.clocks_.find(clock_name) != context_.clocks_.end()) {
-                    DEV_PRINT("     Parsed invariant: " << clock_name << " " << op << " " << value << std::endl);
-                    add_dbm_constraint(clock_name, op, value, context_.clocks_, loc_int_id, -1);
-                    DEV_PRINT("     Added invariant constraint to location" << std::endl);
-                } else {
-                    DEV_PRINT("     Clock validation failed - not in both lists" << std::endl);
-                }
-            } else {
-                DEV_PRINT("     Failed to parse invariant constraint: " << invariant_str << std::endl);
-            }
-        } else {
-            DEV_PRINT("     No invariant on this location" << std::endl);
-        }
+void TimedAutomaton::parse_location_invariant(const UTAP::Location& location, int loc_int_id) {
+    if (location.invariant.empty()) {
+        DEV_PRINT("     No invariant on this location" << std::endl);
+        return;
     }
     
-    // Add transitions
+    std::string invariant_str = location.invariant.str();
+    DEV_PRINT("     Invariant: " << invariant_str << std::endl);
+    
+    std::string clock_name, op;
+    int value;
+    
+    if (parse_clock_constraint_from_expr(location.invariant, clock_name, op, value)) {
+        if (context_.clocks_.find(clock_name) != context_.clocks_.end()) {
+            DEV_PRINT("     Parsed invariant: " << clock_name << " " << op << " " << value << std::endl);
+            add_dbm_constraint(clock_name, op, value, context_.clocks_, loc_int_id, -1);
+            DEV_PRINT("     Added invariant constraint to location" << std::endl);
+        } else {
+            DEV_PRINT("     Clock " << clock_name << " not found in clock map" << std::endl);
+        }
+    } else {
+        DEV_PRINT("     Failed to parse invariant constraint: " << invariant_str << std::endl);
+    }
+}
+
+void TimedAutomaton::build_transitions(const UTAP::Template& template_ref) {
     for (size_t i = 0; i < template_ref.edges.size(); ++i) {
-        auto& edge = template_ref.edges[i];
+        const auto& edge = template_ref.edges[i];
         
-        // Get source and destination location names
+        // Get source and destination locations
         std::string source_id, target_id;
-        if (edge.src != nullptr) {
-            source_id = edge.src->uid.get_name();
-        }
-        if (edge.dst != nullptr) {
-            target_id = edge.dst->uid.get_name();
-        }
-        
-        if (source_id.empty() || target_id.empty()) {
+        if (!get_edge_locations(edge, source_id, target_id)) {
             DEV_PRINT("   Skipping edge with missing source or destination" << std::endl);
             continue;
         }
         
-        int source_int = location_map[source_id];
-        int target_int = location_map[target_id];
+        int source_int = location_map_[source_id];
+        int target_int = location_map_[target_id];
         
-        // Parse assignment for action name
-        std::string action = TA_CONFIG.default_action_name;  // Default action name
-        if (!edge.assign.empty()) {
-            std::string assign_str = edge.assign.str();
-            DEV_PRINT("     Assignment: " << assign_str << std::endl);
-            
-            // Check for function calls and expand them
-            std::string expanded_assign;
-            if (detect_and_expand_function_calls(edge.assign, expanded_assign)) {
-                DEV_PRINT("     Expanded assignment: " << expanded_assign << std::endl);
-                // Use the expanded version as the action
-                action = expanded_assign;
-                add_transition(source_int, target_int, action);
-            } else {
-                // No function calls found, proceed with original parsing logic
-                // Try to parse as clock reset first
-                std::string reset_clock_name;
-                int reset_value;
-                
-                if (parse_clock_reset_from_expr(edge.assign, reset_clock_name, reset_value)) {
-                    DEV_PRINT("     Parsed reset: " << reset_clock_name << " := " << reset_value << std::endl);
-                    // Check if this is actually a clock
-                    if (context_.clocks_.find(reset_clock_name) != context_.clocks_.end()) {
-                        cindex_t clock_idx = context_.clocks_[reset_clock_name];
-                        // Only handle resets to 0 (standard timed automata behavior)
-                        if (reset_value == 0) {
-                            // Add transition first, then the reset
-                            add_transition(source_int, target_int, action);
-                            add_reset(i, clock_idx);
-                            DEV_PRINT("     Added reset to transition: " << reset_clock_name << " -> 0" << std::endl);
-                        } else {
-                            DEV_PRINT("     Warning: Non-zero reset value " << reset_value << " not supported" << std::endl);
-                            add_transition(source_int, target_int, action);
-                        }
-                    } else {
-                        // Check if it's a variable assignment
-                        if (context_.variables_.find(reset_clock_name) != context_.variables_.end()) {
-                            context_.variables_[reset_clock_name] = reset_value;
-                            DEV_PRINT("     Parsed variable assignment: " << reset_clock_name << " := " << reset_value << std::endl);
-                            add_transition(source_int, target_int, action);
-                        } else {
-                            // Not a clock or known variable, use assignment as action name
-                            action = assign_str;
-                            add_transition(source_int, target_int, action);
-                        }
-                    }
-                } else {
-                    // Try to parse as variable assignment
-                    std::string var_name;
-                    int var_value;
-                    
-                    if (parse_variable_assignment_from_expr(edge.assign, var_name, var_value)) {
-                        if (context_.variables_.find(var_name) != context_.variables_.end()) {
-                            context_.variables_[var_name] = var_value;
-                            DEV_PRINT("     Parsed variable assignment: " << var_name << " := " << var_value << std::endl);
-                            add_transition(source_int, target_int, action);
-                        } else {
-                            // Unknown variable, use assignment as action name
-                            action = assign_str;
-                            add_transition(source_int, target_int, action);
-                        }
-                    } else {
-                        // Use assignment as action name
-                        action = assign_str;
-                        add_transition(source_int, target_int, action);
-                    }
-                }
-            }
-        } else {
-            add_transition(source_int, target_int, action);
-        }
+        // Parse edge components
+        std::string action = parse_edge_assignment(edge, i);
+        add_transition(source_int, target_int, action);
         
         DEV_PRINT("   Added transition: " << source_id << " -> " << target_id 
                   << " (" << source_int << " -> " << target_int << ")" << std::endl);
         
-        // Parse and add guard constraints
-        if (!edge.guard.empty()) {
-            std::string guard_str = edge.guard.str();
-            DEV_PRINT("     Guard: " << guard_str << std::endl);
-            DEV_PRINT("     Guard expression kind: " << edge.guard.get_kind() << std::endl);
-            DEV_PRINT("     Guard expression size: " << edge.guard.get_size() << std::endl);
-            
-            // Extract all constraints from the guard expression
-            std::vector<Constraint> constraints;
-            extract_all_constraints(edge.guard, constraints);
-            
-            bool has_clock_constraints = false;
-            bool variable_constraints_satisfied = true;
-            
-            // Process each constraint
-            for (const auto& constraint : constraints) {
-                if (constraint.is_clock) {
-                    // This is a clock constraint - add it to the DBM
-                    if (context_.clocks_.find(constraint.name) != context_.clocks_.end()) {
-                        add_dbm_constraint(constraint.name, constraint.op, constraint.value, context_.clocks_, -1, i);
-                        has_clock_constraints = true;
-                        DEV_PRINT("     Added clock constraint: " << constraint.name << " " 
-                                 << constraint.op << " " << constraint.value << std::endl);
-                    }
-                } else {
-                    // This is a variable constraint - evaluate it
-                    if (!evaluate_variable_constraint(constraint.name, constraint.op, constraint.value)) {
-                        variable_constraints_satisfied = false;
-                        DEV_PRINT("     Variable constraint not satisfied: " << constraint.name << " " 
-                                 << constraint.op << " " << constraint.value << std::endl);
-                    } else {
-                        DEV_PRINT("     Variable constraint satisfied: " << constraint.name << " " 
-                                 << constraint.op << " " << constraint.value << std::endl);
-                    }
+        // Parse guard constraints
+        if (!parse_edge_guard(edge, i)) {
+            // If guard parsing fails and constraints are not satisfied, skip this transition
+            DEV_PRINT("     Skipping transition due to unsatisfied constraints" << std::endl);
+            // Remove the transition we just added
+            if (!transitions_.empty()) {
+                transitions_.pop_back();
+                // Also remove from outgoing_transitions_ map
+                auto& outgoing = outgoing_transitions_[source_int];
+                if (!outgoing.empty() && outgoing.back() == static_cast<int>(transitions_.size())) {
+                    outgoing.pop_back();
                 }
             }
-            
-            // If no constraints were found, try the old parsing methods as fallback
-            if (constraints.empty()) {
-                std::string clock_name, var_name, op;
-                int value;
-                
-                // Try clock constraint parsing
-                if (parse_clock_constraint_from_expr(edge.guard, clock_name, op, value) 
-                    && context_.clocks_.find(clock_name) != context_.clocks_.end()) {
-                    add_dbm_constraint(clock_name, op, value, context_.clocks_, -1, i);
-                    DEV_PRINT("     Added fallback clock constraint: " << clock_name << " " << op << " " << value << std::endl);
-                    has_clock_constraints = true;
-                }
-                // Try variable constraint parsing
-                else if (parse_variable_constraint_from_expr(edge.guard, var_name, op, value)) {
-                    if (!evaluate_variable_constraint(var_name, op, value)) {
-                        variable_constraints_satisfied = false;
-                        DEV_PRINT("     Fallback variable constraint not satisfied: " << var_name << " " 
-                                 << op << " " << value << std::endl);
-                    } else {
-                        DEV_PRINT("     Fallback variable constraint satisfied: " << var_name << " " 
-                                 << op << " " << value << std::endl);
-                    }
-                } else {
-                    DEV_PRINT("     Failed to parse guard constraint: " << guard_str << std::endl);
-                }
-            }
-            
-            // Skip this transition if variable constraints are not satisfied
-            if (!variable_constraints_satisfied) {
-                DEV_PRINT("     Skipping transition due to unsatisfied variable constraints" << std::endl);
-                continue;
-            }
-            
-            if (has_clock_constraints || !constraints.empty()) {
-                DEV_PRINT("     Added guard constraints to transition" << std::endl);
-            }
-        } else {
-            DEV_PRINT("     No guard on this transition" << std::endl);
+            continue;
         }
         
-        // Parse and add synchronization labels
-        if (!edge.sync.empty()) {
-            std::string sync_str = edge.sync.str();
-            DEV_PRINT("     Synchronization: " << sync_str << std::endl);
-            
-            std::string channel;
-            bool is_sender;
-            
-            if (parse_synchronization_from_expr(edge.sync, channel, is_sender)) {
-                DEV_PRINT("     Parsed synchronization: " << channel << (is_sender ? "!" : "?") << std::endl);
-                
-                add_synchronization(i, channel, is_sender);
-                add_channel(channel);
-                DEV_PRINT("     Added synchronization to transition" << std::endl);
-            } else {
-                DEV_PRINT("     Failed to parse synchronization: " << sync_str << std::endl);
+        // Parse synchronization
+        parse_edge_synchronization(edge, i);
+    }
+}
+
+bool TimedAutomaton::get_edge_locations(const UTAP::Edge& edge, std::string& source_id, std::string& target_id) {
+    if (edge.src != nullptr) {
+        source_id = edge.src->uid.get_name();
+    }
+    if (edge.dst != nullptr) {
+        target_id = edge.dst->uid.get_name();
+    }
+    
+    return !source_id.empty() && !target_id.empty();
+}
+
+std::string TimedAutomaton::parse_edge_assignment(const UTAP::Edge& edge, size_t edge_index) {
+    if (edge.assign.empty()) {
+        return TA_CONFIG.default_action_name;
+    }
+    
+    std::string assign_str = edge.assign.str();
+    DEV_PRINT("     Assignment: " << assign_str << std::endl);
+    
+    // Check for function calls and expand them
+    std::string expanded_assign;
+    if (detect_and_expand_function_calls(edge.assign, expanded_assign)) {
+        DEV_PRINT("     Expanded assignment: " << expanded_assign << std::endl);
+        return expanded_assign;
+    }
+    
+    // Try to parse as clock reset
+    std::string reset_clock_name;
+    int reset_value;
+    if (parse_clock_reset_from_expr(edge.assign, reset_clock_name, reset_value)) {
+        return handle_clock_reset(reset_clock_name, reset_value, edge_index, assign_str);
+    }
+    
+    // Try to parse as variable assignment
+    std::string var_name;
+    int var_value;
+    if (parse_variable_assignment_from_expr(edge.assign, var_name, var_value)) {
+        return handle_variable_assignment(var_name, var_value, assign_str);
+    }
+    
+    // Use assignment string as action name
+    return assign_str;
+}
+
+std::string TimedAutomaton::handle_clock_reset(const std::string& clock_name, int reset_value, 
+                                             size_t edge_index, const std::string& assign_str) {
+    if (context_.clocks_.find(clock_name) != context_.clocks_.end()) {
+        cindex_t clock_idx = context_.clocks_[clock_name];
+        if (reset_value == 0) {
+            add_reset(edge_index, clock_idx);
+            DEV_PRINT("     Added reset to transition: " << clock_name << " -> 0" << std::endl);
+        } else {
+            DEV_PRINT("     Warning: Non-zero reset value " << reset_value << " not supported" << std::endl);
+        }
+        return TA_CONFIG.default_action_name;
+    }
+    
+    // Check if it's a variable assignment instead
+    if (context_.variables_.find(clock_name) != context_.variables_.end()) {
+        context_.variables_[clock_name] = reset_value;
+        DEV_PRINT("     Parsed variable assignment: " << clock_name << " := " << reset_value << std::endl);
+        return TA_CONFIG.default_action_name;
+    }
+    
+    // Not a known clock or variable, use assignment as action name
+    return assign_str;
+}
+
+std::string TimedAutomaton::handle_variable_assignment(const std::string& var_name, int var_value, 
+                                                     const std::string& assign_str) {
+    if (context_.variables_.find(var_name) != context_.variables_.end()) {
+        context_.variables_[var_name] = var_value;
+        DEV_PRINT("     Parsed variable assignment: " << var_name << " := " << var_value << std::endl);
+        return TA_CONFIG.default_action_name;
+    }
+    
+    // Unknown variable, use assignment as action name
+    return assign_str;
+}
+
+bool TimedAutomaton::parse_edge_guard(const UTAP::Edge& edge, size_t edge_index) {
+    if (edge.guard.empty()) {
+        DEV_PRINT("     No guard on this transition" << std::endl);
+        return true;
+    }
+    
+    std::string guard_str = edge.guard.str();
+    DEV_PRINT("     Guard: " << guard_str << std::endl);
+    DEV_PRINT("     Guard expression kind: " << edge.guard.get_kind() << std::endl);
+    DEV_PRINT("     Guard expression size: " << edge.guard.get_size() << std::endl);
+    
+    // Extract all constraints from the guard expression
+    std::vector<Constraint> constraints;
+    extract_all_constraints(edge.guard, constraints);
+    
+    bool has_clock_constraints = false;
+    bool variable_constraints_satisfied = true;
+    
+    // Process each constraint
+    for (const auto& constraint : constraints) {
+        if (constraint.is_clock) {
+            if (context_.clocks_.find(constraint.name) != context_.clocks_.end()) {
+                add_dbm_constraint(constraint.name, constraint.op, constraint.value, 
+                                 context_.clocks_, -1, edge_index);
+                has_clock_constraints = true;
+                DEV_PRINT("     Added clock constraint: " << constraint.name << " " 
+                         << constraint.op << " " << constraint.value << std::endl);
             }
         } else {
-            DEV_PRINT("     No synchronization on this transition" << std::endl);
+            if (!evaluate_variable_constraint(constraint.name, constraint.op, constraint.value)) {
+                variable_constraints_satisfied = false;
+                DEV_PRINT("     Variable constraint not satisfied: " << constraint.name << " " 
+                         << constraint.op << " " << constraint.value << std::endl);
+            } else {
+                DEV_PRINT("     Variable constraint satisfied: " << constraint.name << " " 
+                         << constraint.op << " " << constraint.value << std::endl);
+            }
         }
     }
+    
+    // Fallback parsing if no constraints were extracted
+    if (constraints.empty()) {
+        variable_constraints_satisfied = parse_guard_fallback(edge.guard, edge_index, has_clock_constraints);
+    }
+    
+    if (has_clock_constraints || !constraints.empty()) {
+        DEV_PRINT("     Added guard constraints to transition" << std::endl);
+    }
+    
+    return variable_constraints_satisfied;
+}
+
+bool TimedAutomaton::parse_guard_fallback(const UTAP::Expression& guard, size_t edge_index, bool& has_clock_constraints) {
+    std::string clock_name, var_name, op;
+    int value;
+    
+    // Try clock constraint parsing
+    if (parse_clock_constraint_from_expr(guard, clock_name, op, value) 
+        && context_.clocks_.find(clock_name) != context_.clocks_.end()) {
+        add_dbm_constraint(clock_name, op, value, context_.clocks_, -1, edge_index);
+        DEV_PRINT("     Added fallback clock constraint: " << clock_name << " " << op << " " << value << std::endl);
+        has_clock_constraints = true;
+        return true;
+    }
+    
+    // Try variable constraint parsing
+    if (parse_variable_constraint_from_expr(guard, var_name, op, value)) {
+        if (!evaluate_variable_constraint(var_name, op, value)) {
+            DEV_PRINT("     Fallback variable constraint not satisfied: " << var_name << " " 
+                     << op << " " << value << std::endl);
+            return false;
+        } else {
+            DEV_PRINT("     Fallback variable constraint satisfied: " << var_name << " " 
+                     << op << " " << value << std::endl);
+            return true;
+        }
+    }
+    
+    DEV_PRINT("     Failed to parse guard constraint: " << guard.str() << std::endl);
+    return true; // If we can't parse it, assume it's satisfied
+}
+
+void TimedAutomaton::parse_edge_synchronization(const UTAP::Edge& edge, size_t edge_index) {
+    if (edge.sync.empty()) {
+        DEV_PRINT("     No synchronization on this transition" << std::endl);
+        return;
+    }
+    
+    std::string sync_str = edge.sync.str();
+    DEV_PRINT("     Synchronization: " << sync_str << std::endl);
+    
+    std::string channel;
+    bool is_sender;
+    
+    if (parse_synchronization_from_expr(edge.sync, channel, is_sender)) {
+        DEV_PRINT("     Parsed synchronization: " << channel << (is_sender ? "!" : "?") << std::endl);
+        add_synchronization(edge_index, channel, is_sender);
+        add_channel(channel);
+        DEV_PRINT("     Added synchronization to transition" << std::endl);
+    } else {
+        DEV_PRINT("     Failed to parse synchronization: " << sync_str << std::endl);
+    }
+}
+
+bool TimedAutomaton::evaluate_variable_constraint(const std::string& var_name, const std::string& op, int value) {
+    // Check if variable exists in our context
+    auto var_it = context_.variables_.find(var_name);
+    if (var_it == context_.variables_.end()) {
+        // Check constants
+        auto const_it = context_.constants_.find(var_name);
+        if (const_it == context_.constants_.end()) {
+            DEV_PRINT("     Variable/constant " << var_name << " not found, assuming constraint is satisfied" << std::endl);
+            return true; // If we don't know the variable, assume it's satisfied
+        }
+        
+        // Evaluate constraint with constant value
+        double const_value = const_it->second;
+        return evaluate_comparison(const_value, op, value);
+    }
+    
+    // Evaluate constraint with variable value
+    double var_value = var_it->second;
+    return evaluate_comparison(var_value, op, value);
+}
+
+bool TimedAutomaton::evaluate_comparison(double lhs, const std::string& op, int rhs) {
+    if (op == "<=") return lhs <= rhs;
+    if (op == "<") return lhs < rhs;
+    if (op == ">=") return lhs >= rhs;
+    if (op == ">") return lhs > rhs;
+    if (op == "==") return lhs == rhs;
+    if (op == "!=") return lhs != rhs;
+    
+    DEV_PRINT("     Unknown operator: " << op << std::endl);
+    return true; // If we don't understand the operator, assume it's satisfied
 }
 
 bool TimedAutomaton::evaluate_expression(const UTAP::Expression& expr, int& result) {
@@ -962,7 +1047,8 @@ void TimedAutomaton::add_dbm_constraint(const std::string& clock_name, const std
                                        std::unordered_map<std::string, cindex_t>& clock_map,
                                        int location_id, size_t transition_idx) {
     
-    
+    // Store timing constant for candidate-delay method
+    timing_constants_.insert(static_cast<int>(value));
     
     // Find or create clock index
     cindex_t clock_idx;
@@ -983,6 +1069,17 @@ void TimedAutomaton::add_dbm_constraint(const std::string& clock_name, const std
         DEV_PRINT("     Assigned new clock index " << clock_idx << " to " << clock_name << std::endl);
     } else {
         clock_idx = clock_map[clock_name];
+    }
+
+    // Track per-clock maximal constant (upper) and minimal lower bound
+    if (clock_idx < clock_max_bounds_.size()) {
+        if (op == "<=" || op == "<" || op == "==") {
+            clock_max_bounds_[clock_idx] = std::max(clock_max_bounds_[clock_idx], static_cast<int32_t>(value));
+        }
+        if (op == ">=" || op == ">" || op == "==") {
+            // record lower bound candidate (if not set yet or new is larger)
+            clock_min_lower_bounds_[clock_idx] = std::max(clock_min_lower_bounds_[clock_idx], static_cast<int32_t>(value));
+        }
     }
     
     // Convert operator and value to DBM constraint
@@ -1155,22 +1252,105 @@ std::vector<raw_t> TimedAutomaton::time_elapse(const std::vector<raw_t>& zone) c
     }
     
     std::vector<raw_t> result = zone;
+
+    // First intersect with non-negative clocks (implicitly ensured by DBM but keep for safety)
+    // Then perform the standard Up operation (let time pass)
     dbm_up(result.data(), dimension_);
-    
-    // Apply proper UDBM k-extrapolation to prevent infinite zone refinement
-    // Set up maximum constants for each clock
-    std::vector<int32_t> max_constants(dimension_);
-    max_constants[0] = 0; // Reference clock is always 0
-    
-    // Use a reasonable maximum constant for all clocks
-    // In practice, this should be computed from the automaton's constraints
-    const int32_t MAX_CONSTANT = 10;
-    for (cindex_t i = 1; i < dimension_; ++i) {
-        max_constants[i] = MAX_CONSTANT;
+
+    // If we have per-clock bounds collected, apply extrapolation respecting each clock's M(x)
+    if (!clock_max_bounds_.empty() && clock_max_bounds_.size() == dimension_) {
+        // Build LU arrays for potential LU-extrapolation
+        int global_max = get_max_timing_constant();
+        if (global_max <= 0) global_max = 100;
+        std::vector<int32_t> U = clock_max_bounds_;
+        std::vector<int32_t> L = clock_min_lower_bounds_;
+        for (cindex_t i = 1; i < dimension_; ++i) {
+            if (U[i] <= 0) U[i] = global_max;
+            // If no explicit lower bound, leave as 0 (clocks non-negative)
+        }
+        // If LU extrapolation API exists (not detected), fallback to max-bounds.
+        dbm_extrapolateMaxBounds(result.data(), dimension_, U.data());
+    }
+
+    return result;
+}
+
+std::vector<raw_t> TimedAutomaton::time_elapse(const std::vector<raw_t>& zone, double delay) const {
+    // Validate zone size
+    size_t expected_size = dimension_ * dimension_;
+    if (zone.size() != expected_size) {
+        std::cerr << "ERROR: Zone size mismatch in time_elapse(zone, delay)! Expected " << expected_size 
+                  << ", got " << zone.size() << std::endl;
+        return {}; // Return empty zone
     }
     
-    // Apply classical k-extrapolation (formerly k-normalization)
-    dbm_extrapolateMaxBounds(result.data(), dimension_, max_constants.data());
+    if (delay < 0.0) {
+        std::cerr << "ERROR: Negative delay in time_elapse! Delay: " << delay << std::endl;
+        return {}; // Return empty zone
+    }
+    
+    if (delay == 0.0) {
+        return zone; // No time advancement needed
+    }
+    
+    // For integer delays only (Uppaal clocks are integers)
+    int32_t delay_int = static_cast<int32_t>(delay);
+    if (std::abs(delay - static_cast<double>(delay_int)) > 1e-9) {
+        // Non-integer delay: fall back to general time elapse
+        // This avoids the complexity of exact fractional delays in DBMs
+        return time_elapse(zone);
+    }
+    
+    if (delay_int == 0) {
+        return zone; // No advancement for zero delay
+    }
+    
+    // For small integer delays, use a conservative approach:
+    // Apply general time elapse (Up operation) then intersect with delay bounds
+    std::vector<raw_t> result = time_elapse(zone);
+    
+    // For very large delays, just return the general time elapse result
+    // Exact delay encoding would require auxiliary clocks for full correctness
+    if (delay_int > 1000) {
+        return result;
+    }
+    
+    // For moderate integer delays, we can try to constrain the result more precisely
+    // by adding bounds that represent "at least delay_int time has passed"
+    // This is still an approximation without auxiliary elapsed-time variables
+    
+    // Constraint: for each clock i, x_i >= x_i_initial + delay_int
+    // In DBM form: x_0 - x_i <= -delay_int (reference clock falls behind by delay_int)
+    for (cindex_t i = 1; i < dimension_; ++i) {
+        cindex_t idx_0i = 0 * dimension_ + i;
+        raw_t current_bound = result[idx_0i];
+        
+        if (current_bound != dbm_LE_ZERO) {
+            int32_t current_value = dbm_raw2bound(current_bound);
+            strictness_t current_strict = dbm_raw2strict(current_bound);
+            
+            // Make bound more restrictive: old_bound AND new_bound
+            int32_t new_bound = -delay_int;
+            if (current_value < new_bound || 
+                (current_value == new_bound && current_strict == dbm_STRICT)) {
+                // Keep the more restrictive bound
+                continue;
+            } else {
+                // Apply the new bound
+                result[idx_0i] = dbm_bound2raw(new_bound, dbm_WEAK);
+            }
+        } else {
+            // No existing bound, add the delay constraint
+            result[idx_0i] = dbm_bound2raw(-delay_int, dbm_WEAK);
+        }
+    }
+    
+    // Close the DBM to maintain canonical form and check consistency
+    if (!dbm_close(result.data(), dimension_)) {
+        // If zone becomes inconsistent due to the delay constraints,
+        // fall back to general time elapse
+        return time_elapse(zone);
+    }
     
     return result;
 }
@@ -1331,14 +1511,12 @@ int TimedAutomaton::add_state(int location_id, const std::vector<raw_t>& zone) {
 
 void TimedAutomaton::explore_state(int state_id) {
     const auto& current_state = *states_[state_id];
-    
-    // Apply time elapse first
-    auto elapsed_zone = time_elapse(current_state.zone);
-    auto invariant_zone = apply_invariants(elapsed_zone, current_state.location_id);
-    
-    if (invariant_zone.empty()) {
-        return;  // Time elapse leads to empty zone
-    }
+    // Standard semantics: (Z ∩ Inv(l))^{up} before firing transitions
+    auto zone_with_inv = apply_invariants(current_state.zone, current_state.location_id);
+    if (zone_with_inv.empty()) return;
+
+    auto elapsed_zone = time_elapse(zone_with_inv);
+    if (elapsed_zone.empty()) return;
     
     // Try all outgoing transitions from current location
     auto transition_it = outgoing_transitions_.find(current_state.location_id);
@@ -1347,9 +1525,9 @@ void TimedAutomaton::explore_state(int state_id) {
             const auto& transition = transitions_[transition_idx];
             
             // Check if transition is enabled
-            if (is_transition_enabled(invariant_zone, transition)) {
-                // Apply transition
-                auto successor_zone = apply_transition(invariant_zone, transition);
+            if (is_transition_enabled(elapsed_zone, transition)) {
+                // Apply transition to (Z ∩ Inv)^up
+                auto successor_zone = apply_transition(elapsed_zone, transition);
                 
                 if (!successor_zone.empty()) {
                     // Apply invariants in target location
@@ -1387,6 +1565,21 @@ const ZoneState* TimedAutomaton::get_zone_state(size_t state_id) const {
         return nullptr;
     }
     return states_[state_id].get();
+}
+
+const ZoneState* TimedAutomaton::find_zone_state(int location_id, const std::vector<raw_t>& zone) const {
+    // Create temporary zone state for lookup
+    ZoneState temp_state(location_id, zone, dimension_);
+    
+    // Use the hash map for O(1) lookup
+    auto it = state_map_.find(temp_state);
+    if (it != state_map_.end()) {
+        // Found the state, return pointer to the actual state
+        int state_id = it->second;
+        return states_[state_id].get();
+    }
+    
+    return nullptr; // Not found
 }
 
 

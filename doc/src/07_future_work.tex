@@ -1,0 +1,22 @@
+% Section 7: Future Work
+\section{Future Work and Research Directions}
+\subsection{Symbolic Partial Order Reductions}
+Combine $\tau$-closure with stubborn set or ample set selection using clock dependency analysis to prune interleavings.
+
+\subsection{Parametric Timed Bisimulation}
+Generalize guards with parameters; integrate parametric DBM (PDBM) constraints; solve via SMT-backed refinement.
+
+\subsection{Compositional Reasoning}
+Introduce interface zones per component, compose via synchronized product with assume/guarantee contracts.
+
+\subsection{On-the-fly Abstraction}
+Derive LU-bounds dynamically from frontier zones; feed back tightened bounds to extrapolation to curb blow-up.
+
+\subsection{Counterexample-Guided Refinement}
+If relation collapses to empty, extract mismatching pair path to refine partition or introduce clock splitting.
+
+\subsection{Parallel Exploration}
+Sharding of waiting list by location hash; lock-free insertion into state map with per-bucket spinlocks.
+
+\subsection{Probabilistic Extensions}
+Annotate transitions with rates/probabilities; lift RTWBS to weak probabilistic bisimulation using coupling arguments.

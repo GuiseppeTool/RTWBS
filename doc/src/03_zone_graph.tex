@@ -1,0 +1,58 @@
+% Section 3: Zone Graph Construction
+\section{Zone Graph}
+\subsection{Symbolic State Space}
+A symbolic state is a pair (l, Z) where l is a control location and Z a zone over clocks consistent with the invariant Inv(l). The zone graph is a directed graph whose nodes are symbolic states reachable from the initial symbolic state through alternation of time elapse and discrete transitions.
+
+\subsection{Successor Generation Semantics}
+For a state (l, Z):
+\begin{enumerate}
+    \item Intersect with invariants: \(Z' = Z \cap Inv(l)\).
+    \item Let time pass: \(Z'' = Up(Z')\). (Implicit invariant restriction during delay).
+    \item For each enabled transition \(e = (l, g, R, a, l')\) with guard \(g\), resets \(R\):
+    \begin{enumerate}
+    \item Check enabled: \(Z'' \cap g \neq \emptyset\).
+    \item Apply reset: \(Z''' = Reset(Z'' \cap g, R)\).
+    \item Apply target invariant: \(Z_{succ} = Z''' \cap Inv(l')\).
+      \item Canonical closure and extrapolation keep zone finite; add node if new.
+    \end{enumerate}
+\end{enumerate}
+This is breadth-first in the implementation to avoid deep recursion and to enable early pruning or potential future heuristics.
+
+\subsection{Implementation (Excerpt)}
+\begin{lstlisting}
+void TimedAutomaton::explore_state(int state_id) {
+    const auto& current_state = *states_[state_id];
+    auto zone_with_inv = apply_invariants(current_state.zone, current_state.location_id);
+    if (zone_with_inv.empty()) return;
+    auto elapsed_zone = time_elapse(zone_with_inv);
+    if (elapsed_zone.empty()) return;
+    auto outs = outgoing_transitions_.find(current_state.location_id);
+    if (outs != outgoing_transitions_.end()) {
+        for (int tidx : outs->second) {
+            const auto& t = transitions_[tidx];
+            if (is_transition_enabled(elapsed_zone, t)) {
+                auto post = apply_transition(elapsed_zone, t);
+                if (!post.empty()) {
+                    auto final_zone = apply_invariants(post, t.to_location);
+                    if (!final_zone.empty()) {
+                        int succ_id = add_state(t.to_location, final_zone);
+                        zone_transitions_[state_id].push_back(succ_id);
+                    }
+                }
+            }
+        }
+    }
+}
+\end{lstlisting}
+Key optimisations:
+\begin{itemize}
+  \item Hash-consing of zones via \texttt{state\_map\_} to avoid duplicates.
+  \item Extrapolation performed inside time elapse / post-processing to guarantee finiteness.
+  \item BFS queue (\texttt{waiting\_list\_}) ensures systematic expansion.
+\end{itemize}
+
+\subsection{Initial State}
+The initial zone is the canonical zero DBM (all clocks set to 0). Construction begins at default initial location (configurable) with zone closure applied immediately.
+
+\subsection{Inclusion Checks}
+Canonical DBM comparison enables relation seeding in refinement (mutual inclusion equals equality). Hash value embedded in \texttt{ZoneState} accelerates lookups.

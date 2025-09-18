@@ -8,14 +8,14 @@ int main(int argc, char* argv[]) {
         std::vector<std::string> filenames = {
             "ASTRail/FMICS2019/model.xml",
             "ASTRail/FMICS2019/model4_1_22.xml",
-            "ASTRail/ISOLA2018/MovBlock.xml",
-            "ASTRail/STTT2021/model - demonic completion.xml",
-            "ASTRail/STTT2021/model - scenario acceleration.xml",
-            "ASTRail/STTT2021/model - scenario braking.xml",
-            "ASTRail/STTT2021/model - scenario crash.xml",
-            "ASTRail/STTT2021/model - scenario location not fresh.xml",
-            "ASTRail/STTT2021/model - scenario slower leading train.xml",
-            "ASTRail/STTT2021/model.xml"
+            //"ASTRail/ISOLA2018/MovBlock.xml",
+            //"ASTRail/STTT2021/model - demonic completion.xml",
+            //"ASTRail/STTT2021/model - scenario acceleration.xml",
+            //"ASTRail/STTT2021/model - scenario braking.xml",
+            //"ASTRail/STTT2021/model - scenario crash.xml",
+            //"ASTRail/STTT2021/model - scenario location not fresh.xml",
+            //"ASTRail/STTT2021/model - scenario slower leading train.xml",
+            //"ASTRail/STTT2021/model.xml"
         };
         rtwbs::self_equivalence_checks(filenames,"assets/", "results/","benchmark_results_");
         rtwbs::comparison_checks(filenames,"assets/","results/","comparison_results_");

@@ -1,0 +1,57 @@
+\contentsline {section}{\numberline {1}Difference Bound Matrices (DBM)}{3}{section.1}%
+\contentsline {subsection}{\numberline {1.1}Mathematical Foundations}{3}{subsection.1.1}%
+\contentsline {subsection}{\numberline {1.2}Core Operations}{3}{subsection.1.2}%
+\contentsline {subsection}{\numberline {1.3}Relations Between DBMs}{3}{subsection.1.3}%
+\contentsline {subsection}{\numberline {1.4}Closure Algorithm}{3}{subsection.1.4}%
+\contentsline {subsection}{\numberline {1.5}Finiteness via Extrapolation}{3}{subsection.1.5}%
+\contentsline {subsection}{\numberline {1.6}Implementation Touchpoints}{4}{subsection.1.6}%
+\contentsline {subsection}{\numberline {1.7}Worked Example (2 Clocks)}{4}{subsection.1.7}%
+\contentsline {paragraph}{Code Trace.}{4}{section*.2}%
+\contentsline {paragraph}{Emptiness Corner Case.}{5}{section*.3}%
+\contentsline {section}{\numberline {2}Time Elapse Semantics}{5}{section.2}%
+\contentsline {subsection}{\numberline {2.1}Theory}{5}{subsection.2.1}%
+\contentsline {subsection}{\numberline {2.2}Finiteness: Extrapolation and LU Bounds}{5}{subsection.2.2}%
+\contentsline {subsection}{\numberline {2.3}Implementation Details}{5}{subsection.2.3}%
+\contentsline {subsection}{\numberline {2.4}Fixed Delay Variant}{6}{subsection.2.4}%
+\contentsline {section}{\numberline {3}Zone Graph}{6}{section.3}%
+\contentsline {subsection}{\numberline {3.1}Symbolic State Space}{6}{subsection.3.1}%
+\contentsline {subsection}{\numberline {3.2}Successor Generation Semantics}{6}{subsection.3.2}%
+\contentsline {subsection}{\numberline {3.3}Implementation (Excerpt)}{6}{subsection.3.3}%
+\contentsline {subsection}{\numberline {3.4}Initial State}{7}{subsection.3.4}%
+\contentsline {subsection}{\numberline {3.5}Inclusion Checks}{7}{subsection.3.5}%
+\contentsline {section}{\numberline {4}Relaxed Weak Timed Bisimulation (RTWBS)}{7}{section.4}%
+\contentsline {subsection}{\numberline {4.1}Motivation}{7}{subsection.4.1}%
+\contentsline {subsection}{\numberline {4.2}Classical Timed Bisimulation Recap}{7}{subsection.4.2}%
+\contentsline {subsection}{\numberline {4.3}Asymmetric Timing Relaxation}{7}{subsection.4.3}%
+\contentsline {subsection}{\numberline {4.4}Formal Rule (Symbolic Form)}{8}{subsection.4.4}%
+\contentsline {subsection}{\numberline {4.5}Weak Successors}{8}{subsection.4.5}%
+\contentsline {subsection}{\numberline {4.6}Soundness Rationale}{8}{subsection.4.6}%
+\contentsline {section}{\numberline {5}Game-Based Checking Algorithm}{8}{section.5}%
+\contentsline {subsection}{\numberline {5.1}Attacker/Defender Paradigm}{8}{subsection.5.1}%
+\contentsline {subsection}{\numberline {5.2}Game Graph (Implicit)}{8}{subsection.5.2}%
+\contentsline {subsection}{\numberline {5.3}Termination}{8}{subsection.5.3}%
+\contentsline {subsection}{\numberline {5.4}Pseudo-Code}{9}{subsection.5.4}%
+\contentsline {subsection}{\numberline {5.5}Complexity Considerations}{9}{subsection.5.5}%
+\contentsline {subsection}{\numberline {5.6}Optimisation Opportunities}{9}{subsection.5.6}%
+\contentsline {subsection}{\numberline {5.7}Implemented Optimisations}{9}{subsection.5.7}%
+\contentsline {paragraph}{Complexity Impact.}{9}{section*.4}%
+\contentsline {paragraph}{Memory Tradeoff.}{9}{section*.5}%
+\contentsline {subsection}{\numberline {5.8}Worked Example (Mini Game)}{10}{subsection.5.8}%
+\contentsline {paragraph}{Code Path.}{10}{section*.6}%
+\contentsline {paragraph}{Caching Impact.}{10}{section*.7}%
+\contentsline {section}{\numberline {6}Mapping: Theory $\leftrightarrow $ Implementation}{10}{section.6}%
+\contentsline {subsection}{\numberline {6.1}DBM Layer}{10}{subsection.6.1}%
+\contentsline {subsection}{\numberline {6.2}Zone Graph}{10}{subsection.6.2}%
+\contentsline {subsection}{\numberline {6.3}Weak Semantics}{11}{subsection.6.3}%
+\contentsline {subsection}{\numberline {6.4}Timing Side Conditions}{11}{subsection.6.4}%
+\contentsline {subsection}{\numberline {6.5}Game Loop}{11}{subsection.6.5}%
+\contentsline {subsection}{\numberline {6.6}Statistics}{11}{subsection.6.6}%
+\contentsline {subsection}{\numberline {6.7}Potential Extensions}{11}{subsection.6.7}%
+\contentsline {section}{\numberline {7}Future Work and Research Directions}{11}{section.7}%
+\contentsline {subsection}{\numberline {7.1}Symbolic Partial Order Reductions}{11}{subsection.7.1}%
+\contentsline {subsection}{\numberline {7.2}Parametric Timed Bisimulation}{11}{subsection.7.2}%
+\contentsline {subsection}{\numberline {7.3}Compositional Reasoning}{11}{subsection.7.3}%
+\contentsline {subsection}{\numberline {7.4}On-the-fly Abstraction}{11}{subsection.7.4}%
+\contentsline {subsection}{\numberline {7.5}Counterexample-Guided Refinement}{12}{subsection.7.5}%
+\contentsline {subsection}{\numberline {7.6}Parallel Exploration}{12}{subsection.7.6}%
+\contentsline {subsection}{\numberline {7.7}Probabilistic Extensions}{12}{subsection.7.7}%

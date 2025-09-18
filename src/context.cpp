@@ -81,7 +81,7 @@ bool Context::get_struct_variable(const std::string& name, StructValue& result) 
 // Parse a single variable declaration
 void Context::parse_declaration(const UTAP::Variable& variable) {
     std::string var_name = variable.uid.get_name();
-    DEV_PRINT("Here" << var_name << std::endl);
+    DEV_PRINT("Here: " << var_name << std::endl);
     if (variable.uid.get_type().is_clock()) {
             // Handle clocks
             clocks_[var_name] = next_clock_index_++;
@@ -151,7 +151,7 @@ void Context::parse_declaration(const UTAP::Variable& variable) {
                 DEV_PRINT("   Added struct variable (no init): " << var_name << std::endl);
             }
             
-        } else if (variable.uid.get_type().is_constant() || variable.uid.get_type().is_integer()) {
+        } else if (variable.uid.get_type().is_constant() || variable.uid.get_type().is_integer() || variable.uid.get_type().is_double()) {
             // Handle scalar constants and variables
             if (!variable.init.empty()) {
                 double value;
@@ -174,7 +174,6 @@ void Context::parse_declaration(const UTAP::Variable& variable) {
                 variables_[var_name] = 0.0; // Default value
                 DEV_PRINT("   Found global variable: " << var_name << std::endl);
             }
-        
         } else {
             // Other types (channels, etc.)
             DEV_PRINT("   Found other declaration: " << var_name << " (type: " << variable.uid.get_type().str() << ")" << std::endl);
@@ -247,13 +246,15 @@ bool Context::evaluate_expression(const UTAP::Expression& expr, double& result) 
     
     switch (kind) {
         case UTAP::Constants::CONSTANT: {
-            try {
+
+            if(expr.get_type().is_integral()) {
+                    
                 result = expr.get_value();
-            } catch (...) {
-                DEV_PRINT("Failed to get constant value, trying as double" << std::endl);
+            }else{
                 result = expr.get_double_value();
+                DEV_PRINT("Constant value (double): " << result << std::endl);
             }
-            DEV_PRINT("Constant value (double): " << result << std::endl);
+            
             return true;
         }
         

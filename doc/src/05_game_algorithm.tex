@@ -1,0 +1,73 @@
+% Section 5: Timed Bisimulation Game Algorithm
+\section{Game-Based Checking Algorithm}
+\subsection{Attacker/Defender Paradigm}
+We cast refinement as a one-sided safety game. States of the game are candidate pairs in relation R. The \emph{attacker} chooses an observable transition of the refined automaton; the \emph{defender} must reply with a weak ($\tau^* a \tau^*$) transition of the abstract automaton satisfying timing side conditions.
+
+If defender cannot match, the pair is losing and removed. Greatest fixed point of non-losing pairs constitutes the refinement relation.
+
+\subsection{Game Graph (Implicit)}
+The algorithm avoids explicit construction of the full product graph; instead it iteratively filters a hash set of pairs. Successor generation (weak $\tau^* a \tau^*$) is recomputed on demand.
+
+\subsection{Termination}
+Number of zone pairs is finite due to extrapolation. Each iteration strictly removes at least one pair or stops. Thus algorithm terminates.
+
+\subsection{Pseudo-Code}
+\begin{lstlisting}[language=C++]
+R = { (z_r, z_a) | loc(z_r)=loc(z_a) }
+repeat
+  removed = false
+  for (p in R):
+     for each observable tr from p.r:
+        if no matching abstract weak transition exists in p.a:
+            mark p for removal; break
+  remove all marked from R
+until !removed
+return !R.empty()
+\end{lstlisting}
+
+\subsection{Complexity Considerations}
+Worst-case: $O(|R| \cdot (deg_r \cdot (W_r + W_a)))$ where $W_x$ is cost of computing weak successors. Without caching $\tau$-closures may repeat. Memoisation can reduce recomputation to linear in number of distinct (zone,action) pairs.
+
+\subsection{Optimisation Opportunities}
+\begin{itemize}
+  \item Memoize $\tau$-closure and weak successors.
+  \item Pre-filter abstract transitions by label/direction.
+  \item Maintain reverse dependency graph (predecessors) to localise removals.
+  \item Early pruning using DBM inclusion seeding (exclude impossible pairs initially).
+\end{itemize}
+
+\subsection{Implemented Optimisations}
+The current code base implements the four opportunities above:
+\begin{description}
+  \item[Closure Cache] Map \texttt{ZoneState*} to vector of $\tau$-reachable states (function: \texttt{tau\_closure\_cached}). Avoids repeated BFS.
+  \item[Weak Successor Cache] Keyed by (zone, action) (struct \texttt{WeakKey}); stores $\tau^* a \tau^*$ endpoints.
+  \item[Early Pruning Seed] Initial relation only includes pairs with same location and refined zone $\subseteq$ abstract zone (DBM inclusion).
+  \item[Reverse Dependencies] Map from supporting pair to dependents that relied on it to justify at least one match (\texttt{reverse\_deps\_}). When a pair is removed, only its dependents are re-validated (worklist), avoiding full rescans.
+\end{description}
+
+\paragraph{Complexity Impact.} If $C_\tau$ is average $\tau$-closure size, naive recomputation costs $O(|R|\cdot deg \cdot C_\tau)$ per iteration. Caching reduces it to amortised $O(N_\tau + N_{weak})$ where $N_\tau$ and $N_{weak}$ are number of distinct closure / weak-successor queries.
+
+\paragraph{Memory Tradeoff.} Caches store vectors of raw pointers only; reverse dependency graph stores adjacency lists restricted to observed supporting edges, typically much smaller than full $|R|^2$ worst-case.
+
+\subsection{Worked Example (Mini Game)}
+Assume refined automaton $R$ and abstract automaton $A$ each have two locations $L0, L1$ and one observable label $a$ plus internal $\tau$. Initial zones are trivial (all clocks 0). Transitions:
+\begin{center}
+\begin{tabular}{l|l}
+$R$ & $L0 \xrightarrow{a,\; x\le 2,\; x:=0} L1$ \\
+$A$ & $L0 \xrightarrow{\tau,\; x<1} L0$, then $L0 \xrightarrow{a,\; x\le 3,\; x:=0} L1$ \\
+\end{tabular}
+\end{center}
+
+Game iteration for pair $(L0,Z0),(L0,Z0)$:
+\begin{enumerate}
+  \item Attacker picks $a$ from $R$ (enabled for delays $d$ with $d\le 2$).
+  \item Defender computes weak successors in $A$: $\tau$-closure allows any number of $\tau$ steps while $x<1$, then must delay to some $d \le 3$ for the $a$ transition. Combined pattern: delay $d_1 < 1$, zero or more times, then additional delay $d_2$ with $d_1 + d_2 \le 3$.
+  \item Timing side condition: every refined enabling delay $d \le 2$ must be matchable. Choose defender decomposition with $d_1 = \min(d, 0.9)$ (staying under 1) and $d_2 = d - d_1$. Since $d \le 2$, total $d_1+d_2 = d \le 2 \le 3$ holds; guard $x\le 3$ satisfied.
+  \item Defender succeeds; pair survives.
+\end{enumerate}
+
+If refined guard were $x \le 4$, delays $d\in (3,4]$ would not be matchable (abstract guard caps at 3). Pair would be removed, implying no refinement.
+
+\paragraph{Code Path.} In C++: attacker side enumerated in \texttt{observable\_edges(refined)}. Defender calls \texttt{weak\_observable\_successors(abstract, 'a')} producing zones after $\tau^* a \tau^*$. Function \texttt{timing\_ok} reconstructs enabling DBMs and checks inclusion: refined enabling zone $\subseteq$ abstract enabling zone for action $a$. Failure triggers marking for removal.
+
+\paragraph{Caching Impact.} If multiple pairs share the same abstract zone and label $a$, memoising the weak successors avoids recomputing the $\tau$-closure, reducing complexity from repeated closure traversals to a single stored vector of resulting zones.

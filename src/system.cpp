@@ -28,9 +28,32 @@ System::System(const std::string& fileName) {
         // Future implementation would be:
         UTAP::Document doc;
 
-        int result = parse_XML_file(fileName, doc, false);
+        std::cout << "Parsing XML file..." << std::endl;
+        try {
+            int result = parse_XML_file(fileName, doc, true);
+            std::cout << "Parse result: " << result << std::endl;
+            
+            // Check if parsing was successful
+            if (result != 0) {
+                throw std::runtime_error("Failed to parse XML file: " + fileName + " (error code: " + std::to_string(result) + ")");
+            }
+            
+            std::cout << "Document parsed successfully" << std::endl;
+            std::cout << "Number of templates: " << doc.get_templates().size() << std::endl;
+            
+            // Check global declarations
+            auto& globals = doc.get_globals();
+            std::cout << "Global declarations variables count: " << globals.variables.size() << std::endl;
+            
+            // Print some debug info about global declarations
+            std::cout << "Globals object address: " << &globals << std::endl;
 
-             build_from_utap_document(doc);
+            build_from_utap_document(doc);
+        } catch (const std::exception& e) {
+            std::cerr << "Exception during parsing: " << e.what() << std::endl;
+            std::cerr << "Exception type: " << typeid(e).name() << std::endl;
+            throw; // Re-throw to maintain error propagation
+        }
 
 }
 

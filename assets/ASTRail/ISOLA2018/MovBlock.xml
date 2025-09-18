@@ -17,16 +17,18 @@ const int t_send=3;
 const int timeout = 3*freq_req;
 const int t_stop=3;
 
+double rate=2.0;
+
 //invariants all informations must be processed within 3*freqreq
 //tick 0.75 secs.</declaration>
 	<template>
 		<name x="5" y="5">GenerateReqLoc</name>
 		<declaration>// Place local declarations here.
 
-clock c1 = 5.0;</declaration>
+clock c1 = 5;</declaration>
 		<location id="id0" x="-332" y="-153">
 			<name x="-342" y="-187">Idle</name>
-			<label kind="invariant" x="-408" y="-213">(c1' == 1.0) &amp;&amp; (c1 &lt;= freq_req)</label>
+			<label kind="invariant" x="-408" y="-213">c1 &lt;= freq_req</label>
 		</location>
 		<init ref="id0"/>
 		<transition>
@@ -42,7 +44,7 @@ clock c1 = 5.0;</declaration>
 	</template>
 	<template>
 		<name>ReqLoc</name>
-		<declaration>clock c2 = 0.0;</declaration>
+		<declaration>clock c2 = 0;</declaration>
 		<location id="id1" x="-850" y="-884">
 			<urgent/>
 		</location>
@@ -88,7 +90,7 @@ clock c1 = 5.0;</declaration>
 	</template>
 	<template>
 		<name>CalculateLoc</name>
-		<declaration>clock c3 = 0.0;</declaration>
+		<declaration>clock c3 = 0;</declaration>
 		<location id="id5" x="119" y="-85">
 			<name x="76" y="-119">CalculateLocation</name>
 			<label kind="exponentialrate" x="110" y="-68">2</label>
@@ -134,7 +136,7 @@ clock c1 = 5.0;</declaration>
 	</template>
 	<template>
 		<name>ReplyLoc</name>
-		<declaration>clock c4 = 0.0;</declaration>
+		<declaration>clock c4 = 0;</declaration>
 		<location id="id9" x="-807" y="-909">
 			<name x="-841" y="-943">ReplyRequest</name>
 			<label kind="exponentialrate" x="-817" y="-875">2</label>
@@ -180,7 +182,7 @@ clock c1 = 5.0;</declaration>
 	</template>
 	<template>
 		<name>ReqMA</name>
-		<declaration>clock c5 = 0.0;</declaration>
+		<declaration>clock c5 = 0;</declaration>
 		<location id="id13" x="-536" y="-765">
 			<name x="-570" y="-799">SendRequest</name>
 			<label kind="exponentialrate" x="-546" y="-731">2</label>
@@ -226,7 +228,7 @@ clock c1 = 5.0;</declaration>
 	</template>
 	<template>
 		<name>CalculateMA</name>
-		<declaration>clock c6 = 0.0;</declaration>
+		<declaration>clock c6 = 0;</declaration>
 		<location id="id17" x="-170" y="-238">
 			<name x="-213" y="-272">CalculateMA</name>
 			<label kind="exponentialrate" x="-170" y="-221">2</label>
@@ -272,7 +274,7 @@ clock c1 = 5.0;</declaration>
 	</template>
 	<template>
 		<name>ReplyMA</name>
-		<declaration>clock c7 = 0.0;</declaration>
+		<declaration>clock c7 = 0;</declaration>
 		<location id="id21" x="-544" y="-612">
 			<name x="-578" y="-646">ReplyRequest</name>
 			<label kind="exponentialrate" x="-544" y="-586">2</label>
@@ -318,15 +320,15 @@ clock c1 = 5.0;</declaration>
 	</template>
 	<template>
 		<name>Controlling</name>
-		<declaration>clock counter = 0.0;
-clock c8 = 0.0;</declaration>
+		<declaration>clock counter = 0;
+clock c8 = 0;</declaration>
 		<location id="id25" x="-1334" y="-1343">
 			<name x="-1350" y="-1377">Stop</name>
 			<label kind="exponentialrate" x="-1326" y="-1326">2</label>
 		</location>
 		<location id="id26" x="-1598" y="-1343">
 			<name x="-1608" y="-1377">Idle</name>
-			<label kind="invariant" x="-1717" y="-1402">counter' == 1.0 &amp;&amp; counter&lt;=timeout</label>
+			<label kind="invariant" x="-1717" y="-1402">counter&lt;=timeout</label>
 		</location>
 		<init ref="id26"/>
 		<transition>

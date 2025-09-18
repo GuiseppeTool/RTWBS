@@ -129,123 +129,78 @@ struct StateCorrespondenceHash {
 };
 
 class RTWBSChecker {
-private:
-    // Cache for memoization (optimization from paper)
-    std::unordered_map<std::string, bool> path_cache_;
-    std::unordered_set<StateCorrespondence, StateCorrespondenceHash> correspondence_cache_;
-    
-   /* // Extract event transitions from a timed automaton
-    std::vector<EventTransition> extract_event_transitions(const TimedAutomaton& automaton);
-    
-    // Check if a path exists in the abstract system that corresponds to the refined path
-    bool find_equivalent_path(const std::vector<EventTransition>& refined_path,
-                             const std::vector<EventTransition>& abstract_transitions){};
-    
-    // Verify state correspondence under RWTBS rules
-    bool verify_state_correspondence(int refined_state, int abstract_state,
-                                   const TimedAutomaton& refined, const TimedAutomaton& abstract){};
-    
-    // Check timing constraints: strict for sent events, relaxed for received events
-    bool check_timing_constraints(const EventTransition& refined_trans, 
-                                 const EventTransition& abstract_trans){};
-    
-    // Generate hash key for path caching
-    std::string generate_path_key(const std::vector<EventTransition>& path){};
-
-     // Check if two zone states satisfy RTWBS inclusion constraints
-     // @param refined_state_id: State ID in refined automaton
-     // @param abstract_state_id: State ID in abstract automaton  
-     // @param abstract_automaton: The abstract automaton to compare against
-     // @return: true if refined zone can simulate abstract zone under RTWBS
-        bool check_zone_inclusion_rtwbs(size_t refined_state_id, size_t abstract_state_id, 
-                                   const TimedAutomaton& refined_automaton,const TimedAutomaton& abstract_automaton) const{};
-*/
 public:
-    RTWBSChecker()
-    {
-        path_cache_.clear();
-        correspondence_cache_.clear();
-        last_stats_=CheckStatistics{0, 0, 0, 0.0, 0};
-    }
-    /**
-     * Check if refined automaton is RTWBS-equivalent to abstract automaton
-     * 
-     * @param refined The refined/concrete timed automaton (e.g., DT)
-     * @param abstract The abstract timed automaton (e.g., PT)
-     * @return true if refined is a valid RTWBS refinement of abstract
-     */
+    RTWBSChecker() : last_stats_{0,0,0,0.0,0} {}
+
+    // Core equivalence check (game-based relaxed weak timed bisimulation)
     bool check_rtwbs_equivalence(const TimedAutomaton& refined, const TimedAutomaton& abstract);
-    
-    /**
-     * Get detailed refinement result with counterexample if check fails
-     * 
-     * @param refined The refined timed automaton
-     * @param abstract The abstract timed automaton
-     * @param counterexample Output parameter for counterexample trace if check fails
-     * @return true if equivalent, false with counterexample if not
-     */
-    bool check_rtwbs_with_counterexample(const TimedAutomaton& refined, 
-                                        const TimedAutomaton& abstract,
-                                        std::vector<EventTransition>& counterexample);
-    
-    /**
-     * Clear internal caches (useful for memory management)
-     */
-    void clear_caches();
-    
 
-
-
-    bool check_transition_simulation(std::vector<const Transition*> refined, std::vector<const Transition*> abstract);
-    
-    CheckStatistics get_last_check_statistics() const;
-    void print_statistics() const
-    {
-        last_stats_.print();
-    }
-
-    /**
-     * Check RTWBS equivalence between two systems
-     * 
-     * This checks if each automaton in system_refined is RTWBS-equivalent 
-     * to the corresponding automaton in system_abstract (matched by index).
-     * 
-     * @param system_refined The refined/concrete system
-     * @param system_abstract The abstract system
-     * @return true if all corresponding automata pairs are RTWBS-equivalent
-     */
+    // System-level convenience (pairwise index matching)
     bool check_rtwbs_equivalence(const System& system_refined, const System& system_abstract);
-    
-    /**
-     * Check RTWBS equivalence between two systems with detailed results
-     * 
-     * @param system_refined The refined/concrete system
-     * @param system_abstract The abstract system
-     * @param results Output vector containing results for each automaton pair
-     * @return true if all corresponding automata pairs are RTWBS-equivalent
-     */
+
     struct SystemCheckResult {
         size_t automaton_index;
         std::string template_name_refined;
         std::string template_name_abstract;
         bool is_equivalent;
         CheckStatistics statistics;
-        std::vector<EventTransition> counterexample;
     };
-    
-    bool check_rtwbs_equivalence_detailed(const System& system_refined, 
-                                         const System& system_abstract,
-                                         std::vector<SystemCheckResult>& results);
-    void reset()
-    {
-        last_stats_=CheckStatistics{0, 0, 0, 0.0, 0};
-         path_cache_.clear();
-        correspondence_cache_.clear();
-        
-    }
+    bool check_rtwbs_equivalence_detailed(const System& system_refined,
+                                          const System& system_abstract,
+                                          std::vector<SystemCheckResult>& results);
+
+    CheckStatistics get_last_check_statistics() const { return last_stats_; }
+    void print_statistics() const { last_stats_.print(); }
+    void reset() { last_stats_ = CheckStatistics{0,0,0,0.0,0}; }
 
 private:
     mutable CheckStatistics last_stats_;
+
+    // ===== Optimisation Data Structures =====
+    // Cache of tau-closures: ZoneState* -> vector of reachable ZoneState* using only tau/internal transitions
+    std::unordered_map<const ZoneState*, std::vector<const ZoneState*>> tau_closure_cache_;
+
+    // Key for weak successor cache (zone state + action label)
+    struct WeakKey {
+        const ZoneState* z;
+        std::string action;
+        bool operator==(const WeakKey& o) const noexcept { return z==o.z && action==o.action; }
+    };
+    struct WeakKeyHash {
+        size_t operator()(const WeakKey& k) const noexcept {
+            return std::hash<const ZoneState*>{}(k.z) ^ (std::hash<std::string>{}(k.action) << 1);
+        }
+    };
+    // Cache: weak successors under pattern tau* a tau*
+    std::unordered_map<WeakKey, std::vector<const ZoneState*>, WeakKeyHash> weak_succ_cache_;
+
+    // Pair key used for relation + reverse dependency graph
+    struct PairKey {
+        const ZoneState* r; // refined
+        const ZoneState* a; // abstract
+        bool operator==(const PairKey& o) const noexcept { return r==o.r && a==o.a; }
+    };
+    struct PairKeyHash {
+        size_t operator()(const PairKey& p) const noexcept {
+            return std::hash<const ZoneState*>{}(p.r) ^ (std::hash<const ZoneState*>{}(p.a) << 1);
+        }
+    };
+
+    // Reverse dependency graph: child -> parents that relied on (child) to justify a match
+    std::unordered_map<PairKey, std::vector<PairKey>, PairKeyHash> reverse_deps_;
+
+    // Relation set (active candidate pairs)
+    std::unordered_set<PairKey, PairKeyHash> relation_;
+
+    // Worklist for localised re-validation
+    std::queue<PairKey> worklist_;
+
+    // ---- Cached semantic helpers ----
+    const std::vector<const ZoneState*>& tau_closure_cached(const TimedAutomaton& ta, const ZoneState* start);
+    const std::vector<const ZoneState*>& weak_observable_successors_cached(const TimedAutomaton& ta, const ZoneState* start, const std::string& action);
+
+    // Reset caches & structures between top-level checks
+    void clear_optimisation_state();
 };
 
 } // namespace rtwbs

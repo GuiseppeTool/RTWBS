@@ -37,13 +37,19 @@ void self_equivalence_checks(const std::vector<std::string>& filenames,
         std::stringstream ss;
         ss << results_folder<< benchmark_prefix<< std::put_time(std::localtime(&time_t), "%Y%m%d_%H%M%S") << ".csv";
         std::string csv_filename = ss.str();
-        
+
+        if(!std::filesystem::is_directory(results_folder)) {
+            std::filesystem::create_directories(results_folder);
+        }
+
         // Create CSV file and write header
         std::ofstream csv_file(csv_filename);
         if (!csv_file.is_open()) {
             throw std::runtime_error("Error: Could not create CSV file " + csv_filename);
         }
         
+
+
         rtwbs::CheckStatistics::write_csv_header(csv_file);
         
         rtwbs::RTWBSChecker checker;
@@ -51,10 +57,13 @@ void self_equivalence_checks(const std::vector<std::string>& filenames,
         for (const auto& filename : filenames) {
             std::cout << "Processing " << benchmark_folder << filename << std::endl;
             rtwbs::System s(benchmark_folder + filename);
-            //print all the variables and constants
+            
             std::cout << "Running self-equivalence check..." << std::endl;
             bool equivalent = checker.check_rtwbs_equivalence(s, s);
             std::cout << "Self-equivalence result: " << (equivalent ? "EQUIVALENT" : "NOT EQUIVALENT") << std::endl;
+            if (!equivalent) {
+                throw std::runtime_error("Error: System " + filename + " is not self-equivalent under RTWBS!");
+            }
             checker.print_statistics();
             
             // Get statistics for this run and write to CSV
@@ -88,7 +97,10 @@ void comparison_checks(const std::vector<std::string>& filenames,
         std::stringstream ss;
         ss << results_folder<< benchmark_prefix<< std::put_time(std::localtime(&time_t), "%Y%m%d_%H%M%S") << ".csv";
         std::string csv_filename = ss.str();
-        
+         if(!std::filesystem::is_directory(results_folder)) {
+            std::filesystem::create_directories(results_folder);
+        }
+
         // Create CSV file and write header
         std::ofstream csv_file(csv_filename);
         if (!csv_file.is_open()) {
