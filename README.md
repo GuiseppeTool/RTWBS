@@ -2,8 +2,7 @@
 
 This directory contains an implementation of RTWBS equivalence checking for timed automata, based on the research described in the ICSE_DT paper.
 
-IMPORTANT: Template parameters as well as functions are currently not supported! As well as branch point!
-
+IMPORTANT: Branch points are not implemented
 ## Overview
 
 RTWBS (Relaxed Weak Timed Bisimulation) is a formal equivalence relation that allows for:
@@ -74,22 +73,3 @@ make release
 ./release/benchmarks/run_all
 ```
 
-## Implementation Notes
-
-This is a research prototype implementation with the following characteristics:
-
-- **Simplified constraint parsing**: Uses basic timing bound extraction
-- **Path-based checking**: Implements a simplified version of the algorithm from the ICSE_DT paper
-- **Caching**: Includes memoization for performance optimization
-- **Counterexample generation**: Provides debugging information when equivalence fails
-
-For production use, the implementation would need:
-- More sophisticated timing constraint parsing
-- Full zone-based equivalence checking
-- Integration with complete UPPAAL model semantics
-
-## Research Background
-
-This implementation is based on the paper found in the `ICSE_DT` directory, which describes the theoretical foundations of Relaxed Weak Timed Bisimulation for distributed systems modeling and verification.
-
-The key insight is that in distributed systems, the timing of received events can be more flexible (due to network delays, etc.) while sent events must maintain their timing guarantees for system correctness.
