@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<nta>
+  <declaration>clock x; chan c; int v; </declaration>
+  <template>
+    <name>OnlyAssignments</name>
+    <location id="L0" x="0" y="0"><name>L0</name></location>
+    <location id="L1" x="200" y="0"><name>L1</name></location>
+    <location id="L2" x="400" y="0"><name>L2</name></location>
+    <init ref="L0"/>
+    <!-- Non-synchronized edges with assignments: should become tau when abstract_non_channels=true -->
+    <transition>
+      <source ref="L0"/><target ref="L1"/>
+      <label kind="assignment">v := 1</label>
+    </transition>
+    <transition>
+      <source ref="L1"/><target ref="L2"/>
+      <label kind="assignment">x := 0, v:=4</label>
+    </transition>
+    <!-- Synchronized edge: must remain observable (not tau) -->
+    <transition>
+      <source ref="L2"/><target ref="L0"/>
+      <label kind="synchronisation">c!</label>
+      <label kind="assignment">v := 2</label>
+    </transition>
+  </template>
+  <system>process P = OnlyAssignments(); system P;</system>
+</nta>

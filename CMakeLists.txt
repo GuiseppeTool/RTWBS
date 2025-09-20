@@ -222,6 +222,8 @@ endfunction()
 add_integration_example(dbm_example)
 add_integration_example(weak_successors_example)
 add_integration_example(rtwbs_equivalence_example)
+add_integration_example(assignments_as_tau_example)
+add_integration_example(parse_generated_benchmark)
 # Copy assets directory to build directory
 # Must be able to specify which subfolder according to the target
 
@@ -253,6 +255,7 @@ add_custom_target(copy_assets_benchmarks ALL
 add_benchmark(run_all)
 add_benchmark(run_ASTRail)
 add_benchmark(run_FMICS2021)
+add_benchmark(run_synthetic)
 
 
 # Benchmarks depend on assets copy

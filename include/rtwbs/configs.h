@@ -24,13 +24,12 @@ public:
     
     struct TimedAutomatonConfig {
         // Action and transition settings
-        std::string default_action_name = "";           // Default action name for unlabeled transitions
         std::string tau_action_name = "tau";               // Internal/silent action representation
         std::string empty_action_name = "";                // Alternative representation for internal actions
         
         // Zone graph construction limits
-        size_t max_states_default = 1000;                  // Default maximum states in zone graph
-        size_t max_states_limit = 100000;                  // Hard limit for safety
+        size_t max_states_default = 60000;                  // Default maximum states in zone graph
+        size_t max_states_limit = -1;                  // Hard limit for safety
         int default_initial_location = 0;                  // Default initial location ID
         
         // Synchronization settings
@@ -41,6 +40,8 @@ public:
         bool enable_debug_output = false;                  // Enable debug prints during construction
         bool enable_warnings = true;                       // Enable warning messages
         bool force_construction = false;                   // Force zone graph reconstruction
+
+        //bool abstract_non_channels = true;            // Abstract away non-channel actions in refinement checks
     };
     
     // =================================================================
@@ -104,7 +105,7 @@ public:
     void print_configuration() const {
         std::cout << "=== RTWBS Configuration ===" << std::endl;
         std::cout << "Timed Automaton:" << std::endl;
-        std::cout << "  Default Action: '" << timed_automaton_config_.default_action_name << "'" << std::endl;
+        //std::cout << "  Default Action: '" << timed_automaton_config_.default_action_name << "'" << std::endl;
         std::cout << "  Tau Action: '" << timed_automaton_config_.tau_action_name << "'" << std::endl;
         std::cout << "  Max States: " << timed_automaton_config_.max_states_default << std::endl;
         std::cout << "  Debug Output: " << (timed_automaton_config_.enable_debug_output ? "ON" : "OFF") << std::endl;

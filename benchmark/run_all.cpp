@@ -3,6 +3,12 @@
 
 int main(int argc, char* argv[]) {
     try {
+
+        std::string results_folder = "results/";
+        int n_workers = 0;
+
+        rtwbs::parse_arguments(argc, argv, results_folder, n_workers);
+
         std::vector<std::string> FMICS_filenames = {
             "FMICS2021/modelMitigation.xml", 
             "FMICS2021/modelLowerMaxLostMsgFastVerification.xml",
@@ -25,10 +31,13 @@ int main(int argc, char* argv[]) {
             "ASTRail/STTT2021/model - scenario slower leading train.xml",
             "ASTRail/STTT2021/model.xml"
         };
-        rtwbs::self_equivalence_checks(FMICS_filenames,"assets/", "results/","FMICS_benchmark_results_");
-        rtwbs::comparison_checks(FMICS_filenames,"assets/","results/","FMICS_comparison_results_");
-        rtwbs::self_equivalence_checks(ASTRail_filenames,"assets/", "results/","ASTRail_benchmark_results_");
-        rtwbs::comparison_checks(ASTRail_filenames,"assets/","results/","ASTRail_comparison_results_");
+        rtwbs::self_equivalence_checks(FMICS_filenames,"assets/", results_folder.c_str(),"FMICS_benchmark_results_", n_workers);
+        rtwbs::comparison_checks(FMICS_filenames,"assets/",results_folder.c_str(),"FMICS_comparison_results_",n_workers);
+        rtwbs::self_equivalence_checks(ASTRail_filenames,"assets/", results_folder.c_str(),"ASTRail_benchmark_results_", n_workers);
+        rtwbs::comparison_checks(ASTRail_filenames,"assets/",results_folder.c_str(),"ASTRail_comparison_results_",n_workers);
+
+         std::cout << "Results folder: " << results_folder << std::endl;
+        std::cout << "Number of workers: " << n_workers << std::endl;
         return 0;
     } catch (const std::exception& e) {
         std::cerr << "Error: " << e.what() << std::endl;

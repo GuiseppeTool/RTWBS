@@ -19,6 +19,8 @@ release: $(RELEASE_DIR)/Makefile
 	$(MAKE) -C $(RELEASE_DIR) -j$(NPROC)
 	@echo "Copy the release run_all binary from benchmarks/run_all to the main directory"
 	@cp $(RELEASE_DIR)/benchmarks/run_all ./run_all
+	@echo "Copy the release run_synthetic binary from benchmarks/run_synthetic to the main directory"
+	@cp $(RELEASE_DIR)/benchmarks/run_synthetic ./run_synthetic
 
 # Rule to run cmake and generate the Makefile in the build directory (development)
 $(BUILD_DIR)/Makefile: CMakeLists.txt

@@ -137,6 +137,19 @@ void System::print_all_statistics() const {
         automata_[i]->print_statistics();
         std::cout << std::endl;
     }
+    //print a summ of all zone graph statistics
+    size_t total_zones = 0;
+    size_t total_transitions_zg = 0;
+    for (const auto& automaton : automata_) {
+        total_zones += automaton->get_num_zones();
+        total_transitions_zg += automaton->get_num_transition_zg();
+
+    }
+        std::cout << "=== Total System Statistics ===" << std::endl;
+        std::cout << "Number of Automata: " << automata_.size() << std::endl;
+    std::cout << "Total zones: " << total_zones << std::endl;
+    std::cout << "Total zone graph transitions: " << total_transitions_zg << std::endl;
+
     std::cout << "=========================" << std::endl;
 }
 

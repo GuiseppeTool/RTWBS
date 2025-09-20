@@ -63,16 +63,31 @@ if (is_equivalent) {
 }
 ```
 
-## Building and Running
+## Building and Running all the benchmarks
 
 ```bash
+
+#create python environment with venv, install requirements.txt
+python3 -m venv venv
+source venv/bin/activate
+pip install --upgrade pip
+pip install -r requirements.txt
+
+python3 generate_syn_benchmarks.py
+
 
 ./setup.sh
 
 # Build the RTWBS 
 make release
+#run all benchmarks
+./run_all && ./run_synthetic
 
-# Run the benchmarks
-./run_all
+
+#-----ALTERNATIVELY-----
+# Run the benchmarks with 3 workers and save them to folder results_3
+./run_all --n-workers 3 --folder results_3 && ./run_synthetic --n-workers 3 --folder results_3
+
+
 ```
 

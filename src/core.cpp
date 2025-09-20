@@ -25,7 +25,9 @@
 #include <chrono>
 #include <queue>
 #include <unordered_set>
+#include <unordered_map>
 #include <iostream>
+#include <future>
 
 namespace rtwbs {
 
@@ -46,7 +48,8 @@ struct ZonePairHash {
  * @return true if action is tau or empty unsynchronized; false otherwise.
  */
 inline bool is_tau(const Transition* t){
-    return t->action == TA_CONFIG.tau_action_name || (!t->has_synchronization() && t->action.empty());
+    // Internal moves are ONLY unsynchronized and labeled as tau (or empty)
+    return (!t->has_synchronization()) && (t->action == TA_CONFIG.tau_action_name || t->action.empty());
 }
 
 /**
@@ -199,9 +202,8 @@ void RTWBSChecker::clear_optimisation_state(){
     relation_.clear();
     while(!worklist_.empty()) worklist_.pop();
 }
-
 /**
- * @brief Core RTWBS equivalence (refinement) check between two automata.
+ * @brief Core RTWBS simulation (refinement) check between two automata.
  *
  * Algorithm Outline:
  *  1. Ensure zone graphs are (fully) constructed (current implementation builds all states).
@@ -225,7 +227,10 @@ void RTWBSChecker::clear_optimisation_state(){
  * Complexity (worst-case, without memoisation):
  *  O(|R| * T_match) where T_match involves computing weak successors repeatedly.
  */
-bool RTWBSChecker::check_rtwbs_equivalence(const TimedAutomaton& refined, const TimedAutomaton& abstract){
+
+
+
+bool RTWBSChecker::check_rtwbs_simulation(const TimedAutomaton& refined, const TimedAutomaton& abstract){
     auto start = std::chrono::high_resolution_clock::now();
     clear_optimisation_state();
     const_cast<TimedAutomaton&>(refined).construct_zone_graph();
@@ -234,14 +239,17 @@ bool RTWBSChecker::check_rtwbs_equivalence(const TimedAutomaton& refined, const 
     const auto& AZ = abstract.get_all_zone_states();
     if(RZ.empty() || AZ.empty()) return false;
     // 1) Early pruning seed: only include pairs with same location AND refined zone subset/eq abstract zone
-    for(auto &rzp: RZ){
-        for(auto &azp: AZ){
-            if(rzp->location_id == azp->location_id){
-                relation_t rel = dbm_relation(rzp->zone.data(), azp->zone.data(), rzp->dimension);
-                if(rel==base_SUBSET || rel==base_EQUAL){
-                    PairKey pk{rzp.get(), azp.get()};
-                    relation_.insert(pk);
-                    worklist_.push(pk);
+    
+    if(false){
+        for(auto &rzp: RZ){
+            for(auto &azp: AZ){
+                if(rzp->location_id == azp->location_id){
+                    relation_t rel = dbm_relation(rzp->zone.data(), azp->zone.data(), rzp->dimension);
+                    if(rel==base_SUBSET || rel==base_EQUAL){
+                        PairKey pk{rzp.get(), azp.get()};
+                        relation_.insert(pk);
+                        worklist_.push(pk);
+                    }
                 }
             }
         }
@@ -254,14 +262,18 @@ bool RTWBSChecker::check_rtwbs_equivalence(const TimedAutomaton& refined, const 
         auto rOut = refined.get_outgoing_transitions(rZone->location_id);
         for(auto rt: rOut){
             if(is_tau(rt)) continue;
-            // Pre-filter abstract transitions by action and sync metadata
+            // Compute enabled refined weak successors for this action; if none, skip this transition
+            const auto& rSuccs = weak_observable_successors_cached(refined, rZone, rt->action);
+            if(rSuccs.empty()) continue; // not enabled at this zone
+            // Pre-filter abstract transitions by action
             bool matched=false;
             for(auto at: abstract.get_outgoing_transitions(aZone->location_id)){
                 if(is_tau(at)) continue;
                 if(rt->action != at->action) continue;
-                if(!timing_ok(refined,rZone,rt,abstract,aZone,at)) continue;
-                const auto& rSuccs = weak_observable_successors_cached(refined, rZone, rt->action);
+                // Abstract side must also be enabled for this action
                 const auto& aSuccs = weak_observable_successors_cached(abstract, aZone, at->action);
+                if(aSuccs.empty()) continue;
+                if(!timing_ok(refined,rZone,rt,abstract,aZone,at)) continue;
                 bool found=false; PairKey supporting{};
                 for(auto rs: rSuccs){
                     for(auto as: aSuccs){
@@ -278,11 +290,11 @@ bool RTWBSChecker::check_rtwbs_equivalence(const TimedAutomaton& refined, const 
                     matched=true; break;
                 }
             }
-            if(!matched) return false; // attacker wins -> remove
+            if(!matched) return false; // some enabled refined move has no match
         }
         return true; // all observable transitions matched
     };
-
+    
     while(!worklist_.empty()){
         PairKey current = worklist_.front(); worklist_.pop();
         // It might have been removed already
@@ -313,13 +325,295 @@ bool RTWBSChecker::check_rtwbs_equivalence(const TimedAutomaton& refined, const 
  * @brief Pairwise system-level refinement: all corresponding automata must refine.
  * @return true iff every automaton pair satisfies RTWBS refinement.
  */
-bool RTWBSChecker::check_rtwbs_equivalence(const System& system_refined, const System& system_abstract){
+bool RTWBSChecker::check_rtwbs_simulation(const System& system_refined, const System& system_abstract){
     if(system_refined.size()!=system_abstract.size()) return false; 
     bool all=true; 
     for(size_t i=0;i<system_refined.size();++i) {
-        if(!check_rtwbs_equivalence(system_refined.get_automaton(i), system_abstract.get_automaton(i))) all=false; 
+        if(!check_rtwbs_simulation(system_refined.get_automaton(i), system_abstract.get_automaton(i))) all=false; 
     }
     return all; 
+}
+
+
+
+
+/**
+ * @brief Core RTWBS equivalence (refinement) check between two automata.
+ *
+ * Algorithm Outline:
+ *  1. Ensure zone graphs are (fully) constructed (current implementation builds all states).
+ *  2. Seed candidate relation R with all zone pairs sharing the same location id.
+ *  3. Iterate elimination: for each pair (r,a) verify every observable refined move
+ *     can be matched by some abstract weak move with acceptable timing and related successors.
+ *  4. Remove failing pairs; stop at fixed point. Non-empty relation => refinement holds.
+ *
+ * Correctness Notes:
+ *  - This is a greatest fixed point style refinement (monotone elimination).
+ *  - Successor validation is optimistic: requires existence of at least one successor pair
+ *    already in relation; convergence ensures global consistency.
+ *  - Tau behaviours are abstracted via τ-closure in both pre/post phases.
+ *
+ * Limitations / TODO:
+ *  - No counterexample extraction.
+ *  - No on-demand zone exploration (eager build may be large).
+ *  - Could refine initial seeding using DBM inclusion to reduce search space.
+ *  - Could track predecessor dependencies to avoid full scans per iteration.
+ *
+ * Complexity (worst-case, without memoisation):
+ *  O(|R| * T_match) where T_match involves computing weak successors repeatedly.
+ */
+
+
+
+
+
+bool RTWBSChecker::check_rtwbs_equivalence(const TimedAutomaton& refined, const TimedAutomaton& abstract){
+    auto start = std::chrono::high_resolution_clock::now();
+    clear_optimisation_state();
+    const_cast<TimedAutomaton&>(refined).construct_zone_graph();
+    const_cast<TimedAutomaton&>(abstract).construct_zone_graph();
+    const auto& RZ = refined.get_all_zone_states();
+    const auto& AZ = abstract.get_all_zone_states();
+    if(RZ.empty() || AZ.empty()) return false;
+    DEV_PRINT( "Thread " << std::this_thread::get_id() << " is doing equivalence check\n for "<< refined.get_name() << " and " << abstract.get_name() << std::endl);
+
+    // 1) Early pruning seed: only include pairs with same location AND refined zone subset/eq abstract zone
+    for(auto &rzp: RZ){
+        for(auto &azp: AZ){
+            if(rzp->location_id == azp->location_id){
+                relation_t rel = dbm_relation(rzp->zone.data(), azp->zone.data(), rzp->dimension);
+                if(rel==base_SUBSET || rel==base_EQUAL){
+                    PairKey pk{rzp.get(), azp.get()};
+                    relation_.insert(pk);
+                    worklist_.push(pk);
+                }
+            }
+        }
+    }
+    if(relation_.empty()) return false;
+
+    // 2) Localised validation loop using worklist and reverse dependencies
+    //    Now symmetric: both refined→abstract and abstract→refined must match (bisimulation)
+    auto validate_pair = [&](const PairKey& pk)->bool{
+        auto rZone = pk.r; auto aZone = pk.a;
+
+        // Forward direction: refined -> abstract
+        {
+            auto rOut = refined.get_outgoing_transitions(rZone->location_id);
+            for(auto rt: rOut){
+                if(is_tau(rt)) continue;
+                const auto& rSuccs = weak_observable_successors_cached(refined, rZone, rt->action);
+                if(rSuccs.empty()) continue; // transition not enabled from rZone
+                bool matched=false;
+                for(auto at: abstract.get_outgoing_transitions(aZone->location_id)){
+                    if(is_tau(at)) continue;
+                    if(rt->action != at->action) continue;
+                    // Cheap sync precheck to avoid expensive DBM timing_ok when impossible
+                    bool rs = rt->has_synchronization();
+                    bool asy = at->has_synchronization();
+                    if(rs != asy) continue;
+                    if(rs){
+                        if(rt->channel != at->channel) continue;
+                        if(rt->is_sender != at->is_sender) continue;
+                        if(rt->is_receiver != at->is_receiver) continue;
+                    }
+                    const auto& aSuccs = weak_observable_successors_cached(abstract, aZone, at->action);
+                    if(aSuccs.empty()) continue; // not enabled on abstract side
+                    if(!timing_ok(refined, rZone, rt, abstract, aZone, at)) continue;
+                    // Index abstract successors by location to reduce O(m*n)
+                    std::unordered_map<int, std::vector<const ZoneState*>> aByLoc;
+                    aByLoc.reserve(aSuccs.size());
+                    for(auto as: aSuccs) aByLoc[as->location_id].push_back(as);
+                    bool found=false; PairKey supporting{};
+                    for(auto rsucc: rSuccs){
+                        auto it = aByLoc.find(rsucc->location_id);
+                        if(it==aByLoc.end()) continue;
+                        for(auto as: it->second){
+                            PairKey cand{rsucc, as};
+                            if(relation_.count(cand)) { found=true; supporting=cand; break; }
+                        }
+                        if(found) break;
+                    }
+                    if(found){
+                        // record reverse dependency: pk depends on supporting
+                        reverse_deps_[supporting].push_back(pk);
+                        matched=true; break;
+                    }
+                }
+                if(!matched) return false; // enabled refined move has no match
+            }
+        }
+
+        // Backward direction: abstract -> refined
+        {
+            auto aOut = abstract.get_outgoing_transitions(aZone->location_id);
+            for(auto at: aOut){
+                if(is_tau(at)) continue;
+                const auto& aSuccs = weak_observable_successors_cached(abstract, aZone, at->action);
+                if(aSuccs.empty()) continue; // not enabled from aZone
+                bool matched=false;
+                for(auto rt: refined.get_outgoing_transitions(rZone->location_id)){
+                    if(is_tau(rt)) continue;
+                    if(at->action != rt->action) continue;
+                    // Cheap sync precheck (mirror)
+                    bool asy = at->has_synchronization();
+                    bool rs = rt->has_synchronization();
+                    if(asy != rs) continue;
+                    if(asy){
+                        if(at->channel != rt->channel) continue;
+                        if(at->is_sender != rt->is_sender) continue;
+                        if(at->is_receiver != rt->is_receiver) continue;
+                    }
+                    const auto& rSuccs = weak_observable_successors_cached(refined, rZone, rt->action);
+                    if(rSuccs.empty()) continue; // not enabled on refined side
+                    if(!timing_ok(abstract, aZone, at, refined, rZone, rt)) continue; // mirror timing
+                    // Index refined successors by location
+                    std::unordered_map<int, std::vector<const ZoneState*>> rByLoc;
+                    rByLoc.reserve(rSuccs.size());
+                    for(auto rsucc: rSuccs) rByLoc[rsucc->location_id].push_back(rsucc);
+                    bool found=false; PairKey supporting{};
+                    for(auto as: aSuccs){
+                        auto it = rByLoc.find(as->location_id);
+                        if(it==rByLoc.end()) continue;
+                        for(auto rsucc: it->second){
+                            PairKey cand{rsucc, as};
+                            if(relation_.count(cand)) { found=true; supporting=cand; break; }
+                        }
+                        if(found) break;
+                    }
+                    if(found){
+                        reverse_deps_[supporting].push_back(pk);
+                        matched=true; break;
+                    }
+                }
+                if(!matched) return false; // enabled abstract move has no match
+            }
+        }
+        return true; // all observable transitions matched in both directions
+    };
+
+    while(!worklist_.empty()){
+        PairKey current = worklist_.front(); worklist_.pop();
+        // It might have been removed already
+        if(!relation_.count(current)) continue;
+        if(!validate_pair(current)){
+            // remove and enqueue dependents
+            relation_.erase(current);
+            auto it = reverse_deps_.find(current);
+            if(it!=reverse_deps_.end()){
+                for(auto &parent: it->second){
+                    if(relation_.count(parent)) worklist_.push(parent);
+                }
+            }
+            reverse_deps_.erase(current);
+        }
+        if(relation_.empty()) break;
+    }
+    auto end = std::chrono::high_resolution_clock::now();
+    last_stats_.refined_states += RZ.size();
+    last_stats_.abstract_states += AZ.size();
+    last_stats_.simulation_pairs += relation_.size();
+    last_stats_.check_time_ms += std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count();
+    last_stats_.memory_usage_bytes += relation_.size()*sizeof(PairKey);
+    DEV_PRINT( "Thread " << std::this_thread::get_id() << " finished equivalence check\n for "<< refined.get_name() << " and " << abstract.get_name() << std::endl);
+    return !relation_.empty();
+}
+
+
+bool RTWBSChecker::check_rtwbs_equivalence__(const System& system_refined, const System& system_abstract)
+{
+       bool all = true; 
+    size_t total = system_refined.size();
+    int barWidth = 70;
+    std::vector<bool> results(total, false);
+    for(size_t i = 0; i < total; ++i) {
+                // Run equivalence check
+                if(!check_rtwbs_equivalence(system_refined.get_automaton(i), system_abstract.get_automaton(i)))
+                    all = false; 
+
+                // Report result of current automaton
+                
+
+                // Update progress bar
+                float progress = float(i + 1) / total; // completed fraction
+
+                std::cout << "[";
+                int pos = barWidth * progress;
+                for (int j = 0; j < barWidth; ++j) {
+                    if (j < pos) std::cout << "=";
+                    else if (j == pos) std::cout << ">";
+                    else std::cout << " ";
+                }
+                std::cout << "] " << int(progress * 100.0) <<"% ";
+                std::cout <<"Automaton pair " << i << ": " 
+                        << (all ? "EQUIVALENT" : "DIFFERENT") << " \r";
+                std::cout.flush();
+                results[i] = all;
+            }
+
+            std::cout << std::endl; // move to next line after progress bar finishes
+            for (size_t i = 0; i < total; ++i) {
+                std::cout << "Automaton pair " << i << ": " 
+                        << (results[i] ? "EQUIVALENT" : "DIFFERENT") << std::endl;
+            }
+
+            return all; 
+}
+
+
+/**
+ * @brief Pairwise system-level refinement: all corresponding automata must refine.
+ * @return true iff every automaton pair satisfies RTWBS refinement.
+ */
+bool RTWBSChecker::check_rtwbs_equivalence(const System& system_refined, const System& system_abstract, size_t num_workers) {
+    if(system_refined.size() != system_abstract.size()) 
+        return false; 
+
+ 
+    bool all = true;
+    if (num_workers <=1){
+       return check_rtwbs_equivalence__(system_refined, system_abstract);
+    }else{
+        //execute in parallel split automata for workers
+        
+
+        //lambda that efficiently takes a vector of automata pairs and checks them
+
+        // Pre-construct all zone graphs sequentially (avoid concurrent mutations)
+        for (size_t i = 0; i < system_refined.size(); ++i) {
+            auto& r = const_cast<TimedAutomaton&>(system_refined.get_automaton(i));
+            auto& a = const_cast<TimedAutomaton&>(system_abstract.get_automaton(i));
+            r.construct_zone_graph();
+            a.construct_zone_graph();
+        }
+        bool all = true;
+        std::vector<std::future<std::pair<bool, rtwbs::CheckStatistics>>> futures;
+
+        ThreadPool pool(num_workers); 
+        futures.reserve(system_refined.size());
+
+        for(size_t i = 0; i < system_refined.size(); ++i) {
+            futures.push_back(pool.enqueue([&system_refined, &system_abstract, i]() {
+                RTWBSChecker local;
+                bool correct = local.check_rtwbs_equivalence(
+                    system_refined.get_automaton(i),
+                    system_abstract.get_automaton(i)
+                );
+                return std::make_pair(correct, local.get_last_check_statistics());
+            }));
+        }
+
+        // Wait for results
+        for(auto& fut : futures) {
+            auto [correct, stats] = fut.get();
+            if(!correct) all = false;
+            auto old_time = this->last_stats_.check_time_ms;
+            this->last_stats_ += stats;
+            this->last_stats_.check_time_ms = std::max(old_time, stats.check_time_ms);
+        }
+        return all;
+    }
+
 }
 
 /**
@@ -342,5 +636,10 @@ bool RTWBSChecker::check_rtwbs_equivalence_detailed(const System& system_refined
     } 
     return all; 
 }
+
+
+
+
+
 
 } // namespace rtwbs

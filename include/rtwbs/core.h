@@ -11,6 +11,8 @@
 #include <functional>
 #include <fstream>
 
+#include "threadpool.h"
+
 namespace rtwbs {
 
 
@@ -135,8 +137,10 @@ public:
     // Core equivalence check (game-based relaxed weak timed bisimulation)
     bool check_rtwbs_equivalence(const TimedAutomaton& refined, const TimedAutomaton& abstract);
 
+    bool check_rtwbs_simulation(const TimedAutomaton& refined, const TimedAutomaton& abstract);
     // System-level convenience (pairwise index matching)
-    bool check_rtwbs_equivalence(const System& system_refined, const System& system_abstract);
+    bool check_rtwbs_equivalence(const System& system_refined, const System& system_abstract, size_t num_workers = 0);
+    bool check_rtwbs_simulation(const System& system_refined, const System& system_abstract);
 
     struct SystemCheckResult {
         size_t automaton_index;
@@ -204,6 +208,8 @@ private:
     // Reset caches & structures between top-level checks
     void clear_optimisation_state();
 
+
+    bool check_rtwbs_equivalence__(const System& system_refined, const System& system_abstract);
 
 
 private:

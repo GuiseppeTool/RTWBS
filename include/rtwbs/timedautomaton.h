@@ -155,6 +155,7 @@ struct ZoneStateHash {
  */
 class TimedAutomaton {
 private:
+    std::string name_;
     cindex_t dimension_;
     std::vector<Location> locations_;
     std::vector<Transition> transitions_;
@@ -187,7 +188,7 @@ private:
 
     Context context_;
 public:
-
+    const std::string& get_name() const { return name_; }
     const std::unordered_map<std::string, double>& get_variables() const { return context_.variables_; }
     const std::unordered_map<std::string, cindex_t>& get_clock_map() const { return context_.clocks_; }
     const std::unordered_map<std::string, double>& get_constants() const { return context_.constants_; }
@@ -241,6 +242,16 @@ public:
 
     std::vector<const Transition*> get_outgoing_transitions(int location_id) const;
 
+    const int get_num_zones() const { return states_.size(); }
+    const int get_num_locations() const { return locations_.size(); }
+    const int get_num_transitions() const { return transitions_.size(); }
+    const int get_num_transition_zg() const {
+        int count = 0;
+        for (const auto& vec : zone_transitions_) {
+            count += vec.size();
+        }
+        return count;
+    }
     
     
 private:

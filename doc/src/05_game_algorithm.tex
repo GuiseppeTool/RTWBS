@@ -25,9 +25,6 @@ until !removed
 return !R.empty()
 \end{lstlisting}
 
-\subsection{Complexity Considerations}
-Worst-case: $O(|R| \cdot (deg_r \cdot (W_r + W_a)))$ where $W_x$ is cost of computing weak successors. Without caching $\tau$-closures may repeat. Memoisation can reduce recomputation to linear in number of distinct (zone,action) pairs.
-
 \subsection{Optimisation Opportunities}
 \begin{itemize}
   \item Memoize $\tau$-closure and weak successors.
@@ -71,3 +68,52 @@ If refined guard were $x \le 4$, delays $d\in (3,4]$ would not be matchable (abs
 \paragraph{Code Path.} In C++: attacker side enumerated in \texttt{observable\_edges(refined)}. Defender calls \texttt{weak\_observable\_successors(abstract, 'a')} producing zones after $\tau^* a \tau^*$. Function \texttt{timing\_ok} reconstructs enabling DBMs and checks inclusion: refined enabling zone $\subseteq$ abstract enabling zone for action $a$. Failure triggers marking for removal.
 
 \paragraph{Caching Impact.} If multiple pairs share the same abstract zone and label $a$, memoising the weak successors avoids recomputing the $\tau$-closure, reducing complexity from repeated closure traversals to a single stored vector of resulting zones.
+
+\subsection{Abstract Complexity and Relation to Region Graph Checking}
+We provide an abstract (parameter–oriented) complexity characterization, then relate it to classical UPPAAL-style model checking via the region graph bound.
+
+\paragraph{Parameters.} Let $C$ be the number of clocks, $M$ the maximal constant appearing in guards/invariants, and $|Act|$ the number of observable labels. Let $Z_r, Z_a$ be the numbers of symbolic states (locations + zones after extrapolation) for the refined and abstract automata; denote $R$ the number of candidate pairs retained after initial pruning (location match + zone inclusion). Let $deg_r$ be the average number of observable outgoing transitions per refined symbolic state and $C_\tau$ the average size of an abstract $\tau$-closure (internal symbolic states reachable without consuming an observable action). We use $n = C+1$ for DBM dimension.
+
+\paragraph{High-Level Cost Decomposition.}
+\begin{itemize}[leftmargin=1.2em]
+  \item Symbolic expansion (zone graph building): each new zone requires a constant number of DBM canonicalisations (closure) giving $O(n^3)$ per zone; total $O((Z_r+Z_a) n^3)$.
+  \item Weak observable successor derivation ($\tau^* a \tau^*$) when first requested for an abstract zone + action: one internal BFS over at most $C_\tau$ zones, each incurring at most one closure $O(n^3)$; amortised $O(C_\tau n^3)$ per (zone, action).
+  \item Pair validation: for each refined observable edge we test existence of at least one matching abstract weak successor zone and perform a timing inclusion (matrix compare) $O(n^2)$. Amortised cost $O(R\cdot deg_r \cdot n^2)$ given cached weak successors.
+  \item Fixed-point removal propagation (reverse dependencies): near-linear in $R$ in practice; $O(R^2)$ pathological upper bound (dense dependency graph) rarely realised after inclusion seeding.
+\end{itemize}
+
+\paragraph{Abstract Bound.} Combining dominant terms:
+\[
+  T_{RTWBS} = O\Big( (Z_r+Z_a) n^3 + N_{weak}\, C_\tau n^3 + R\, deg_r\, n^2 + R^2_{worst} \Big)
+\]
+where $N_{weak} \le Z_a \cdot |Act|$ is the number of distinct (abstract zone, action) requests actually realised. With effective caching and pruning ($R \approx \min(Z_r,Z_a)$, sparse deps) this collapses to:
+\[
+  T_{RTWBS}^{practical} \approx O\Big((Z_r+Z_a) n^3 + R\, deg_r\, n^2 \Big).
+\]
+
+\paragraph{Link to Region Graph.} Classical region graph size for $C$ clocks and maximal constant $M$ is $O(M^{C} C!)$; timed reachability / TCTL model checking explores (up to) all regions and evaluates temporal fixpoints, giving exponential worst-case growth in $C$ (PSPACE / EXPTIME bounds depending on logic fragment). Zone abstraction shares the same theoretical upper bound ($Z_x \subseteq O(M^{C} C!)$), but practical zone counts are usually much smaller due to convex merging and LU-extrapolation. Our refinement algorithm adds at most a multiplicative $\min(Z_r,Z_a)$ factor (instead of $Z_r Z_a$) because location mismatch/inclusion eliminate most pairs up front. Thus, while worst-case RTWBS inherits the exponential dependence on $C$ via $Z_r, Z_a$, it avoids re-solving temporal logic fixpoints and instead performs local timing inclusion tests ($O(n^2)$) on pre-built symbolic structure.
+
+\paragraph{Comparison to UPPAAL Property Checking.} UPPAAL-style TCTL checking must: (i) generate zone graph ($O(Z n^3)$), (ii) propagate formula annotations (additional passes over $Z$), potentially repeating explorations for nested fixpoints. In contrast, RTWBS refinement between an adapted and baseline model reuses the baseline’s symbolic zones and only constructs new refined zones ($Z_r$) plus relational filtering. If an adaptation is local (adds $\Delta Z_r$ zones), cost is reduced to:
+\[
+  O\big( \Delta Z_r n^3 + \Delta R \cdot deg_r n^2 \big)
+\]
+with cached abstract closures untouched. This incremental polynomial overhead replaces a potential re-run of full property checking over $Z_a + \Delta Z_r$ zones.
+
+\paragraph{Intuition.} Region-graph complexity stems from global enumeration of time-distinguished states. RTWBS leverages already abstracted timing structure, paying the exponential (in $C$) factor only once per distinct zone discovered, then performing purely polynomial matching on top. Hence refinement scales as a \emph{structured differential} analysis rather than full re-verification.
+
+\paragraph{Key Contrast.}
+\begin{center}
+\begin{tabular}{l|l|l}
+Aspect & Property (Region/Zone) Checking & RTWBS Refinement \\\hline
+Global fixpoints & Yes (logic evaluation) & No (greatest simulation via deletions) \\
+State construction & All of single model & Two graphs; reuse baseline \\
+Extra combinatorics & Formula nesting & Pair filtering (pruned) \\
+Per-step heavy op & Closure + formula ops & Closure (once) + inclusion $O(n^2)$ \\
+Incremental update & Hard (re-check formula) & Local ($\Delta Z_r$, $\Delta R$) \\
+Cross-product blow-up & Not applicable & Mitigated by seeding ($R \ll Z_r Z_a$) \\
+Exponential source & Regions ($M^{C} C!$) & Same (via $Z_r,Z_a$) only once \\
+\end{tabular}
+\end{center}
+
+\paragraph{Summary.} Refinement inherits the inherent exponential dependence on number of clocks from region/zone techniques, but (i) replaces logic fixpoint evaluation by local inclusion checks, (ii) capitalises on relation seeding to avoid full cross products, and (iii) supports incremental adaptation with cost proportional to changed symbolic structure rather than entire model size.
+

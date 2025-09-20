@@ -23,13 +23,18 @@ void append_to_csv(std::ofstream& file,
 void self_equivalence_checks(const std::vector<std::string>& filenames,
                             const char* benchmark_folder = "assets/uppaal_benchmarks/",
                             const char* results_folder = "results/",
-                            const char* benchmark_prefix = "benchmark_results_" );
+                            const char* benchmark_prefix = "benchmark_results_",
+                            size_t num_workers = 0 );
 
 
 void comparison_checks(const std::vector<std::string>& filenames,
     const char* benchmark_folder = "assets/uppaal_benchmarks/",
     const char* results_folder = "results/",
-    const char* benchmark_prefix = "comparison_results" );
+    const char* benchmark_prefix = "comparison_results",
+size_t num_workers = 0  );
+
+
+void parse_arguments(int argc, char* argv[], std::string& results_folder, int& n_workers);
 
 } // namespace rtwbs
 #endif // RTWBS_BENCHMARK_COMMON_H

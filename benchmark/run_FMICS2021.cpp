@@ -13,7 +13,7 @@ int main(int argc, char* argv[]) {
         };
         rtwbs::comparison_checks(identical_files,"assets/FMICS2021/","results/","identical_test_");
         
-        // Test 2: Files with formatting differences (currently NOT EQUIVALENT)
+        // Test 2: Files with formatting differences (currently DIFFERENT)
         std::cout << "\n--- Test 2: Files with formatting differences ---" << std::endl;
         std::vector<std::string> formatted_files = {
             "modelConfStandard.xml", 

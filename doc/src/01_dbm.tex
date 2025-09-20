@@ -89,3 +89,22 @@ dbm_extrapolateMaxBounds(dbm.data(), dim, U.data());    // extrapolate
 This mirrors the theoretical progression: guard intersection, closure, invariant, Up, reset, closure, extrapolation.
 
 \paragraph{Emptiness Corner Case.} If we also added guard $y - x < 0$ after $y - x < 3$, closure would derive $y - y < 0$ (diagonal negative) and report emptiness.
+
+\subsection{Complexity Summary}
+Let $n = C+1$ be DBM dimension.
+\begin{center}
+\begin{tabular}{l|l|l}
+Operation & Time & Space (extra / per op) \\\hline
+Closure (canonical) & $O(n^3)$ & In-place \\
+Intersect $k$ guards then close & $O(k + n^3)$ & In-place \\
+Single guard tighten & $O(1)$ & In-place \\
+Reset (without closure) & $O(n)$ & In-place \\
+Reset (with closure) & $O(n^3)$ & Dominated by closure \\
+Up (time elapse) & $O(n)$ & In-place \\
+Inclusion test & $O(n^2)$ & Read-only \\
+Copy / allocate zone & $O(n^2)$ & New DBM matrix \\
+Extrapolation (Max / LU) & $O(n^2)$ & In-place widening \\
+Emptiness check post-closure & $O(1)$ & Diagonal sentinel test \\
+\end{tabular}
+\end{center}
+Thus cubic closure dominates; minimising number of closure invocations (batching guard+reset updates) yields largest payoff. Clock reduction (cone-of-influence) directly lowers the cubic factor.
