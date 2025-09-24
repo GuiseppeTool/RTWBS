@@ -10,7 +10,7 @@ int main(int argc, char* argv[]) {
         rtwbs::parse_arguments(argc, argv, results_folder, n_workers);
         
 
-        std::string path = "AA_BENCHMARKS/eval";
+        std::string path = "assets/eval";
         
             std::vector<std::string> files;
             for (const auto& entry : std::filesystem::directory_iterator(path)) {

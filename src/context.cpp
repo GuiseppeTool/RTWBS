@@ -45,15 +45,15 @@ bool Context::can_call_function(const std::string& name, const std::vector<std::
 
 // Method to print all parsed structs (for debugging)
 void Context::print_struct_info() {
-    std::cout << "\n=== Parsed Struct Constants ===" << std::endl;
+    DEV_PRINT("\n=== Parsed Struct Constants ===" << std::endl);
     for (const auto& [name, struct_val] : struct_constants_) {
-        std::cout << "struct constant '" << name << "' (type: " << struct_val.type_name << "):" << std::endl;
+        DEV_PRINT("struct constant '" << name << "' (type: " << struct_val.type_name << "):" << std::endl);
         print_struct_value(struct_val, 2);
     }
-    
-    std::cout << "\n=== Parsed Struct Variables ===" << std::endl;
+
+    DEV_PRINT("\n=== Parsed Struct Variables ===" << std::endl);
     for (const auto& [name, struct_val] : struct_variables_) {
-        std::cout << "struct variable '" << name << "' (type: " << struct_val.type_name << "):" << std::endl;
+        DEV_PRINT("struct variable '" << name << "' (type: " << struct_val.type_name << "):" << std::endl);
         print_struct_value(struct_val, 2);
     }
 }

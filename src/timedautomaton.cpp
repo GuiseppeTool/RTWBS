@@ -303,7 +303,7 @@ void TimedAutomaton::parse_location_invariant(const UTAP::Location& location, in
 
 void TimedAutomaton::build_transitions(const UTAP::Template& template_ref) {
 
-    std::cout << "Building transitions..." << template_ref.edges.size() <<std::endl;
+    //std::cout << "Building transitions..." << template_ref.edges.size() <<std::endl;
     for (size_t i = 0; i < template_ref.edges.size(); ++i) {
         const auto& edge = template_ref.edges[i];
         

@@ -14,7 +14,7 @@ namespace rtwbs {
 
 System::System(const std::string& fileName) {
         
-        std::cout << "Loading system from file: " << fileName << std::endl;
+        //std::cout << "Loading system from file: " << fileName << std::endl;
         
         // if file doesnt exist, throw error    
         // For now, we'll throw an exception indicating this needs proper UTAP integration
@@ -28,25 +28,25 @@ System::System(const std::string& fileName) {
         // Future implementation would be:
         UTAP::Document doc;
 
-        std::cout << "Parsing XML file..." << std::endl;
+        DEV_PRINT("Parsing XML file..." << std::endl);
         try {
             int result = parse_XML_file(fileName, doc, true);
-            std::cout << "Parse result: " << result << std::endl;
-            
+            DEV_PRINT("Parse result: " << result << std::endl);
+
             // Check if parsing was successful
             if (result != 0) {
                 throw std::runtime_error("Failed to parse XML file: " + fileName + " (error code: " + std::to_string(result) + ")");
             }
-            
-            std::cout << "Document parsed successfully" << std::endl;
-            std::cout << "Number of templates: " << doc.get_templates().size() << std::endl;
-            
+
+            DEV_PRINT("Document parsed successfully" << std::endl);
+            DEV_PRINT("Number of templates: " << doc.get_templates().size() << std::endl);
+
             // Check global declarations
             auto& globals = doc.get_globals();
-            std::cout << "Global declarations variables count: " << globals.variables.size() << std::endl;
-            
+            DEV_PRINT("Global declarations variables count: " << globals.variables.size() << std::endl);
+
             // Print some debug info about global declarations
-            std::cout << "Globals object address: " << &globals << std::endl;
+            DEV_PRINT("Globals object address: " << &globals << std::endl);
 
             build_from_utap_document(doc);
         } catch (const std::exception& e) {
@@ -77,8 +77,8 @@ void System::add_automaton(std::unique_ptr<TimedAutomaton> automaton, const std:
     name_to_index_[template_name] = automata_.size();
     template_names_.push_back(template_name);
     automata_.push_back(std::move(automaton));
-    
-    std::cout << "Added automaton '" << template_name << "' to system (index " << (automata_.size() - 1) << ")" << std::endl;
+
+    DEV_PRINT("Added automaton '" << template_name << "' to system (index " << (automata_.size() - 1) << ")" << std::endl);
 }
 
 const TimedAutomaton& System::get_automaton(size_t index) const {
@@ -117,10 +117,10 @@ const std::string& System::get_template_name(size_t index) const {
 }
 
 void System::construct_all_zone_graphs() {
-    std::cout << "Constructing zone graphs for all " << automata_.size() << " automata..." << std::endl;
+    //std::cout << "Constructing zone graphs for all " << automata_.size() << " automata..." << std::endl;
     
     for (size_t i = 0; i < automata_.size(); ++i) {
-        std::cout << "  Constructing zone graph for '" << template_names_[i] << "'..." << std::endl;
+        //std::cout << "  Constructing zone graph for '" << template_names_[i] << "'..." << std::endl;
         automata_[i]->construct_zone_graph();
     }
     
@@ -207,7 +207,7 @@ void System::build_from_utap_document(UTAP::Document& doc) {
     // This is where you would parse the UTAP document and create automata
     // For each template in the document, create a separate TimedAutomaton
     
-    std::cout << "Building system from UTAP document..." << std::endl;
+    //std::cout << "Building system from UTAP document..." << std::endl;
     
     // Simplified implementation - in practice this would:
     // 1. Iterate through all templates in the document

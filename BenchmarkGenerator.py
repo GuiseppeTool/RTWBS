@@ -75,7 +75,14 @@ class BenchmarkGenerator:
         sys_body += "\n\nsystem " + ", ".join((t.findtext("name") + "_i") for t in templates) + ";"
         sys.text = sys_body
         # Queries stub (optional, empty)
-        #ET.SubElement(nta, "queries")
+        queries = ET.SubElement(nta, "queries")
+        query = ET.SubElement(queries, "query")
+        ET.SubElement(query, "formula").text = "A[] true"
+        ET.SubElement(query, "comment").text = "No queries defined."
+
+
+
+        
         return nta
 
     def save_xml(self, nta: ET.Element, out_dir: str, filename: str) -> str:
@@ -141,7 +148,7 @@ class BenchmarkGenerator:
             nm = ET.SubElement(loc, "name")
             nm.text = f"L{i}"
             # Optional invariants
-            if p.num_clocks > 0 and self._bernoulli(p.invariant_density):
+            if p.num_clocks > 0 and self._bernoulli(p.invariant_density) and i>0:
                 inv = ET.SubElement(loc, "label", {"kind": "invariant"})
                 inv.text = self._rand_invariant(p.num_clocks)
         # Initial location

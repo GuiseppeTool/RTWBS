@@ -76,11 +76,18 @@ pip install -r requirements.txt
 python3 generate_syn_benchmarks.py
 
 
-./setup.sh
+source setup.sh
 
-# Build the RTWBS 
+# generate synthetic benchmarks
+
+python generate_benchmarks.py
+
+
+# Build  
 make release
-#run all benchmarks
+
+
+#run all benchmarks and save the results in result folder (default)
 ./run_all && ./run_synthetic
 
 
@@ -91,3 +98,10 @@ make release
 
 ```
 
+The setup.sh bash file sets up the VERIFYTA_PATH os variable, that's why it should be run as source. Alternatively, you can run it as
+
+./setup.sh && export VERIFYTA_PATH = < PATH YOU SEE IN THE SCRIPT OUTPUT >
+
+If you get permission denied, please run chmod +x setup.sh beforehand. 
+
+If you dont need to install uppaal, then simply run ./setup.sh --no_uppaal and set up the VERIFYTA_PATH according to your installation. 

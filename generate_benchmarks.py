@@ -20,7 +20,7 @@ def generate_eval_benchmarks():
     """
     gen = BenchmarkGenerator(seed=42)
 
-    out_dir = "AA_BENCHMARKS/eval"
+    out_dir = "assets/eval"
 
     # Heuristic parameter presets (tuned for smaller, medium, larger zone graphs)
     small = TemplateParams(
@@ -42,38 +42,71 @@ def generate_eval_benchmarks():
         num_clocks=2,
         num_int_vars=1,
         branching=3,
-        guard_density=0.2,
+        guard_density=0.15,
         invariant_density=0.4,
-        reset_density=0.6,
+        reset_density=0.5,
         assign_density=0.4,
         sync_density=0.5,
     )
 
     large = TemplateParams(
-        name="EvalL",
-        num_states=32,
+       name="EvalL",
+        num_states=25,
         num_clocks=2,
         num_int_vars=1,
         branching=3,
         guard_density=0.2,
+        invariant_density=0.4,
+        reset_density=0.63,
+        assign_density=0.4,
+        sync_density=0.5,
+    )
+    xlarge = TemplateParams(
+       name="EvalXL",
+        num_states=36,
+        num_clocks=2,
+        num_int_vars=1,
+        branching=3,
+        guard_density=0.15,
         invariant_density=0.4,
         reset_density=0.6,
         assign_density=0.4,
         sync_density=0.5,
     )
 
+
+    xxlarge = TemplateParams(
+       name="EvalXXL",
+        num_states=17,
+        num_clocks=3,
+        num_int_vars=1,
+        branching=3,
+        guard_density=0.4,
+        invariant_density=0.4,
+        reset_density=0.64,
+        assign_density=0.4,
+        sync_density=0.5,
+    )
+
+ 
+
+   
+
     # Generate three single-file NTAs with 5 templates each
     configs = [
-        ("s.xml", small),
-        ("m.xml", medium),
-        ("l.xml", large),
+        ("s", small),
+        ("m", medium),
+        ("l", large),
+        ("xl", xlarge),
+        ("xxl", xxlarge),
     ]
 
     saved = []
-    for filename, params in configs:
-        templates = gen.generate_templates(count=5, base_name=params.name + "_", params=params)
-        nta = gen.build_nta(templates, system_name=filename.replace(".xml", ""))
-        saved.append(gen.save_xml(nta, out_dir=out_dir, filename=filename))
+    for aut_count in [5,3,1]:
+        for filename, params in configs:
+            templates = gen.generate_templates(count=aut_count, base_name=params.name + "_", params=params)
+            nta = gen.build_nta(templates, system_name=filename)
+            saved.append(gen.save_xml(nta, out_dir=out_dir, filename=f"{filename}_{aut_count}.xml"))
 
     print("Saved evaluation benchmarks:")
     for p in saved:

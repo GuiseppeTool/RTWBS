@@ -39,7 +39,7 @@ int main(int argc, char* argv[]) {
                 std::cout << "Processing file: " << file << std::endl;
                 try {
                     rtwbs::System sys(file);
-                    sys.print_system_overview();
+                    //sys.print_system_overview();
                     sys.construct_all_zone_graphs();
                     sys.print_all_statistics();
                 } catch (const std::exception& e) {

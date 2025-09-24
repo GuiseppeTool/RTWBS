@@ -344,10 +344,18 @@ IESS/Quantization/paper_source/iess_quantization.pdf
 __pycache__/
 .venv/
 venv/
-
+#remove all folders that have AA_BENCHMARKS in their name
+*AA_BENCHMARKS*/
 AA_BENCHMARKS/
 
 RTWBS.pdf
 
 #remove all folders that have results in their name
 *results*/
+
+uppaal/
+
+#give me the command to unzip file from terminal
+
+
+logs/

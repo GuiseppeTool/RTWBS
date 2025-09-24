@@ -8,8 +8,22 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 UDBM_DIR="$SCRIPT_DIR/UDBM"
 UTAP_DIR="$SCRIPT_DIR/utap"
-
+UPPAAL_DIR="$SCRIPT_DIR/uppaal"
 echo "Setting up UDBM and UTAP libraries..."
+
+
+
+
+# get one argument called --no_uppaal to skip the uppaal setup
+NO_UPPAAL=0
+for arg in "$@"; do
+    if [ "$arg" == "--no_uppaal" ]; then
+        NO_UPPAAL=1
+    fi
+done
+
+
+
 
 # Setup UDBM
 echo "=== Setting up UDBM ==="
@@ -65,6 +79,51 @@ if [ ! -f "build-x86_64-linux-release/src/libUTAP.a" ]; then
     echo "UTAP library built successfully!"
 else
     echo "UTAP library already built."
+fi
+
+
+
+# Setup UTAP
+echo "=== Setting up UPPAAL ==="
+# Skip UPPAAL setup if --no_uppaal argument is provided
+if [ "$NO_UPPAAL" -eq 0 ]; then
+    # Check if UTAP directory exists
+    if [ ! -d "$UPPAAL_DIR" ]; then
+        echo "UPPAAL directory not found. Cloning from GitHub..."
+        wget "https://download.uppaal.org/uppaal-5.0/uppaal-5.0.0/uppaal-5.0.0-linux64.zip"
+    fi
+
+    cd "$UPPAAL_DIR"
+
+    # unzip the file
+    unzip uppaal-5.0.0-linux64.zip 
+
+
+    cd "uppaal-5.0.0-linux64"
+
+    #ask for input for the uppaal license and save it in a variable
+    read -p "Please enter the UPPAAL license key: " UPPAAL_LICENSE_KEY
+
+    bin/verifyta --lease 168 --key "$UPPAAL_LICENSE_KEY"
+
+    echo "Setting VERIFYTA_PATH environment variable as follows:"
+    echo "export VERIFYTA_PATH=\"$UPPAAL_DIR/uppaal-5.0.0-linux64/bin/verifyta\""
+
+    CONFIG_FILE="$HOME/.bashrc"
+
+    # Check if it's already there
+
+# Add to bashrc if not already there
+    if ! grep -q "export VERIFYTA_PATH=" "$CONFIG_FILE"; then
+        echo "export VERIFYTA_PATH=\"$UPPAAL_DIR/uppaal-5.0.0-linux64/bin/verifyta\"" >> "$CONFIG_FILE"
+        echo "Added VERIFYTA_PATH to $CONFIG_FILE"
+    else
+        echo "VERIFYTA_PATH already exists in $CONFIG_FILE"
+    fi
+    source "$CONFIG_FILE"
+    #export VERIFYTA_PATH="$UPPAAL_DIR/uppaal-5.0.0-linux64/bin/verifyta"
+else
+    echo "Skipping UPPAAL setup as per user request."
 fi
 
 echo "=== Setup Complete ==="
