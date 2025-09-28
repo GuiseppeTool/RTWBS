@@ -4,11 +4,11 @@
 #include "rtwbs/benchmarks/common.h"
 int main(int argc, char* argv[]) {
     try {
-        std::string results_folder = "results/";
+        std::string results_folder = rtwbs::RESULTS_FOLDER;
         int n_workers = 0;
 
-        rtwbs::parse_arguments(argc, argv, results_folder, n_workers);
-        
+        rtwbs::RunningMode parallel_mode = rtwbs::RunningMode::SERIAL;
+        rtwbs::parse_arguments(argc, argv, results_folder, n_workers, parallel_mode);
 
         std::string path = "assets/eval";
         
@@ -26,8 +26,9 @@ int main(int argc, char* argv[]) {
                 //rtwbs::System sys(file);
                 //sys.print_system_overview();
                 //sys.construct_all_zone_graphs();
-                //sys.print_all_statistics();
-                rtwbs::self_equivalence_checks(files,"./", results_folder.c_str(),"syn_benchmark_results_", n_workers);
+                    //sys.print_all_statistics();
+                //run check with a timout of 10h
+                rtwbs::self_equivalence_checks(files,"./", results_folder.c_str(),"syn_benchmark_results_", parallel_mode, n_workers, 36000000); //10 h timeout
             } catch (const std::exception& e) {
                 std::cerr << "Error processing files: " << e.what() << std::endl;
             }

@@ -63,10 +63,14 @@ if (is_equivalent) {
 }
 ```
 
-## Building and Running all the benchmarks
+## Building and Running all the benchmarks 
+
+Please be aware running the synthetic benchmarks will take a while depending on your machine. 
 
 ```bash
 
+
+#-----SETUP-----
 #create python environment with venv, install requirements.txt
 python3 -m venv venv
 source venv/bin/activate
@@ -78,23 +82,35 @@ python3 generate_syn_benchmarks.py
 
 source setup.sh
 
-# generate synthetic benchmarks
+# generate synthetic benchmarks if they dont exist in the assets/eval folder
 
-python generate_benchmarks.py
+python scripts/generate_benchmarks.py
 
 
 # Build  
 make release
 
-
+#-----RUN RTWBS-----
 #run all benchmarks and save the results in result folder (default)
 ./run_all && ./run_synthetic
 
+## Alternatively
+# Run the benchmarks with 3 workers and save them to folder results_3. 
+# Threadpool simply runs each automaton in a system in parallel. You can choose how many workers (threads) you want
+./run_all --n-workers 3 --mode thread_pool --folder results/rtbws_3 && ./run_synthetic --n-workers 3 --folder results/rtbws_3 --mode  thread_pool
 
-#-----ALTERNATIVELY-----
-# Run the benchmarks with 3 workers and save them to folder results_3
-./run_all --n-workers 3 --folder results_3 && ./run_synthetic --n-workers 3 --folder results_3
 
+# Open mp, on the other hand, takes advantage of the full hardware to run pairs of state in parallel
+./run_all --mode thread_pool --folder results/rtbws_openmp && ./run_synthetic --folder results/rtbws_openmp --mode  openmp
+
+
+#-----RUN UPPAAL-----
+python scripts/uppaal_benchmark.py
+
+
+#----COMPARE RESULTS----
+# it will save the analysis in the results folder
+python scripts/compare_results.py
 
 ```
 

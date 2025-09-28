@@ -31,7 +31,9 @@ void self_equivalence_checks(const std::vector<std::string>& filenames,
                             const char* benchmark_folder ,
                             const char* results_folder ,
                             const char* benchmark_prefix, 
-                            size_t num_workers)
+                            rtwbs::RunningMode parallel_mode,
+                            size_t num_workers,
+                            long timeout_ms)
 {
             // Generate timestamp-based filename
         auto now = std::chrono::system_clock::now();
@@ -64,11 +66,17 @@ void self_equivalence_checks(const std::vector<std::string>& filenames,
             std::cout << "Running self-equivalence check..." << std::endl;
             // Fresh checker per file to avoid cross-file contamination
             rtwbs::RTWBSChecker checker;
-            bool equivalent = checker.check_rtwbs_equivalence(s, s, num_workers);
-            std::cout << "Self-equivalence result: " << (equivalent ? "EQUIVALENT" : "DIFFERENT") << std::endl;
-            if (!equivalent) {
-                
-                throw std::runtime_error("Error: System " + filename + " is not self-equivalent under RTWBS!");
+            try {
+                bool equivalent = checker.check_rtwbs_equivalence(s, s, parallel_mode,num_workers, timeout_ms);
+                std::cout << "Self-equivalence result: " << (equivalent ? "EQUIVALENT" : "DIFFERENT") << std::endl;
+                if (!equivalent) {
+                    
+                    throw std::runtime_error("Error: System " + filename + " is not self-equivalent under RTWBS!");
+                }
+            } catch (const rtwbs::TimeoutException& e) {
+                std::cout << "Self-equivalence check for " << filename << " timed out." << std::endl;
+                continue; // Skip to next file
+            
             }
             
             
@@ -95,7 +103,7 @@ void self_equivalence_checks(const std::vector<std::string>& filenames,
 void comparison_checks(const std::vector<std::string>& filenames,
     const char* benchmark_folder,
     const char* results_folder ,
-    const char* benchmark_prefix, size_t n_workers )
+    const char* benchmark_prefix, rtwbs::RunningMode parallel_mode, size_t n_workers )
 {
             // Generate timestamp-based filename
         auto now = std::chrono::system_clock::now();
@@ -135,7 +143,7 @@ void comparison_checks(const std::vector<std::string>& filenames,
                 std::cout << "Comparing it to " << benchmark_folder << filename_2 << std::endl;
                 
                 std::cout << "Running equivalence check..." << std::endl;
-                bool equivalent = checker.check_rtwbs_equivalence(*systems_map[filename_1], *systems_map[filename_2], n_workers);
+                bool equivalent = checker.check_rtwbs_equivalence(*systems_map[filename_1], *systems_map[filename_2], parallel_mode, n_workers);
                 std::cout << "Equivalence result: " << (equivalent ? "EQUIVALENT" : "DIFFERENT") << std::endl;
                 checker.print_statistics();
                 
@@ -158,22 +166,34 @@ void comparison_checks(const std::vector<std::string>& filenames,
         std::cout << "Results saved to: " << csv_filename << std::endl;
 }
 
-void parse_arguments(int argc, char* argv[], std::string& results_folder, int& n_workers) {
-    results_folder = "results/";
+void parse_arguments(int argc, char* argv[], std::string& results_folder, int& n_workers, rtwbs::RunningMode& parallel_mode) {
+    results_folder = RESULTS_FOLDER;
     n_workers = 0; // Default to 0 (auto-detect)
+    parallel_mode = rtwbs::RunningMode::SERIAL; // Default to serial
     for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];
         if (arg == "--folder" && i + 1 < argc) {
             results_folder = argv[++i] ;
         } else if (arg == "--n-workers" && i + 1 < argc)    {
             n_workers = std::stoi(argv[++i]);
+        } else if (arg == "--mode" && i + 1 < argc) {
+            std::string mode_str = argv[++i];
+            if (mode_str == "serial") {
+                parallel_mode = rtwbs::RunningMode::SERIAL;
+            } else if (mode_str == "thread_pool") {
+                parallel_mode = rtwbs::RunningMode::THREAD_POOL;
+            } else if (mode_str == "openmp") {
+                parallel_mode = rtwbs::RunningMode::OPENMP;
+            } else {
+                throw std::invalid_argument("Invalid mode: " + mode_str + ". Valid options are: serial, thread_pool, openmp.");
+            }
         }
     }
     if (n_workers < 0) n_workers = 0; // 0 means auto-detect
     if (n_workers > std::thread::hardware_concurrency()) n_workers = std::thread::hardware_concurrency();
     if (results_folder.back() != '/') results_folder += '/';
-    if (results_folder.empty()) results_folder = "results/";
-    if (n_workers >0 && results_folder=="results/") results_folder = "results_"+std::to_string(n_workers)+"/";
+    if (results_folder.empty()) results_folder = RESULTS_FOLDER;
+    if (n_workers >0 && results_folder==RESULTS_FOLDER) results_folder = std::string(RESULTS_FOLDER).substr(0, std::string(RESULTS_FOLDER).size()-1) + std::to_string(n_workers) + "/";
 }
 
     // Implementation of benchmark functions

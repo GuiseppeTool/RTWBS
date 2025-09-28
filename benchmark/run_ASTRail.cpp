@@ -17,8 +17,8 @@ int main(int argc, char* argv[]) {
             //"ASTRail/STTT2021/model - scenario slower leading train.xml",
             //"ASTRail/STTT2021/model.xml"
         };
-        rtwbs::self_equivalence_checks(filenames,"assets/", "results/","benchmark_results_");
-        rtwbs::comparison_checks(filenames,"assets/","results/","comparison_results_");
+        rtwbs::self_equivalence_checks(filenames,"assets/", rtwbs::RESULTS_FOLDER,"benchmark_results_");
+        rtwbs::comparison_checks(filenames,"assets/",rtwbs::RESULTS_FOLDER,"comparison_results_");
         return 0;
     } catch (const std::exception& e) {
         std::cerr << "Error: " << e.what() << std::endl;

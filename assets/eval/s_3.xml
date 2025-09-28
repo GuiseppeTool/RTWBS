@@ -14,138 +14,135 @@ int v0 = 0;</declaration>
       </location>
     <location id="EvalS_0_L2" x="420" y="100">
       <name>L2</name>
-      <label kind="invariant">x0 &gt;= 16</label>
       </location>
     <location id="EvalS_0_L3" x="580" y="100">
       <name>L3</name>
       </location>
     <location id="EvalS_0_L4" x="740" y="100">
       <name>L4</name>
-      <label kind="invariant">x0 &gt; 11 &amp;&amp; x1 - x0 &gt; 20</label>
       </location>
     <location id="EvalS_0_L5" x="900" y="100">
       <name>L5</name>
       </location>
     <location id="EvalS_0_L6" x="100" y="220">
       <name>L6</name>
-      <label kind="invariant">x1 &gt; 24</label>
+      <label kind="invariant">x0 &lt;= 14</label>
       </location>
     <init ref="EvalS_0_L0" />
     <transition>
       <source ref="EvalS_0_L0" />
-      <target ref="EvalS_0_L6" />
-      <label kind="synchronisation">c2!</label>
-      <label kind="assignment">v0 := 0</label>
+      <target ref="EvalS_0_L1" />
+      <label kind="synchronisation">c1?</label>
+      <label kind="assignment">x0 := 0, v0 := 2</label>
       </transition>
     <transition>
       <source ref="EvalS_0_L0" />
-      <target ref="EvalS_0_L3" />
+      <target ref="EvalS_0_L1" />
+      <label kind="assignment">x1 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_0_L0" />
+      <target ref="EvalS_0_L2" />
       <label kind="synchronisation">c1!</label>
-      <label kind="assignment">x0 := 0, v0 := 1</label>
-      </transition>
-    <transition>
-      <source ref="EvalS_0_L0" />
-      <target ref="EvalS_0_L3" />
-      <label kind="synchronisation">c3?</label>
-      <label kind="assignment">x0 := 0, v0 := 4</label>
+      <label kind="assignment">x1 := 0</label>
       </transition>
     <transition>
       <source ref="EvalS_0_L1" />
+      <target ref="EvalS_0_L3" />
+      <label kind="assignment">v0 := 3</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_0_L1" />
+      <target ref="EvalS_0_L5" />
+      <label kind="guard">x1 &gt; 8 &amp;&amp; x1 - x0 &lt;= 10</label>
+      <label kind="assignment">x0 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_0_L1" />
+      <target ref="EvalS_0_L0" />
+      <label kind="synchronisation">c3!</label>
+      <label kind="assignment">x0 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_0_L2" />
+      <target ref="EvalS_0_L5" />
+      <label kind="assignment">x1 := 0, v0 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_0_L2" />
+      <target ref="EvalS_0_L4" />
+      <label kind="synchronisation">c0?</label>
+      <label kind="assignment">x0 := 0, v0 := 5</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_0_L2" />
       <target ref="EvalS_0_L6" />
+      <label kind="guard">x1 &gt;= 14 &amp;&amp; x0 - x1 &lt; 13</label>
+      <label kind="synchronisation">c0!</label>
       <label kind="assignment">v0 := 2</label>
       </transition>
     <transition>
-      <source ref="EvalS_0_L1" />
-      <target ref="EvalS_0_L0" />
-      <label kind="guard">x1 &lt; 22</label>
-      <label kind="synchronisation">c0!</label>
-      <label kind="assignment">x1 := 0, v0 := 5</label>
-      </transition>
-    <transition>
-      <source ref="EvalS_0_L1" />
-      <target ref="EvalS_0_L4" />
-      </transition>
-    <transition>
-      <source ref="EvalS_0_L2" />
-      <target ref="EvalS_0_L6" />
-      <label kind="synchronisation">c1?</label>
-      <label kind="assignment">x1 := 0</label>
-      </transition>
-    <transition>
-      <source ref="EvalS_0_L2" />
+      <source ref="EvalS_0_L3" />
       <target ref="EvalS_0_L1" />
-      </transition>
-    <transition>
-      <source ref="EvalS_0_L2" />
-      <target ref="EvalS_0_L3" />
-      <label kind="guard">x1 &gt; 25</label>
-      <label kind="synchronisation">c1!</label>
-      <label kind="assignment">x1 := 0</label>
+      <label kind="synchronisation">c3?</label>
+      <label kind="assignment">x0 := 0, v0 := 5</label>
       </transition>
     <transition>
       <source ref="EvalS_0_L3" />
       <target ref="EvalS_0_L5" />
+      <label kind="assignment">x1 := 0</label>
       </transition>
     <transition>
       <source ref="EvalS_0_L3" />
-      <target ref="EvalS_0_L2" />
-      <label kind="synchronisation">c2?</label>
-      <label kind="assignment">x0 := 0</label>
-      </transition>
-    <transition>
-      <source ref="EvalS_0_L3" />
-      <target ref="EvalS_0_L6" />
-      <label kind="assignment">x0 := 0</label>
+      <target ref="EvalS_0_L1" />
+      <label kind="synchronisation">c0?</label>
       </transition>
     <transition>
       <source ref="EvalS_0_L4" />
       <target ref="EvalS_0_L0" />
-      <label kind="guard">x1 &gt;= 20 &amp;&amp; x0 &lt;= 30 &amp;&amp; x0 - x1 &gt;= -8</label>
       <label kind="synchronisation">c2!</label>
       <label kind="assignment">x0 := 0</label>
       </transition>
     <transition>
       <source ref="EvalS_0_L4" />
-      <target ref="EvalS_0_L3" />
-      <label kind="synchronisation">c0?</label>
-      <label kind="assignment">x1 := 0, v0 := 1</label>
+      <target ref="EvalS_0_L0" />
       </transition>
     <transition>
       <source ref="EvalS_0_L4" />
-      <target ref="EvalS_0_L3" />
+      <target ref="EvalS_0_L0" />
+      <label kind="assignment">x0 := 0</label>
       </transition>
     <transition>
       <source ref="EvalS_0_L5" />
-      <target ref="EvalS_0_L6" />
-      <label kind="assignment">v0 := 4</label>
+      <target ref="EvalS_0_L3" />
+      <label kind="assignment">x1 := 0</label>
       </transition>
     <transition>
       <source ref="EvalS_0_L5" />
       <target ref="EvalS_0_L1" />
-      <label kind="synchronisation">c0!</label>
-      <label kind="assignment">x0 := 0</label>
+      <label kind="assignment">x1 := 0</label>
       </transition>
     <transition>
       <source ref="EvalS_0_L5" />
-      <target ref="EvalS_0_L6" />
-      <label kind="assignment">x0 := 0</label>
-      </transition>
-    <transition>
-      <source ref="EvalS_0_L6" />
-      <target ref="EvalS_0_L5" />
-      <label kind="guard">x1 &lt;= 1 &amp;&amp; x0 &lt;= 16 &amp;&amp; x1 - x0 &lt; -4</label>
+      <target ref="EvalS_0_L1" />
       <label kind="assignment">x0 := 0</label>
       </transition>
     <transition>
       <source ref="EvalS_0_L6" />
       <target ref="EvalS_0_L3" />
+      <label kind="assignment">x1 := 0, v0 := 3</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_0_L6" />
+      <target ref="EvalS_0_L1" />
       <label kind="synchronisation">c3!</label>
       <label kind="assignment">x1 := 0</label>
       </transition>
     <transition>
       <source ref="EvalS_0_L6" />
-      <target ref="EvalS_0_L2" />
-      <label kind="assignment">x0 := 0, v0 := 2</label>
+      <target ref="EvalS_0_L3" />
+      <label kind="synchronisation">c3?</label>
+      <label kind="assignment">x0 := 0, v0 := 5</label>
       </transition>
     </template>
   <template>
@@ -157,18 +154,15 @@ int v0 = 0;</declaration>
       </location>
     <location id="EvalS_1_L1" x="260" y="100">
       <name>L1</name>
-      <label kind="invariant">x1 &gt; 28</label>
       </location>
     <location id="EvalS_1_L2" x="420" y="100">
       <name>L2</name>
-      <label kind="invariant">x0 &gt; 1 &amp;&amp; x0 - x1 &lt;= 10</label>
       </location>
     <location id="EvalS_1_L3" x="580" y="100">
       <name>L3</name>
       </location>
     <location id="EvalS_1_L4" x="740" y="100">
       <name>L4</name>
-      <label kind="invariant">x0 &lt; 14</label>
       </location>
     <location id="EvalS_1_L5" x="900" y="100">
       <name>L5</name>
@@ -179,117 +173,120 @@ int v0 = 0;</declaration>
     <init ref="EvalS_1_L0" />
     <transition>
       <source ref="EvalS_1_L0" />
-      <target ref="EvalS_1_L5" />
-      <label kind="synchronisation">c0?</label>
-      <label kind="assignment">x0 := 0</label>
-      </transition>
-    <transition>
-      <source ref="EvalS_1_L0" />
       <target ref="EvalS_1_L1" />
+      <label kind="synchronisation">c3!</label>
+      <label kind="assignment">x1 := 0, v0 := 5</label>
       </transition>
     <transition>
       <source ref="EvalS_1_L0" />
-      <target ref="EvalS_1_L4" />
-      <label kind="guard">x1 &lt; 17 &amp;&amp; x0 &lt; 10</label>
-      <label kind="assignment">x0 := 0, v0 := 3</label>
+      <target ref="EvalS_1_L3" />
+      <label kind="synchronisation">c3?</label>
+      <label kind="assignment">x0 := 0, v0 := 5</label>
       </transition>
     <transition>
-      <source ref="EvalS_1_L1" />
-      <target ref="EvalS_1_L0" />
+      <source ref="EvalS_1_L0" />
+      <target ref="EvalS_1_L3" />
+      <label kind="assignment">x0 := 0</label>
       </transition>
     <transition>
       <source ref="EvalS_1_L1" />
       <target ref="EvalS_1_L6" />
       <label kind="synchronisation">c0!</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_1_L1" />
+      <target ref="EvalS_1_L0" />
+      <label kind="guard">x0 &gt;= 27 &amp;&amp; x1 &lt; 23 &amp;&amp; x0 - x1 &lt;= 1</label>
       <label kind="assignment">x1 := 0</label>
       </transition>
     <transition>
       <source ref="EvalS_1_L1" />
-      <target ref="EvalS_1_L6" />
+      <target ref="EvalS_1_L5" />
+      <label kind="guard">x1 &lt;= 25 &amp;&amp; x0 &lt; 13 &amp;&amp; x1 - x0 &gt; 12</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_1_L2" />
+      <target ref="EvalS_1_L0" />
+      <label kind="synchronisation">c3!</label>
+      <label kind="assignment">x1 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_1_L2" />
+      <target ref="EvalS_1_L3" />
+      <label kind="guard">x0 &gt;= 29 &amp;&amp; x0 &gt; 28 &amp;&amp; x1 - x0 &gt;= -8</label>
+      <label kind="assignment">x1 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_1_L2" />
+      <target ref="EvalS_1_L1" />
+      <label kind="guard">x0 &gt;= 9</label>
+      <label kind="synchronisation">c3?</label>
+      <label kind="assignment">x1 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_1_L3" />
+      <target ref="EvalS_1_L2" />
+      <label kind="synchronisation">c2?</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_1_L3" />
+      <target ref="EvalS_1_L0" />
       <label kind="assignment">x1 := 0, v0 := 0</label>
       </transition>
     <transition>
-      <source ref="EvalS_1_L2" />
-      <target ref="EvalS_1_L1" />
-      <label kind="guard">x0 &gt; 24 &amp;&amp; x1 &lt;= 6 &amp;&amp; x1 - x0 &lt; -6</label>
-      <label kind="synchronisation">c0?</label>
-      <label kind="assignment">x0 := 0</label>
-      </transition>
-    <transition>
-      <source ref="EvalS_1_L2" />
-      <target ref="EvalS_1_L1" />
-      <label kind="guard">x0 &gt;= 24 &amp;&amp; x1 &gt; 11</label>
-      </transition>
-    <transition>
-      <source ref="EvalS_1_L2" />
-      <target ref="EvalS_1_L5" />
-      <label kind="synchronisation">c3?</label>
-      </transition>
-    <transition>
       <source ref="EvalS_1_L3" />
-      <target ref="EvalS_1_L6" />
-      <label kind="assignment">x1 := 0, v0 := 4</label>
+      <target ref="EvalS_1_L2" />
+      <label kind="assignment">x0 := 0, v0 := 5</label>
       </transition>
     <transition>
-      <source ref="EvalS_1_L3" />
-      <target ref="EvalS_1_L6" />
+      <source ref="EvalS_1_L4" />
+      <target ref="EvalS_1_L0" />
       <label kind="synchronisation">c3!</label>
-      <label kind="assignment">x0 := 0</label>
+      <label kind="assignment">x1 := 0</label>
       </transition>
     <transition>
-      <source ref="EvalS_1_L3" />
-      <target ref="EvalS_1_L6" />
-      <label kind="assignment">v0 := 5</label>
+      <source ref="EvalS_1_L4" />
+      <target ref="EvalS_1_L2" />
       </transition>
     <transition>
       <source ref="EvalS_1_L4" />
       <target ref="EvalS_1_L5" />
-      <label kind="synchronisation">c2?</label>
-      <label kind="assignment">x0 := 0, v0 := 4</label>
       </transition>
     <transition>
-      <source ref="EvalS_1_L4" />
+      <source ref="EvalS_1_L5" />
       <target ref="EvalS_1_L3" />
       <label kind="synchronisation">c3?</label>
-      <label kind="assignment">x0 := 0, v0 := 0</label>
-      </transition>
-    <transition>
-      <source ref="EvalS_1_L4" />
-      <target ref="EvalS_1_L1" />
-      <label kind="guard">x1 &gt; 14 &amp;&amp; x0 - x1 &lt;= -7</label>
-      <label kind="synchronisation">c0!</label>
-      <label kind="assignment">x0 := 0</label>
+      <label kind="assignment">v0 := 4</label>
       </transition>
     <transition>
       <source ref="EvalS_1_L5" />
       <target ref="EvalS_1_L0" />
+      <label kind="guard">x0 &lt;= 7 &amp;&amp; x1 &lt;= 4</label>
+      <label kind="synchronisation">c0?</label>
+      <label kind="assignment">v0 := 4</label>
       </transition>
     <transition>
       <source ref="EvalS_1_L5" />
-      <target ref="EvalS_1_L6" />
+      <target ref="EvalS_1_L0" />
+      <label kind="guard">x1 &gt;= 25 &amp;&amp; x0 &lt;= 22 &amp;&amp; x0 - x1 &lt;= 12</label>
+      <label kind="assignment">x0 := 0, v0 := 2</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_1_L6" />
+      <target ref="EvalS_1_L5" />
       <label kind="synchronisation">c1?</label>
-      <label kind="assignment">x1 := 0, v0 := 5</label>
       </transition>
     <transition>
-      <source ref="EvalS_1_L5" />
-      <target ref="EvalS_1_L1" />
+      <source ref="EvalS_1_L6" />
+      <target ref="EvalS_1_L5" />
+      <label kind="guard">x1 &lt;= 14 &amp;&amp; x0 &lt;= 5</label>
+      <label kind="synchronisation">c1!</label>
       </transition>
     <transition>
       <source ref="EvalS_1_L6" />
       <target ref="EvalS_1_L0" />
-      <label kind="guard">x1 &lt; 3 &amp;&amp; x0 &gt; 20</label>
-      </transition>
-    <transition>
-      <source ref="EvalS_1_L6" />
-      <target ref="EvalS_1_L2" />
+      <label kind="guard">x1 &lt; 5 &amp;&amp; x1 &gt; 16</label>
       <label kind="synchronisation">c2!</label>
-      <label kind="assignment">x0 := 0</label>
-      </transition>
-    <transition>
-      <source ref="EvalS_1_L6" />
-      <target ref="EvalS_1_L2" />
-      <label kind="synchronisation">c3!</label>
-      <label kind="assignment">v0 := 1</label>
       </transition>
     </template>
   <template>
@@ -304,19 +301,16 @@ int v0 = 0;</declaration>
       </location>
     <location id="EvalS_2_L2" x="420" y="100">
       <name>L2</name>
-      <label kind="invariant">x1 &lt;= 24 &amp;&amp; x1 - x0 &lt; -2</label>
       </location>
     <location id="EvalS_2_L3" x="580" y="100">
       <name>L3</name>
-      <label kind="invariant">x1 &gt;= 17 &amp;&amp; x1 - x0 &lt; 17</label>
+      <label kind="invariant">x0 &lt;= 1 &amp;&amp; x1 - x0 &gt; -8</label>
       </location>
     <location id="EvalS_2_L4" x="740" y="100">
       <name>L4</name>
-      <label kind="invariant">x0 &lt; 0 &amp;&amp; x1 - x0 &gt; -7</label>
       </location>
     <location id="EvalS_2_L5" x="900" y="100">
       <name>L5</name>
-      <label kind="invariant">x0 &gt; 7 &amp;&amp; x1 - x0 &lt; 9</label>
       </location>
     <location id="EvalS_2_L6" x="100" y="220">
       <name>L6</name>
@@ -324,37 +318,40 @@ int v0 = 0;</declaration>
     <init ref="EvalS_2_L0" />
     <transition>
       <source ref="EvalS_2_L0" />
-      <target ref="EvalS_2_L3" />
-      <label kind="assignment">x0 := 0</label>
+      <target ref="EvalS_2_L5" />
+      <label kind="synchronisation">c2?</label>
       </transition>
     <transition>
       <source ref="EvalS_2_L0" />
-      <target ref="EvalS_2_L1" />
-      <label kind="guard">x1 &lt;= 10 &amp;&amp; x0 &lt;= 7</label>
-      <label kind="assignment">x0 := 0</label>
+      <target ref="EvalS_2_L4" />
+      <label kind="assignment">x1 := 0, v0 := 2</label>
       </transition>
     <transition>
       <source ref="EvalS_2_L0" />
-      <target ref="EvalS_2_L3" />
-      </transition>
-    <transition>
-      <source ref="EvalS_2_L1" />
-      <target ref="EvalS_2_L3" />
-      <label kind="synchronisation">c0?</label>
-      <label kind="assignment">x1 := 0, v0 := 1</label>
+      <target ref="EvalS_2_L4" />
+      <label kind="synchronisation">c1?</label>
+      <label kind="assignment">x1 := 0</label>
       </transition>
     <transition>
       <source ref="EvalS_2_L1" />
       <target ref="EvalS_2_L2" />
-      <label kind="synchronisation">c2?</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_2_L1" />
+      <target ref="EvalS_2_L3" />
+      <label kind="synchronisation">c3!</label>
       <label kind="assignment">x0 := 0</label>
       </transition>
     <transition>
       <source ref="EvalS_2_L1" />
-      <target ref="EvalS_2_L6" />
-      <label kind="guard">x0 &lt;= 6 &amp;&amp; x1 &lt; 3 &amp;&amp; x1 - x0 &gt; -5</label>
-      <label kind="synchronisation">c0!</label>
-      <label kind="assignment">x1 := 0</label>
+      <target ref="EvalS_2_L3" />
+      <label kind="assignment">x0 := 0, v0 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_2_L2" />
+      <target ref="EvalS_2_L0" />
+      <label kind="synchronisation">c2!</label>
+      <label kind="assignment">x0 := 0, v0 := 1</label>
       </transition>
     <transition>
       <source ref="EvalS_2_L2" />
@@ -363,78 +360,70 @@ int v0 = 0;</declaration>
       </transition>
     <transition>
       <source ref="EvalS_2_L2" />
-      <target ref="EvalS_2_L1" />
-      <label kind="synchronisation">c0?</label>
-      <label kind="assignment">x0 := 0, v0 := 2</label>
-      </transition>
-    <transition>
-      <source ref="EvalS_2_L2" />
-      <target ref="EvalS_2_L4" />
-      <label kind="synchronisation">c1!</label>
-      <label kind="assignment">v0 := 0</label>
+      <target ref="EvalS_2_L5" />
+      <label kind="guard">x0 &lt;= 30 &amp;&amp; x1 &gt;= 4 &amp;&amp; x1 - x0 &gt; 5</label>
+      <label kind="synchronisation">c2?</label>
+      <label kind="assignment">v0 := 4</label>
       </transition>
     <transition>
       <source ref="EvalS_2_L3" />
-      <target ref="EvalS_2_L4" />
+      <target ref="EvalS_2_L0" />
+      <label kind="assignment">x0 := 0, v0 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_2_L3" />
+      <target ref="EvalS_2_L2" />
       <label kind="synchronisation">c2!</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_2_L3" />
+      <target ref="EvalS_2_L2" />
       <label kind="assignment">x1 := 0</label>
       </transition>
     <transition>
-      <source ref="EvalS_2_L3" />
+      <source ref="EvalS_2_L4" />
+      <target ref="EvalS_2_L2" />
+      </transition>
+    <transition>
+      <source ref="EvalS_2_L4" />
       <target ref="EvalS_2_L1" />
-      <label kind="guard">x0 &gt;= 6</label>
       <label kind="assignment">v0 := 2</label>
       </transition>
     <transition>
-      <source ref="EvalS_2_L3" />
-      <target ref="EvalS_2_L6" />
-      <label kind="synchronisation">c1?</label>
-      <label kind="assignment">x0 := 0</label>
-      </transition>
-    <transition>
       <source ref="EvalS_2_L4" />
-      <target ref="EvalS_2_L5" />
-      <label kind="synchronisation">c0!</label>
-      </transition>
-    <transition>
-      <source ref="EvalS_2_L4" />
-      <target ref="EvalS_2_L3" />
-      <label kind="guard">x1 &lt;= 24 &amp;&amp; x0 &lt;= 14</label>
-      <label kind="assignment">x0 := 0</label>
-      </transition>
-    <transition>
-      <source ref="EvalS_2_L4" />
-      <target ref="EvalS_2_L2" />
-      <label kind="assignment">v0 := 4</label>
-      </transition>
-    <transition>
-      <source ref="EvalS_2_L5" />
       <target ref="EvalS_2_L0" />
-      <label kind="assignment">v0 := 4</label>
+      <label kind="synchronisation">c2?</label>
+      <label kind="assignment">x1 := 0, v0 := 2</label>
       </transition>
     <transition>
       <source ref="EvalS_2_L5" />
-      <target ref="EvalS_2_L4" />
-      <label kind="assignment">x1 := 0</label>
-      </transition>
-    <transition>
-      <source ref="EvalS_2_L5" />
-      <target ref="EvalS_2_L3" />
-      <label kind="assignment">x0 := 0, v0 := 3</label>
-      </transition>
-    <transition>
-      <source ref="EvalS_2_L6" />
-      <target ref="EvalS_2_L3" />
-      <label kind="assignment">x0 := 0, v0 := 3</label>
-      </transition>
-    <transition>
-      <source ref="EvalS_2_L6" />
-      <target ref="EvalS_2_L3" />
-      <label kind="synchronisation">c1!</label>
-      </transition>
-    <transition>
-      <source ref="EvalS_2_L6" />
       <target ref="EvalS_2_L1" />
+      <label kind="assignment">x0 := 0, v0 := 4</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_2_L5" />
+      <target ref="EvalS_2_L1" />
+      <label kind="assignment">x0 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_2_L5" />
+      <target ref="EvalS_2_L1" />
+      <label kind="assignment">x0 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_2_L6" />
+      <target ref="EvalS_2_L4" />
+      <label kind="assignment">x0 := 0, v0 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_2_L6" />
+      <target ref="EvalS_2_L0" />
+      <label kind="assignment">x0 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_2_L6" />
+      <target ref="EvalS_2_L3" />
+      <label kind="assignment">v0 := 1</label>
       </transition>
     </template>
   <system>EvalS_0_i = EvalS_0();

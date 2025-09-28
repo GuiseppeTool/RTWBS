@@ -22,6 +22,7 @@ file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/benchmarks)
 # Development mode option (ON by default)
 option(DEV_MODE "Enable development mode with debug prints" ON)
 
+
 # Set build type and compile flags
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Debug)
@@ -33,6 +34,15 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 else()
     set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
     message(STATUS "Release build: ON (optimizations enabled)")
+    # Find and enable OpenMP
+    find_package(OpenMP)
+    if(OpenMP_CXX_FOUND)
+        message(STATUS "OpenMP found: enabling OpenMP support")
+        set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} ${OpenMP_CXX_FLAGS}")
+        set(CMAKE_EXE_LINKER_FLAGS_RELEASE "${CMAKE_EXE_LINKER_FLAGS_RELEASE} ${OpenMP_EXE_LINKER_FLAGS}")
+    else()
+        message(WARNING "OpenMP not found! Please install libomp-dev (sudo apt-get install libomp-dev) or your system's OpenMP package.")
+    endif()
 endif()
 
 if(DEV_MODE)
@@ -224,6 +234,7 @@ add_integration_example(weak_successors_example)
 add_integration_example(rtwbs_equivalence_example)
 add_integration_example(assignments_as_tau_example)
 add_integration_example(parse_generated_benchmark)
+add_integration_example(zone_graph_example)
 # Copy assets directory to build directory
 # Must be able to specify which subfolder according to the target
 
@@ -274,7 +285,7 @@ message(STATUS "XML2 Library: ${XML2_LIBRARY}")
 message(STATUS "Y Library: ${Y_LIBRARY}")
 
 # Add a custom target to build all examples
-add_custom_target(examples DEPENDS dbm_example weak_successors_example rtwbs_equivalence_example)
+add_custom_target(examples DEPENDS dbm_example weak_successors_example rtwbs_equivalence_example zone_graph_example)
 
 # Add a custom target to build all benchmarks
 add_custom_target(benchmarks 

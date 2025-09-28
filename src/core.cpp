@@ -28,10 +28,22 @@
 #include <unordered_map>
 #include <iostream>
 #include <future>
-
+#include <thread>
+#include <atomic>
+#include <mutex>
+#include <condition_variable>
 namespace rtwbs {
 
 namespace { // anonymous helpers (not part of public API)
+
+
+// Global cooperative-cancel flag for long-running computations in this TU.
+// All checker instances in this process will honor cancellation when set.
+static std::atomic<bool>* RTWBS_CANCEL_FLAG = nullptr;
+inline bool is_cancelled() {
+    return RTWBS_CANCEL_FLAG && RTWBS_CANCEL_FLAG->load(std::memory_order_relaxed);
+}
+
 /**
  * @brief Hash functor for pairs of zone state pointers.
  * @details Used to store candidate relation pairs in an unordered_set.
@@ -57,7 +69,7 @@ inline bool is_tau(const Transition* t){
  *
  * Process:
  *  1. BFS over internal transitions.
- *  2. For every internal edge: apply invariants, elapse time, check guard, apply reset, invariants.
+ *  2. For every internal edge: apply invariants, elapse time, re-apply invariants, apply reset+guards, invariants.
  *  3. Reuse existing canonical zone states via find_zone_state.
  *
  * @param ta Timed automaton.
@@ -71,18 +83,23 @@ std::vector<const ZoneState*> tau_closure_raw(const TimedAutomaton& ta, const Zo
     q.push(start); 
     visited.insert(start);
     while(!q.empty()){
+        if (is_cancelled()) return closure;
         auto z = q.front(); 
         q.pop(); 
         closure.push_back(z);
         auto outs = ta.get_outgoing_transitions(z->location_id);
         for(auto tr: outs){ 
+            if (is_cancelled()) return closure;
             if(!is_tau(tr)) continue; 
-            auto zInv = ta.apply_invariants(z->zone, z->location_id); 
-            if(zInv.empty()) continue; 
-            auto zUp = ta.time_elapse(zInv); 
-            if(zUp.empty()) continue; 
-            if(!ta.is_transition_enabled(zUp, *tr)) continue; 
-            auto post = ta.apply_transition(zUp, *tr); 
+            auto zInv = ta.apply_invariants(z->zone, z->location_id);
+            if(zInv.empty()) continue;
+            auto zUp = ta.time_elapse(zInv);
+            if(zUp.empty()) continue;
+            // Re-apply invariants after Up to avoid enabling via invariant violations
+            auto ready = ta.apply_invariants(zUp, z->location_id);
+            if(ready.empty()) continue;
+            // Direct attempt: apply transition; guards+resets handled inside
+            auto post = ta.apply_transition(ready, *tr);
             if(post.empty()) continue; 
             post = ta.apply_invariants(post, tr->to_location); 
             if(post.empty()) continue; 
@@ -116,15 +133,18 @@ std::vector<const ZoneState*> weak_observable_successors_raw(const TimedAutomato
     std::vector<const ZoneState*> result; 
     auto pre = tau_closure_raw(ta, start);
     for(auto z: pre){ 
+        if (is_cancelled()) break;
         auto outs = ta.get_outgoing_transitions(z->location_id); 
         for(auto tr: outs){ 
+            if (is_cancelled()) break;
             if(tr->action != action) continue; 
-            auto zInv = ta.apply_invariants(z->zone, z->location_id); 
-            if(zInv.empty()) continue; 
-            auto zUp = ta.time_elapse(zInv); 
-            if(zUp.empty()) continue; 
-            if(!ta.is_transition_enabled(zUp, *tr)) continue; 
-            auto post = ta.apply_transition(zUp, *tr); 
+            auto zInv = ta.apply_invariants(z->zone, z->location_id);
+            if(zInv.empty()) continue;
+            auto zUp = ta.time_elapse(zInv);
+            if(zUp.empty()) continue;
+            auto ready = ta.apply_invariants(zUp, z->location_id);
+            if(ready.empty()) continue;
+            auto post = ta.apply_transition(ready, *tr);
             if(post.empty()) continue; 
             post = ta.apply_invariants(post, tr->to_location); 
             if(post.empty()) continue; 
@@ -153,19 +173,24 @@ std::vector<const ZoneState*> weak_observable_successors_raw(const TimedAutomato
  */
 bool timing_ok(const TimedAutomaton& refined, const ZoneState* rz, const Transition* rt,
                const TimedAutomaton& abs, const ZoneState* az, const Transition* at){
-    auto rInv = refined.apply_invariants(rz->zone, rz->location_id); 
-    if(rInv.empty()) return false; 
-    auto rUp = refined.time_elapse(rInv); 
-    if(rUp.empty()) return false; 
-    for(auto &g: rt->guards) dbm_constrain1(rUp.data(), refined.get_dimension(), g.i, g.j, g.value); 
-    if(!dbm_close(rUp.data(), refined.get_dimension()) || dbm_isEmpty(rUp.data(), refined.get_dimension())) return false;
-    auto aInv = abs.apply_invariants(az->zone, az->location_id); 
-    if(aInv.empty()) return false; 
-    auto aUp = abs.time_elapse(aInv); 
-    if(aUp.empty()) return false; 
-    for(auto &g: at->guards) dbm_constrain1(aUp.data(), abs.get_dimension(), g.i, g.j, g.value); 
-    if(!dbm_close(aUp.data(), abs.get_dimension()) || dbm_isEmpty(aUp.data(), abs.get_dimension())) return false;
-    relation_t rel = dbm_relation(rUp.data(), aUp.data(), refined.get_dimension()); 
+    auto rInv = refined.apply_invariants(rz->zone, rz->location_id);
+    if(rInv.empty()) return false;
+    auto rUp = refined.time_elapse(rInv);
+    if(rUp.empty()) return false;
+    // Keep invariants enforced during delay
+    auto rReady = refined.apply_invariants(rUp, rz->location_id);
+    if(rReady.empty()) return false;
+    for(auto &g: rt->guards) dbm_constrain1(rReady.data(), refined.get_dimension(), g.i, g.j, g.value);
+    if(!dbm_close(rReady.data(), refined.get_dimension()) || dbm_isEmpty(rReady.data(), refined.get_dimension())) return false;
+    auto aInv = abs.apply_invariants(az->zone, az->location_id);
+    if(aInv.empty()) return false;
+    auto aUp = abs.time_elapse(aInv);
+    if(aUp.empty()) return false;
+    auto aReady = abs.apply_invariants(aUp, az->location_id);
+    if(aReady.empty()) return false;
+    for(auto &g: at->guards) dbm_constrain1(aReady.data(), abs.get_dimension(), g.i, g.j, g.value);
+    if(!dbm_close(aReady.data(), abs.get_dimension()) || dbm_isEmpty(aReady.data(), abs.get_dimension())) return false;
+    relation_t rel = dbm_relation(rReady.data(), aReady.data(), refined.get_dimension()); 
     bool r_subset_a = (rel == base_SUBSET || rel == base_EQUAL); 
     bool a_subset_r = (rel == base_SUPERSET || rel == base_EQUAL);
     if(!rt->has_synchronization() && !at->has_synchronization()) return r_subset_a; // internal
@@ -233,6 +258,7 @@ void RTWBSChecker::clear_optimisation_state(){
 bool RTWBSChecker::check_rtwbs_simulation(const TimedAutomaton& refined, const TimedAutomaton& abstract){
     auto start = std::chrono::high_resolution_clock::now();
     clear_optimisation_state();
+    if (is_cancelled()) return false;
     const_cast<TimedAutomaton&>(refined).construct_zone_graph();
     const_cast<TimedAutomaton&>(abstract).construct_zone_graph();
     const auto& RZ = refined.get_all_zone_states();
@@ -296,6 +322,7 @@ bool RTWBSChecker::check_rtwbs_simulation(const TimedAutomaton& refined, const T
     };
     
     while(!worklist_.empty()){
+        if (is_cancelled()) { relation_.clear(); break; }
         PairKey current = worklist_.front(); worklist_.pop();
         // It might have been removed already
         if(!relation_.count(current)) continue;
@@ -367,9 +394,10 @@ bool RTWBSChecker::check_rtwbs_simulation(const System& system_refined, const Sy
 
 
 
-bool RTWBSChecker::check_rtwbs_equivalence(const TimedAutomaton& refined, const TimedAutomaton& abstract){
+bool RTWBSChecker::check_rtwbs_equivalence(const TimedAutomaton& refined, const TimedAutomaton& abstract, bool use_omp){
     auto start = std::chrono::high_resolution_clock::now();
     clear_optimisation_state();
+    if (is_cancelled()) return false;
     const_cast<TimedAutomaton&>(refined).construct_zone_graph();
     const_cast<TimedAutomaton&>(abstract).construct_zone_graph();
     const auto& RZ = refined.get_all_zone_states();
@@ -379,7 +407,9 @@ bool RTWBSChecker::check_rtwbs_equivalence(const TimedAutomaton& refined, const 
 
     // 1) Early pruning seed: only include pairs with same location AND refined zone subset/eq abstract zone
     for(auto &rzp: RZ){
+        if (is_cancelled()) return false;
         for(auto &azp: AZ){
+            if (is_cancelled()) return false;
             if(rzp->location_id == azp->location_id){
                 relation_t rel = dbm_relation(rzp->zone.data(), azp->zone.data(), rzp->dimension);
                 if(rel==base_SUBSET || rel==base_EQUAL){
@@ -394,7 +424,10 @@ bool RTWBSChecker::check_rtwbs_equivalence(const TimedAutomaton& refined, const 
 
     // 2) Localised validation loop using worklist and reverse dependencies
     //    Now symmetric: both refined→abstract and abstract→refined must match (bisimulation)
-    auto validate_pair = [&](const PairKey& pk)->bool{
+    // Thread-safe validate_pair for OpenMP: collects reverse_deps_ updates in a local vector
+    auto validate_pair = [&](const PairKey& pk, 
+        const std::unordered_set<rtwbs::RTWBSChecker::PairKey, rtwbs::RTWBSChecker::PairKeyHash>& relation_, std::vector<std::pair<PairKey, PairKey>>* local_reverse_deps_updates = nullptr
+    )->bool{
         auto rZone = pk.r; auto aZone = pk.a;
 
         // Forward direction: refined -> abstract
@@ -424,19 +457,24 @@ bool RTWBSChecker::check_rtwbs_equivalence(const TimedAutomaton& refined, const 
                     std::unordered_map<int, std::vector<const ZoneState*>> aByLoc;
                     aByLoc.reserve(aSuccs.size());
                     for(auto as: aSuccs) aByLoc[as->location_id].push_back(as);
-                    bool found=false; PairKey supporting{};
-                    for(auto rsucc: rSuccs){
-                        auto it = aByLoc.find(rsucc->location_id);
-                        if(it==aByLoc.end()) continue;
-                        for(auto as: it->second){
-                            PairKey cand{rsucc, as};
-                            if(relation_.count(cand)) { found=true; supporting=cand; break; }
-                        }
-                        if(found) break;
+                        bool found=false; PairKey supporting{};
+                        for(auto rsucc: rSuccs){
+                            auto it = aByLoc.find(rsucc->location_id);
+                            if(it==aByLoc.end()) continue;
+                            for(auto as: it->second){
+                                PairKey cand{rsucc, as};
+                                if(relation_.count(cand) ) { found=true; supporting=cand; break; }
+                            }
+                            if(found) break;
+                        
                     }
                     if(found){
                         // record reverse dependency: pk depends on supporting
-                        reverse_deps_[supporting].push_back(pk);
+                        if (local_reverse_deps_updates) {
+                            local_reverse_deps_updates->emplace_back(supporting, pk);
+                        } else {
+                            reverse_deps_[supporting].push_back(pk);
+                        }
                         matched=true; break;
                     }
                 }
@@ -482,7 +520,11 @@ bool RTWBSChecker::check_rtwbs_equivalence(const TimedAutomaton& refined, const 
                         if(found) break;
                     }
                     if(found){
-                        reverse_deps_[supporting].push_back(pk);
+                        if (local_reverse_deps_updates) {
+                            local_reverse_deps_updates->emplace_back(supporting, pk);
+                        } else {
+                            reverse_deps_[supporting].push_back(pk);
+                        }
                         matched=true; break;
                     }
                 }
@@ -492,43 +534,129 @@ bool RTWBSChecker::check_rtwbs_equivalence(const TimedAutomaton& refined, const 
         return true; // all observable transitions matched in both directions
     };
 
-    while(!worklist_.empty()){
-        PairKey current = worklist_.front(); worklist_.pop();
-        // It might have been removed already
-        if(!relation_.count(current)) continue;
-        if(!validate_pair(current)){
-            // remove and enqueue dependents
-            relation_.erase(current);
-            auto it = reverse_deps_.find(current);
-            if(it!=reverse_deps_.end()){
-                for(auto &parent: it->second){
-                    if(relation_.count(parent)) worklist_.push(parent);
+    if(!use_omp){
+        while(!worklist_.empty()){
+            if (is_cancelled()) { relation_.clear(); break; }
+            PairKey current = worklist_.front(); worklist_.pop();
+            // It might have been removed already
+            if(!relation_.count(current)) continue;
+            if(!validate_pair(current, relation_)){
+                // remove and enqueue dependents
+                relation_.erase(current);
+                auto it = reverse_deps_.find(current);
+                if(it!=reverse_deps_.end()){
+                    for(auto &parent: it->second){
+                        if(relation_.count(parent)) worklist_.push(parent);
+                    }
+                }
+                reverse_deps_.erase(current);
+            }
+            if(relation_.empty()) break;
+        }
+        
+    }else{
+        // transform it in a lambda
+        auto get_batch = [](std::queue<PairKey>& worklist, size_t batch_size) {
+            std::vector<PairKey> batch;
+            batch.reserve(batch_size);
+            for (size_t i = 0; i < batch_size && !worklist.empty(); ++i) {
+                batch.push_back(worklist.front());
+                worklist.pop();
+            }
+            return batch;
+        };
+        
+        while (!worklist_.empty()) {
+            // 1. Extract a batch of pairs from worklist_
+            size_t batch_size = std::max(static_cast<size_t>(1), worklist_.size() / (2 * std::thread::hardware_concurrency()));
+            std::vector<PairKey> batch = get_batch(worklist_, batch_size);
+
+
+            // 2. Parallel for each pair in batch (only read shared containers)
+            std::vector<PairKey> to_remove;
+            std::vector<std::pair<PairKey, PairKey>> all_reverse_deps_updates;
+            
+            #pragma omp parallel
+            {
+                const auto& relation_snapshot = relation_; // snapshot for thread safety
+                std::vector<PairKey> local_remove;
+                std::vector<std::pair<PairKey, PairKey>> local_reverse_deps_updates;
+
+                #pragma omp for nowait
+                for (size_t i = 0; i < batch.size(); ++i) {
+                    PairKey current = batch[i];
+                    if (!relation_snapshot.count(current)) continue;
+                    if (!validate_pair(current, relation_, &local_reverse_deps_updates)) {
+                        local_remove.push_back(current);
+                    }
+                }
+
+                // Merge thread-local results at the end of parallel region
+                #pragma omp critical
+                {
+                    to_remove.insert(to_remove.end(),
+                                    std::make_move_iterator(local_remove.begin()),
+                                    std::make_move_iterator(local_remove.end()));
+
+                    all_reverse_deps_updates.insert(all_reverse_deps_updates.end(),
+                                    std::make_move_iterator(local_reverse_deps_updates.begin()),
+                                    std::make_move_iterator(local_reverse_deps_updates.end()));
                 }
             }
-            reverse_deps_.erase(current);
+            
+            
+
+            // 3. Synchronize: merge reverse_deps_ updates (main thread only)
+            for (const auto& update : all_reverse_deps_updates) {
+                reverse_deps_[update.first].push_back(update.second);
+            }
+            // For each pair to remove, enqueue its dependents and erase from reverse_deps_
+            for (auto& pk : to_remove) {
+                relation_.erase(pk);
+                auto it = reverse_deps_.find(pk);
+                if (it != reverse_deps_.end()) {
+                    for (auto& parent : it->second) {
+                        if (relation_.count(parent)) worklist_.push(parent);
+                    }
+                }
+                reverse_deps_.erase(pk);
+            }
+            std::cout << reverse_deps_.size() << " pairs remain in reverse_deps_\n";
+            std::cout << relation_.size() << " pairs remain in relation_\n";
         }
-        if(relation_.empty()) break;
     }
+
     auto end = std::chrono::high_resolution_clock::now();
-    last_stats_.refined_states += RZ.size();
-    last_stats_.abstract_states += AZ.size();
-    last_stats_.simulation_pairs += relation_.size();
-    last_stats_.check_time_ms += std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count();
-    last_stats_.memory_usage_bytes += relation_.size()*sizeof(PairKey);
-    DEV_PRINT( "Thread " << std::this_thread::get_id() << " finished equivalence check\n for "<< refined.get_name() << " and " << abstract.get_name() << std::endl);
-    return !relation_.empty();
+        last_stats_.refined_states += RZ.size();
+        last_stats_.abstract_states += AZ.size();
+        last_stats_.simulation_pairs += relation_.size();
+        last_stats_.check_time_ms += std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count();
+        last_stats_.memory_usage_bytes += relation_.size()*sizeof(PairKey);
+        DEV_PRINT( "Thread " << std::this_thread::get_id() << " finished equivalence check\n for "<< refined.get_name() << " and " << abstract.get_name() << std::endl);
+        //Print all the pairs in the simulation thing, pair by pair !
+
+    
+        //return !relation_.empty();
+        //Return true if the initial states are in the relation
+        for (const auto& p : relation_)
+        {
+            if (p.r->location_id == 0 && p.a->location_id == 0)
+                return true;
+        }
+        return false;
 }
 
 
-bool RTWBSChecker::check_rtwbs_equivalence__(const System& system_refined, const System& system_abstract)
+bool RTWBSChecker::check_rtwbs_equivalence__(const System& system_refined, const System& system_abstract, bool use_openmp)
 {
        bool all = true; 
     size_t total = system_refined.size();
     int barWidth = 70;
     std::vector<bool> results(total, false);
     for(size_t i = 0; i < total; ++i) {
+        if (is_cancelled()) { all = false; break; }
                 // Run equivalence check
-                if(!check_rtwbs_equivalence(system_refined.get_automaton(i), system_abstract.get_automaton(i)))
+                if(!check_rtwbs_equivalence(system_refined.get_automaton(i), system_abstract.get_automaton(i), use_openmp))
                     all = false; 
 
                 // Report result of current automaton
@@ -565,34 +693,73 @@ bool RTWBSChecker::check_rtwbs_equivalence__(const System& system_refined, const
  * @brief Pairwise system-level refinement: all corresponding automata must refine.
  * @return true iff every automaton pair satisfies RTWBS refinement.
  */
-bool RTWBSChecker::check_rtwbs_equivalence(const System& system_refined, const System& system_abstract, size_t num_workers) {
+bool RTWBSChecker::check_rtwbs_equivalence(const System& system_refined, const System& system_abstract, RunningMode parallel_mode, size_t num_workers, long timeout_ms) {
     if(system_refined.size() != system_abstract.size()) 
         return false; 
 
- 
-    bool all = true;
-    if (num_workers <=1){
-       return check_rtwbs_equivalence__(system_refined, system_abstract);
-    }else{
-        //execute in parallel split automata for workers
-        
+    // Cooperative-cancel with watchdog if timeout is set
+    std::atomic<bool> cancel_flag{false};
+    std::atomic<bool> done_flag{false};
+    std::thread watchdog;
+    std::mutex watchdog_mtx;
+    std::condition_variable watchdog_cv;
+    bool installed_cancel_flag = false;
+    if (timeout_ms >= 0) {
+        // Install global cancel flag pointer before any work starts
+        RTWBS_CANCEL_FLAG = &cancel_flag;
+        installed_cancel_flag = true;
+        watchdog = std::thread([timeout_ms, &cancel_flag, &done_flag, &watchdog_mtx, &watchdog_cv]() {
+            if (timeout_ms == 0) {
+                // immediate cancel
+                cancel_flag.store(true, std::memory_order_relaxed);
+                std::cout << "TIME OUT HAPPENED, I WAS CHECKING IF AUZTOMATA" << std::endl;
+                return;
+            }
+            std::unique_lock<std::mutex> lk(watchdog_mtx);
+            bool finished = watchdog_cv.wait_for(
+                lk,
+                std::chrono::milliseconds(timeout_ms),
+                [&]{ return done_flag.load(std::memory_order_relaxed); }
+            );
+            if (!finished) {
+                cancel_flag.store(true, std::memory_order_relaxed);
+                std::cout << "TIME OUT HAPPENED, I WAS CHECKING IF AUZTOMATA" << std::endl;
+            }
+        });
+    }
 
-        //lambda that efficiently takes a vector of automata pairs and checks them
+    auto join_watchdog = [&]() {
+        done_flag.store(true, std::memory_order_relaxed);
+        watchdog_cv.notify_all();
+        if (watchdog.joinable()) watchdog.join();
+        if (installed_cancel_flag && RTWBS_CANCEL_FLAG == &cancel_flag) {
+            RTWBS_CANCEL_FLAG = nullptr;
+        }
+    };
+
+    auto run_work = [&]() -> bool {
+        if (parallel_mode == RunningMode::SERIAL) {
+            return check_rtwbs_equivalence__(system_refined, system_abstract, false);
+        }
+
+        if (parallel_mode == RunningMode::OPENMP) {
+            std::cout << "Running it in openmp mode" << std::endl;
+            return check_rtwbs_equivalence__(system_refined, system_abstract, true);
+        }
 
         // Pre-construct all zone graphs sequentially (avoid concurrent mutations)
         for (size_t i = 0; i < system_refined.size(); ++i) {
+            if (is_cancelled()) return false;
             auto& r = const_cast<TimedAutomaton&>(system_refined.get_automaton(i));
             auto& a = const_cast<TimedAutomaton&>(system_abstract.get_automaton(i));
             r.construct_zone_graph();
             a.construct_zone_graph();
         }
-        bool all = true;
+        bool all_local = true;
         std::vector<std::future<std::pair<bool, rtwbs::CheckStatistics>>> futures;
-
-        ThreadPool pool(num_workers); 
+        ThreadPool pool(num_workers);
         futures.reserve(system_refined.size());
-
-        for(size_t i = 0; i < system_refined.size(); ++i) {
+        for (size_t i = 0; i < system_refined.size(); ++i) {
             futures.push_back(pool.enqueue([&system_refined, &system_abstract, i]() {
                 RTWBSChecker local;
                 bool correct = local.check_rtwbs_equivalence(
@@ -602,17 +769,26 @@ bool RTWBSChecker::check_rtwbs_equivalence(const System& system_refined, const S
                 return std::make_pair(correct, local.get_last_check_statistics());
             }));
         }
-
-        // Wait for results
-        for(auto& fut : futures) {
+        for (auto& fut : futures) {
+            if (is_cancelled()) { all_local = false; break; }
             auto [correct, stats] = fut.get();
-            if(!correct) all = false;
+            if (!correct) all_local = false;
             auto old_time = this->last_stats_.check_time_ms;
             this->last_stats_ += stats;
             this->last_stats_.check_time_ms = std::max(old_time, stats.check_time_ms);
         }
-        return all;
+        return all_local;
+    };
+
+    bool res = run_work();
+    join_watchdog();
+    // Check if canceled
+    if (cancel_flag.load(std::memory_order_relaxed)) {
+        this->last_stats_.check_time_ms = timeout_ms;
+        throw rtwbs::TimeoutException("Operation timed out!");
     }
+
+    return res;
 
 }
 

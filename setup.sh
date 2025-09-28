@@ -23,6 +23,8 @@ for arg in "$@"; do
 done
 
 
+#install omp
+sudo apt-get update && sudo apt-get install -y libomp-dev
 
 
 # Setup UDBM

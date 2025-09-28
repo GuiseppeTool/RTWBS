@@ -19,7 +19,7 @@ int main(int argc, char* argv[]) {
             "modelConfStandard.xml", 
             "modelConfStandard copy.xml"
         };
-        rtwbs::comparison_checks(formatted_files,"assets/FMICS2021/","results/","formatted_test_");
+        rtwbs::comparison_checks(formatted_files,"assets/FMICS2021/",rtwbs::RESULTS_FOLDER,"formatted_test_");
         
       
         return 0;

@@ -1,9 +1,7 @@
 #ifndef RTWBS_CORE_H
 #define RTWBS_CORE_H
 
-#include "timedautomaton.h"
-#include "configs.h"
-#include "system.h"
+
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -12,7 +10,10 @@
 #include <fstream>
 
 #include "threadpool.h"
-
+#include "utils.h"
+#include "timedautomaton.h"
+#include "configs.h"
+#include "system.h"
 namespace rtwbs {
 
 
@@ -135,11 +136,15 @@ public:
     RTWBSChecker() : last_stats_{0,0,0,0.0,0} {}
 
     // Core equivalence check (game-based relaxed weak timed bisimulation)
-    bool check_rtwbs_equivalence(const TimedAutomaton& refined, const TimedAutomaton& abstract);
+    bool check_rtwbs_equivalence(const TimedAutomaton& refined, const TimedAutomaton& abstract, bool use_omp = false);
 
     bool check_rtwbs_simulation(const TimedAutomaton& refined, const TimedAutomaton& abstract);
     // System-level convenience (pairwise index matching)
-    bool check_rtwbs_equivalence(const System& system_refined, const System& system_abstract, size_t num_workers = 0);
+    bool check_rtwbs_equivalence(const System& system_refined,
+                                 const System& system_abstract,
+                                 rtwbs::RunningMode parallel_mode = rtwbs::RunningMode::SERIAL,
+                                 size_t num_workers = 0,
+                                 long timeout_ms = -1);
     bool check_rtwbs_simulation(const System& system_refined, const System& system_abstract);
 
     struct SystemCheckResult {
@@ -209,7 +214,7 @@ private:
     void clear_optimisation_state();
 
 
-    bool check_rtwbs_equivalence__(const System& system_refined, const System& system_abstract);
+    bool check_rtwbs_equivalence__(const System& system_refined, const System& system_abstract, bool use_openmp);
 
 
 private:

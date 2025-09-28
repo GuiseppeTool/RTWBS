@@ -1301,8 +1301,15 @@ void TimedAutomaton::construct_zone_graph(int initial_location, const std::vecto
     zone_transitions_.clear();
     waiting_list_ = std::queue<int>();
     
-    // Create initial state
-    add_state(initial_location, initial_zone);
+    // Create initial state: intersect initial zone with invariants of the initial location
+    // If inconsistent, nothing to explore
+    std::vector<raw_t> init_with_inv = apply_invariants(initial_zone, initial_location);
+    if (init_with_inv.empty()) {
+        DEV_PRINT("Initial zone violates invariants; nothing to explore." << std::endl);
+        constructed_ = true;
+        return;
+    }
+    add_state(initial_location, init_with_inv);
     
     
     
@@ -1354,7 +1361,8 @@ std::vector<raw_t> TimedAutomaton::time_elapse(const std::vector<raw_t>& zone) c
             // If no explicit lower bound, leave as 0 (clocks non-negative)
         }
         // If LU extrapolation API exists (not detected), fallback to max-bounds.
-        dbm_extrapolateMaxBounds(result.data(), dimension_, U.data());
+        //dbm_extrapolateMaxBounds(result.data(), dimension_, U.data());
+        dbm_diagonalExtrapolateLUBounds(result.data(), dimension_, L.data(), U.data());
     }
 
     return result;
@@ -1605,26 +1613,27 @@ void TimedAutomaton::explore_state(int state_id) {
     auto elapsed_zone = time_elapse(zone_with_inv);
     if (elapsed_zone.empty()) return;
     
+    // IMPORTANT: after Up, re-apply invariants of the current location
+    // dbm_up may relax upper bounds; we must keep Inv(l) enforced during delay
+    auto ready_zone = apply_invariants(elapsed_zone, current_state.location_id);
+    if (ready_zone.empty()) return;
+    
     // Try all outgoing transitions from current location
     auto transition_it = outgoing_transitions_.find(current_state.location_id);
     if (transition_it != outgoing_transitions_.end()) {
         for (int transition_idx : transition_it->second) {
             const auto& transition = transitions_[transition_idx];
             
-            // Check if transition is enabled
-            if (is_transition_enabled(elapsed_zone, transition)) {
-                // Apply transition to (Z ∩ Inv)^up
-                auto successor_zone = apply_transition(elapsed_zone, transition);
-                
-                if (!successor_zone.empty()) {
-                    // Apply invariants in target location
-                    auto final_zone = apply_invariants(successor_zone, transition.to_location);
-                    
-                    if (!final_zone.empty()) {
-                        // Add successor state
-                        int successor_id = add_state(transition.to_location, final_zone);
-                        zone_transitions_[state_id].push_back(successor_id);
-                    }
+            // Direct attempt: apply transition on ready_zone; if result non-empty and
+            // target invariants hold, then the transition is enabled and we add successor.
+            auto successor_zone = apply_transition(ready_zone, transition);
+            if (!successor_zone.empty()) {
+                // Apply invariants in target location
+                auto final_zone = apply_invariants(successor_zone, transition.to_location);
+                if (!final_zone.empty()) {
+                    // Add successor state
+                    int successor_id = add_state(transition.to_location, final_zone);
+                    zone_transitions_[state_id].push_back(successor_id);
                 }
             }
         }

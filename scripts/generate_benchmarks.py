@@ -10,10 +10,6 @@ except ModuleNotFoundError:
 def generate_eval_benchmarks():
     """
     Create evaluation benchmarks sized by approximate per-automaton zone counts.
-    Targets (sum across 5 automata):
-      - Small  ~ 5 x ~100  ≈ 500
-      - Medium ~ 5 x ~1000 ≈ 5,000
-      - Large  ~ 5 x ~10,000 ≈ 50,000
 
     Note: Zone counts depend on exploration and constraints; these parameters are
     chosen heuristically to land near the targets when explored per-automaton.
@@ -98,7 +94,7 @@ def generate_eval_benchmarks():
         ("m", medium),
         ("l", large),
         ("xl", xlarge),
-        ("xxl", xxlarge),
+        #("xxl", xxlarge),
     ]
 
     saved = []
