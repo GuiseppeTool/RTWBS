@@ -7,7 +7,7 @@ import psutil
 
 eval_path = "assets/eval"
 results_path = "results/uppaal"
-timeout_h = 24  # hours
+timeout_h = 10  # hours
 
 def sort_key(x):
         fname = os.path.basename(x).replace('.xml', '')

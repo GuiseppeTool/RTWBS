@@ -418,7 +418,7 @@ def plot_comparison_two_figs(merged, use_log=True, output_folder="results", file
 if __name__ == "__main__":
     csv1_path = "results/uppaal/results_2025-09-27_15-30-19.csv"
     csv2_path = "results/rtwbs/syn_benchmark_results_20250928_201458.csv"
-    csv3_path = "results/rtbws_openmp/syn_benchmark_results_20250928_202915.csv"
+    csv3_path = "results/rtbws_openmp/syn_benchmark_results_20250928_223328.csv"
     n_workers = "Parallel"
     
     zones_path = "assets/system_size.csv"

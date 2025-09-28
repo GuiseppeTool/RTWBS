@@ -174,16 +174,26 @@ private:
     // ===== Optimisation Data Structures =====
     // Cache of tau-closures: ZoneState* -> vector of reachable ZoneState* using only tau/internal transitions
     std::unordered_map<const ZoneState*, std::vector<const ZoneState*>> tau_closure_cache_;
+    inline size_t hash_combine(size_t a, size_t b) noexcept {
+            a ^= b + 0x9e3779b9 + (a << 6) + (a >> 2);
+            return a;
+        }
 
     // Key for weak successor cache (zone state + action label)
     struct WeakKey {
-        const ZoneState* z;
+        //const ZoneState* z;
+        int zone_id;
         std::string action;
-        bool operator==(const WeakKey& o) const noexcept { return z==o.z && action==o.action; }
+        bool operator==(const WeakKey& o) const noexcept { return zone_id==o.zone_id && action==o.action; }
     };
     struct WeakKeyHash {
+        //size_t operator()(const WeakKey& k) const noexcept {
+        //    return std::hash<size_t>{}(k.zone_id) ^ (std::hash<std::string>{}(k.action) << 1);
+        //}
         size_t operator()(const WeakKey& k) const noexcept {
-            return std::hash<const ZoneState*>{}(k.z) ^ (std::hash<std::string>{}(k.action) << 1);
+        size_t h1 = std::hash<int>{}(k.zone_id);
+        size_t h2 = std::hash<std::string>{}(k.action);
+            return h1 ^ h2 + 0x9e3779b9 + (h1 << 6) + (h1 >> 2);
         }
     };
     // Cache: weak successors under pattern tau* a tau*
@@ -191,14 +201,19 @@ private:
 
     // Pair key used for relation + reverse dependency graph
     struct PairKey {
-        const ZoneState* r; // refined
-        const ZoneState* a; // abstract
+        int r; // refined state id
+        int a; // abstract state id
         bool operator==(const PairKey& o) const noexcept { return r==o.r && a==o.a; }
     };
     struct PairKeyHash {
+        //size_t operator()(const PairKey& p) const noexcept {
+        //    return std::hash<size_t>{}(p.r) ^ (std::hash<size_t>{}(p.a) << 1);
+        //}
         size_t operator()(const PairKey& p) const noexcept {
-            return std::hash<const ZoneState*>{}(p.r) ^ (std::hash<const ZoneState*>{}(p.a) << 1);
-        }
+        size_t h1 = std::hash<int>{}(p.r);
+        size_t h2 = std::hash<int>{}(p.a);
+         return h1 ^ h2 + 0x9e3779b9 + (h1 << 6) + (h1 >> 2);
+    }
     };
 
     // Reverse dependency graph: child -> parents that relied on (child) to justify a match

@@ -1663,6 +1663,18 @@ const ZoneState* TimedAutomaton::get_zone_state(size_t state_id) const {
     return states_[state_id].get();
 }
 
+int TimedAutomaton::get_state_id(const ZoneState* state) const {
+    if (!state) return -1;
+    
+    auto it = state_map_.find(*state);
+    if (it != state_map_.end()) {
+        return it->second;
+    }
+    return -1; // Not found
+}
+
+
+
 const ZoneState* TimedAutomaton::find_zone_state(int location_id, const std::vector<raw_t>& zone) const {
     // Create temporary zone state for lookup
     ZoneState temp_state(location_id, zone, dimension_);

@@ -108,8 +108,8 @@ struct ZoneState {
     cindex_t dimension;
     size_t hash_value;
     
-    ZoneState(int loc_id, const std::vector<raw_t>& zone_dbm, cindex_t dim) 
-        : location_id(loc_id), zone(zone_dbm), dimension(dim) {
+    ZoneState( int loc_id, const std::vector<raw_t>& zone_dbm, cindex_t dim) 
+        :  location_id(loc_id), zone(zone_dbm), dimension(dim) {
         compute_hash();
     }
     
@@ -412,6 +412,8 @@ public:
     
     const std::vector<std::unique_ptr<ZoneState>>& get_all_zone_states() const { return states_; }
 
+
+    int get_state_id(const ZoneState* state) const ;
 private:
     /**
      * Add a new state to the zone graph

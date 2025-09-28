@@ -180,25 +180,66 @@ bool timing_ok(const TimedAutomaton& refined, const ZoneState* rz, const Transit
     // Keep invariants enforced during delay
     auto rReady = refined.apply_invariants(rUp, rz->location_id);
     if(rReady.empty()) return false;
+
     for(auto &g: rt->guards) dbm_constrain1(rReady.data(), refined.get_dimension(), g.i, g.j, g.value);
-    if(!dbm_close(rReady.data(), refined.get_dimension()) || dbm_isEmpty(rReady.data(), refined.get_dimension())) return false;
+    bool guards_ok_in_r=true;
+    if(!dbm_close(rReady.data(), refined.get_dimension()) || dbm_isEmpty(rReady.data(), refined.get_dimension()))
+    {
+        guards_ok_in_r= false;
+    }
+
+
     auto aInv = abs.apply_invariants(az->zone, az->location_id);
     if(aInv.empty()) return false;
     auto aUp = abs.time_elapse(aInv);
+                
     if(aUp.empty()) return false;
+    // Keep invariants enforced during delay
+    
     auto aReady = abs.apply_invariants(aUp, az->location_id);
     if(aReady.empty()) return false;
+
+
     for(auto &g: at->guards) dbm_constrain1(aReady.data(), abs.get_dimension(), g.i, g.j, g.value);
-    if(!dbm_close(aReady.data(), abs.get_dimension()) || dbm_isEmpty(aReady.data(), abs.get_dimension())) return false;
-    relation_t rel = dbm_relation(rReady.data(), aReady.data(), refined.get_dimension()); 
-    bool r_subset_a = (rel == base_SUBSET || rel == base_EQUAL); 
-    bool a_subset_r = (rel == base_SUPERSET || rel == base_EQUAL);
-    if(!rt->has_synchronization() && !at->has_synchronization()) return r_subset_a; // internal
-    if(rt->has_synchronization() && at->has_synchronization() && rt->channel == at->channel){ 
-        if(rt->is_sender && at->is_sender) return r_subset_a; 
-        if(rt->is_receiver && at->is_receiver) return a_subset_r; 
+    bool guards_ok_in_a=true;
+    if(!dbm_close(aReady.data(), abs.get_dimension()) || dbm_isEmpty(aReady.data(), abs.get_dimension())){
+        guards_ok_in_a= false;
     }
-    return false;
+    if(guards_ok_in_r and guards_ok_in_a){
+
+    }
+    if(guards_ok_in_r && guards_ok_in_a){
+        // Both can move → check zone relation
+        relation_t rel = dbm_relation(rReady.data(), aReady.data(), refined.get_dimension()); 
+        bool r_subset_a = (rel == base_SUBSET || rel == base_EQUAL); 
+        bool a_subset_r = (rel == base_SUPERSET || rel == base_EQUAL);
+
+        if(!rt->has_synchronization() && !at->has_synchronization())
+            return r_subset_a; // internal
+        if(rt->has_synchronization() && at->has_synchronization() && rt->channel == at->channel){ 
+            if(rt->is_sender && at->is_sender) return r_subset_a; 
+            if(rt->is_receiver && at->is_receiver) return a_subset_r; 
+        }
+        return false; // guards ok but cannot match
+    }
+    else if(!guards_ok_in_r && !guards_ok_in_a){
+        // Both cannot move → bisimulation trivially holds
+        return true;
+    }
+    else {
+        // Only one can move → bisimulation fails
+        return false;
+    }
+    //
+    //relation_t rel = dbm_relation(rReady.data(), aReady.data(), refined.get_dimension()); 
+    //bool r_subset_a = (rel == base_SUBSET || rel == base_EQUAL); 
+    //bool a_subset_r = (rel == base_SUPERSET || rel == base_EQUAL);
+    //if(!rt->has_synchronization() && !at->has_synchronization()) return r_subset_a; // internal
+    //if(rt->has_synchronization() && at->has_synchronization() && rt->channel == at->channel){ 
+    //    if(rt->is_sender && at->is_sender) return r_subset_a; 
+    //    if(rt->is_receiver && at->is_receiver) return a_subset_r; 
+    //}
+    //return false;
 }
 } // namespace
 
@@ -212,7 +253,7 @@ const std::vector<const ZoneState*>& RTWBSChecker::tau_closure_cached(const Time
 }
 
 const std::vector<const ZoneState*>& RTWBSChecker::weak_observable_successors_cached(const TimedAutomaton& ta, const ZoneState* start, const std::string& action){
-    WeakKey k{start, action};
+    WeakKey k{start->location_id, action};
     auto it = weak_succ_cache_.find(k);
     if(it!=weak_succ_cache_.end()) return it->second;
     auto vec = weak_observable_successors_raw(ta, start, action);
@@ -272,7 +313,7 @@ bool RTWBSChecker::check_rtwbs_simulation(const TimedAutomaton& refined, const T
                 if(rzp->location_id == azp->location_id){
                     relation_t rel = dbm_relation(rzp->zone.data(), azp->zone.data(), rzp->dimension);
                     if(rel==base_SUBSET || rel==base_EQUAL){
-                        PairKey pk{rzp.get(), azp.get()};
+                        PairKey pk{rzp->location_id, azp->location_id};
                         relation_.insert(pk);
                         worklist_.push(pk);
                     }
@@ -285,26 +326,26 @@ bool RTWBSChecker::check_rtwbs_simulation(const TimedAutomaton& refined, const T
     // 2) Localised validation loop using worklist and reverse dependencies
     auto validate_pair = [&](const PairKey& pk)->bool{
         auto rZone = pk.r; auto aZone = pk.a;
-        auto rOut = refined.get_outgoing_transitions(rZone->location_id);
+        auto rOut = refined.get_outgoing_transitions(refined.get_zone_state(rZone)->location_id);
         for(auto rt: rOut){
             if(is_tau(rt)) continue;
             // Compute enabled refined weak successors for this action; if none, skip this transition
-            const auto& rSuccs = weak_observable_successors_cached(refined, rZone, rt->action);
+            const auto& rSuccs = weak_observable_successors_cached(refined, refined.get_zone_state(rZone), rt->action);
             if(rSuccs.empty()) continue; // not enabled at this zone
             // Pre-filter abstract transitions by action
             bool matched=false;
-            for(auto at: abstract.get_outgoing_transitions(aZone->location_id)){
+            for(auto at: abstract.get_outgoing_transitions(abstract.get_zone_state(aZone)->location_id)){
                 if(is_tau(at)) continue;
                 if(rt->action != at->action) continue;
                 // Abstract side must also be enabled for this action
-                const auto& aSuccs = weak_observable_successors_cached(abstract, aZone, at->action);
+                const auto& aSuccs = weak_observable_successors_cached(abstract, abstract.get_zone_state(aZone), at->action);
                 if(aSuccs.empty()) continue;
-                if(!timing_ok(refined,rZone,rt,abstract,aZone,at)) continue;
+                if(!timing_ok(refined,refined.get_zone_state(rZone),rt,abstract,abstract.get_zone_state(aZone),at)) continue;
                 bool found=false; PairKey supporting{};
                 for(auto rs: rSuccs){
                     for(auto as: aSuccs){
                         if(rs->location_id==as->location_id){
-                            PairKey cand{rs,as};
+                            PairKey cand{refined.get_state_id(rs),abstract.get_state_id(as)};
                             if(relation_.count(cand)) { found=true; supporting=cand; break; }
                         }
                     }
@@ -413,7 +454,8 @@ bool RTWBSChecker::check_rtwbs_equivalence(const TimedAutomaton& refined, const 
             if(rzp->location_id == azp->location_id){
                 relation_t rel = dbm_relation(rzp->zone.data(), azp->zone.data(), rzp->dimension);
                 if(rel==base_SUBSET || rel==base_EQUAL){
-                    PairKey pk{rzp.get(), azp.get()};
+                    PairKey pk{refined.get_state_id(rzp.get()),
+                                abstract.get_state_id(azp.get())};
                     relation_.insert(pk);
                     worklist_.push(pk);
                 }
@@ -425,20 +467,18 @@ bool RTWBSChecker::check_rtwbs_equivalence(const TimedAutomaton& refined, const 
     // 2) Localised validation loop using worklist and reverse dependencies
     //    Now symmetric: both refined→abstract and abstract→refined must match (bisimulation)
     // Thread-safe validate_pair for OpenMP: collects reverse_deps_ updates in a local vector
-    auto validate_pair = [&](const PairKey& pk, 
-        const std::unordered_set<rtwbs::RTWBSChecker::PairKey, rtwbs::RTWBSChecker::PairKeyHash>& relation_, std::vector<std::pair<PairKey, PairKey>>* local_reverse_deps_updates = nullptr
-    )->bool{
+    auto validate_pair = [&](const PairKey& pk, const std::unordered_set<rtwbs::RTWBSChecker::PairKey, rtwbs::RTWBSChecker::PairKeyHash>& relation_, std::vector<std::pair<PairKey, PairKey>>* local_reverse_deps_updates = nullptr)->bool{
         auto rZone = pk.r; auto aZone = pk.a;
-
         // Forward direction: refined -> abstract
         {
-            auto rOut = refined.get_outgoing_transitions(rZone->location_id);
+            auto rOut = refined.get_outgoing_transitions(refined.get_zone_state(rZone)->location_id);
             for(auto rt: rOut){
                 if(is_tau(rt)) continue;
-                const auto& rSuccs = weak_observable_successors_cached(refined, rZone, rt->action);
+                const auto& rSuccs = weak_observable_successors_cached(refined, refined.get_zone_state(rZone), rt->action);
                 if(rSuccs.empty()) continue; // transition not enabled from rZone
+                
                 bool matched=false;
-                for(auto at: abstract.get_outgoing_transitions(aZone->location_id)){
+                for(auto at: abstract.get_outgoing_transitions(abstract.get_zone_state(aZone)->location_id)){
                     if(is_tau(at)) continue;
                     if(rt->action != at->action) continue;
                     // Cheap sync precheck to avoid expensive DBM timing_ok when impossible
@@ -450,23 +490,26 @@ bool RTWBSChecker::check_rtwbs_equivalence(const TimedAutomaton& refined, const 
                         if(rt->is_sender != at->is_sender) continue;
                         if(rt->is_receiver != at->is_receiver) continue;
                     }
-                    const auto& aSuccs = weak_observable_successors_cached(abstract, aZone, at->action);
-                    if(aSuccs.empty()) continue; // not enabled on abstract side
-                    if(!timing_ok(refined, rZone, rt, abstract, aZone, at)) continue;
+                    const auto& aSuccs = weak_observable_successors_cached(abstract, abstract.get_zone_state(aZone), at->action);
+                    if(aSuccs.empty()){                         
+                        continue;} // not enabled on abstract side
+                    if(!timing_ok(refined, refined.get_zone_state(rZone), rt, abstract, abstract.get_zone_state(aZone), at))
+                    {
+                        continue; // timing incompatible
+                    }
                     // Index abstract successors by location to reduce O(m*n)
                     std::unordered_map<int, std::vector<const ZoneState*>> aByLoc;
                     aByLoc.reserve(aSuccs.size());
                     for(auto as: aSuccs) aByLoc[as->location_id].push_back(as);
-                        bool found=false; PairKey supporting{};
-                        for(auto rsucc: rSuccs){
-                            auto it = aByLoc.find(rsucc->location_id);
-                            if(it==aByLoc.end()) continue;
-                            for(auto as: it->second){
-                                PairKey cand{rsucc, as};
-                                if(relation_.count(cand) ) { found=true; supporting=cand; break; }
-                            }
-                            if(found) break;
-                        
+                    bool found=false; PairKey supporting{};
+                    for(auto rsucc: rSuccs){
+                        auto it = aByLoc.find(rsucc->location_id);
+                        if(it==aByLoc.end()) continue;
+                        for(auto as: it->second){
+                            PairKey cand{refined.get_state_id(rsucc),abstract.get_state_id(as)};
+                            if(relation_.count(cand)) { found=true; supporting=cand; break; }
+                        }
+                        if(found) break;
                     }
                     if(found){
                         // record reverse dependency: pk depends on supporting
@@ -481,16 +524,16 @@ bool RTWBSChecker::check_rtwbs_equivalence(const TimedAutomaton& refined, const 
                 if(!matched) return false; // enabled refined move has no match
             }
         }
-
+        
         // Backward direction: abstract -> refined
         {
-            auto aOut = abstract.get_outgoing_transitions(aZone->location_id);
+            auto aOut = abstract.get_outgoing_transitions(abstract.get_zone_state(aZone)->location_id);
             for(auto at: aOut){
                 if(is_tau(at)) continue;
-                const auto& aSuccs = weak_observable_successors_cached(abstract, aZone, at->action);
+                const auto& aSuccs = weak_observable_successors_cached(abstract, abstract.get_zone_state(aZone), at->action);
                 if(aSuccs.empty()) continue; // not enabled from aZone
                 bool matched=false;
-                for(auto rt: refined.get_outgoing_transitions(rZone->location_id)){
+                for(auto rt: refined.get_outgoing_transitions(refined.get_zone_state(rZone)->location_id)){
                     if(is_tau(rt)) continue;
                     if(at->action != rt->action) continue;
                     // Cheap sync precheck (mirror)
@@ -502,9 +545,11 @@ bool RTWBSChecker::check_rtwbs_equivalence(const TimedAutomaton& refined, const 
                         if(at->is_sender != rt->is_sender) continue;
                         if(at->is_receiver != rt->is_receiver) continue;
                     }
-                    const auto& rSuccs = weak_observable_successors_cached(refined, rZone, rt->action);
-                    if(rSuccs.empty()) continue; // not enabled on refined side
-                    if(!timing_ok(abstract, aZone, at, refined, rZone, rt)) continue; // mirror timing
+                    const auto& rSuccs = weak_observable_successors_cached(refined, refined.get_zone_state(rZone), rt->action);
+                    if(rSuccs.empty()){
+                        continue;
+                    }  // not enabled on refined side
+                    if(!timing_ok(abstract, abstract.get_zone_state(aZone), at, refined, refined.get_zone_state(rZone), rt)) continue; // mirror timing
                     // Index refined successors by location
                     std::unordered_map<int, std::vector<const ZoneState*>> rByLoc;
                     rByLoc.reserve(rSuccs.size());
@@ -514,7 +559,7 @@ bool RTWBSChecker::check_rtwbs_equivalence(const TimedAutomaton& refined, const 
                         auto it = rByLoc.find(as->location_id);
                         if(it==rByLoc.end()) continue;
                         for(auto rsucc: it->second){
-                            PairKey cand{rsucc, as};
+                            PairKey cand{refined.get_state_id(rsucc),abstract.get_state_id(as)};
                             if(relation_.count(cand)) { found=true; supporting=cand; break; }
                         }
                         if(found) break;
@@ -528,6 +573,8 @@ bool RTWBSChecker::check_rtwbs_equivalence(const TimedAutomaton& refined, const 
                         matched=true; break;
                     }
                 }
+                
+
                 if(!matched) return false; // enabled abstract move has no match
             }
         }
@@ -540,7 +587,10 @@ bool RTWBSChecker::check_rtwbs_equivalence(const TimedAutomaton& refined, const 
             PairKey current = worklist_.front(); worklist_.pop();
             // It might have been removed already
             if(!relation_.count(current)) continue;
-            if(!validate_pair(current, relation_)){
+            bool valid = validate_pair(current, relation_);
+            
+            
+            if(!valid){
                 // remove and enqueue dependents
                 relation_.erase(current);
                 auto it = reverse_deps_.find(current);
@@ -575,10 +625,9 @@ bool RTWBSChecker::check_rtwbs_equivalence(const TimedAutomaton& refined, const 
             // 2. Parallel for each pair in batch (only read shared containers)
             std::vector<PairKey> to_remove;
             std::vector<std::pair<PairKey, PairKey>> all_reverse_deps_updates;
-            
+            const auto& relation_snapshot = relation_; // snapshot for thread safety
             #pragma omp parallel
             {
-                const auto& relation_snapshot = relation_; // snapshot for thread safety
                 std::vector<PairKey> local_remove;
                 std::vector<std::pair<PairKey, PairKey>> local_reverse_deps_updates;
 
@@ -604,8 +653,6 @@ bool RTWBSChecker::check_rtwbs_equivalence(const TimedAutomaton& refined, const 
                 }
             }
             
-            
-
             // 3. Synchronize: merge reverse_deps_ updates (main thread only)
             for (const auto& update : all_reverse_deps_updates) {
                 reverse_deps_[update.first].push_back(update.second);
@@ -621,8 +668,6 @@ bool RTWBSChecker::check_rtwbs_equivalence(const TimedAutomaton& refined, const 
                 }
                 reverse_deps_.erase(pk);
             }
-            std::cout << reverse_deps_.size() << " pairs remain in reverse_deps_\n";
-            std::cout << relation_.size() << " pairs remain in relation_\n";
         }
     }
 
@@ -632,18 +677,15 @@ bool RTWBSChecker::check_rtwbs_equivalence(const TimedAutomaton& refined, const 
         last_stats_.simulation_pairs += relation_.size();
         last_stats_.check_time_ms += std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count();
         last_stats_.memory_usage_bytes += relation_.size()*sizeof(PairKey);
-        DEV_PRINT( "Thread " << std::this_thread::get_id() << " finished equivalence check\n for "<< refined.get_name() << " and " << abstract.get_name() << std::endl);
-        //Print all the pairs in the simulation thing, pair by pair !
-
-    
-        //return !relation_.empty();
-        //Return true if the initial states are in the relation
+        DEV_PRINT( "Thread " << std::this_thread::get_id() << " finished equivalence check\n for "<< refined.get_name() << " and " << abstract.get_name() << std::endl);        
         for (const auto& p : relation_)
         {
-            if (p.r->location_id == 0 && p.a->location_id == 0)
+            if (p.r == 0 && p.a == 0)
+
                 return true;
         }
         return false;
+        
 }
 
 
