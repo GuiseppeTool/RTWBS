@@ -163,7 +163,10 @@ public:
     void reset() { last_stats_ = CheckStatistics{0,0,0,0.0,0}; }
 
 
-
+    std::vector<const ZoneState*> weak_observable_successors_raw(const TimedAutomaton& ta,
+                                                             const ZoneState* start,
+                                                             const std::string& action);
+    std::vector<const ZoneState*> tau_closure_raw(const TimedAutomaton& ta, const ZoneState* start);
 protected: // allow example subclasses to access optimisation helpers (didactic)
 // ---- Cached semantic helpers ----
     const std::vector<const ZoneState*>& tau_closure_cached(const TimedAutomaton& ta, const ZoneState* start);

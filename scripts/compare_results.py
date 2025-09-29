@@ -32,7 +32,7 @@ def format_sci_notation(val):
         exponent = int(np.floor(np.log10(abs(val))))
         coeff = val / (10 ** exponent)
         # Format with 2 significant digits
-        return f"$\sim$${coeff:.2f}$$\\times$$10^{{{exponent}}}$"
+        return f"$\\sim$${coeff:.2f}$$\\times$$10^{{{exponent}}}$"
     except Exception:
         return str(val)
 
@@ -72,7 +72,7 @@ def plot_comparison(merged, use_log=True, output_folder="results", file_name ="c
 
         if len(num) == 1:
             snum = int(num[0])
-            print(snum, name)
+            #print(snum, name)
             if snum == 1:
                 label = name
             else:
@@ -204,7 +204,7 @@ def generate_latex_table(merged, zones_path, output_folder,file_name="results_ta
         n_workers, pdf = list(parallel_df.items())[0] if parallel_df else (None, None)
         rwtbs_time_par = "-"
         if n_workers and pdf is not None:
-            print(row['model'], pdf["model"])
+            #print(row['model'], pdf["model"])
             if row['model'] in pdf["model"].values:
                 rwtbs_time_val = pdf.loc[pdf["model"] == row['model'], 'check_time_ms'].values[0]
                 if pd.notnull(rwtbs_time_val) and float(rwtbs_time_val) >= timed_out_threshold*1000:
@@ -369,7 +369,7 @@ def plot_comparison_two_figs(merged, use_log=True, output_folder="results", file
     print(f"Time bar chart saved: {output_folder}/comparison_time.png and .pgf")
     plt.tick_params(axis='x', which='major', pad=1)
     plt.tick_params(axis='y', which='major', pad=0)
-    plt.gca().yaxis.set_major_formatter(FuncFormatter(formatter))
+    #plt.gca().yaxis.set_major_formatter(FuncFormatter(formatter))
     plt.tight_layout()
     ax_time.legend(handles, labels_, loc='upper center', ncol=3, frameon=True)
     ax_time.legend(loc='upper center', ncol=3, bbox_to_anchor=(0.5, 1.17))
@@ -407,7 +407,7 @@ def plot_comparison_two_figs(merged, use_log=True, output_folder="results", file
     print(f"Memory bar chart saved: {output_folder}/comparison_memory.png and .pgf")
     plt.tick_params(axis='x', which='major', pad=1)
     plt.tick_params(axis='y', which='major', pad=0)
-    plt.gca().yaxis.set_major_formatter(FuncFormatter(formatter))
+    #plt.gca().yaxis.set_major_formatter(FuncFormatter(formatter))
     plt.tight_layout()
     
     fig_mem.savefig(f'{output_folder}/comparison_memory.png', dpi=600, bbox_inches='tight')
@@ -416,9 +416,9 @@ def plot_comparison_two_figs(merged, use_log=True, output_folder="results", file
 
 
 if __name__ == "__main__":
-    csv1_path = "results/uppaal/results_2025-09-27_15-30-19.csv"
-    csv2_path = "results/rtwbs/syn_benchmark_results_20250928_201458.csv"
-    csv3_path = "results/rtbws_openmp/syn_benchmark_results_20250928_223328.csv"
+    csv1_path = "results/uppaal/results_2025-09-29_09-24-35.csv"
+    csv2_path = "results/rtwbs/syn_benchmark_results_20250929_005237.csv"
+    csv3_path = "results/rtbws_openmp/syn_benchmark_results_20250929_020000.csv"
     n_workers = "Parallel"
     
     zones_path = "assets/system_size.csv"

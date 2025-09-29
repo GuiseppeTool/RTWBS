@@ -34,7 +34,7 @@
 #include <condition_variable>
 namespace rtwbs {
 
-namespace { // anonymous helpers (not part of public API)
+// anonymous helpers (not part of public API)
 
 
 // Global cooperative-cancel flag for long-running computations in this TU.
@@ -76,7 +76,7 @@ inline bool is_tau(const Transition* t){
  * @param start Starting zone state.
  * @return Vector of all reachable zone states (including start).
  */
-std::vector<const ZoneState*> tau_closure_raw(const TimedAutomaton& ta, const ZoneState* start){
+std::vector<const ZoneState*> RTWBSChecker::tau_closure_raw(const TimedAutomaton& ta, const ZoneState* start){
     std::vector<const ZoneState*> closure; 
     std::queue<const ZoneState*> q; 
     std::unordered_set<const ZoneState*> visited;
@@ -113,6 +113,16 @@ std::vector<const ZoneState*> tau_closure_raw(const TimedAutomaton& ta, const Zo
     return closure;
 }
 
+
+// ===== RTWBSChecker optimisation member implementations =====
+const std::vector<const ZoneState*>& RTWBSChecker::tau_closure_cached(const TimedAutomaton& ta, const ZoneState* start){
+    auto it = tau_closure_cache_.find(start);
+    if(it!=tau_closure_cache_.end()) return it->second;
+    auto vec = tau_closure_raw(ta, start);
+    auto ins = tau_closure_cache_.emplace(start, std::move(vec));
+    return ins.first->second;
+}
+
 /**
  * @brief Compute weak successors for an observable action (τ* a τ* pattern).
  *
@@ -127,11 +137,11 @@ std::vector<const ZoneState*> tau_closure_raw(const TimedAutomaton& ta, const Zo
  * @param action Observable action label to match.
  * @return Vector of unique weak reachable zone states.
  */
-std::vector<const ZoneState*> weak_observable_successors_raw(const TimedAutomaton& ta,
+std::vector<const ZoneState*> RTWBSChecker::weak_observable_successors_raw(const TimedAutomaton& ta,
                                                              const ZoneState* start,
                                                              const std::string& action){
     std::vector<const ZoneState*> result; 
-    auto pre = tau_closure_raw(ta, start);
+    auto pre = tau_closure_cached(ta, start);
     for(auto z: pre){ 
         if (is_cancelled()) break;
         auto outs = ta.get_outgoing_transitions(z->location_id); 
@@ -150,7 +160,7 @@ std::vector<const ZoneState*> weak_observable_successors_raw(const TimedAutomato
             if(post.empty()) continue; 
             const ZoneState* mid = ta.find_zone_state(tr->to_location, post); 
             if(!mid) continue; 
-            auto postTau = tau_closure_raw(ta, mid); 
+            auto postTau = tau_closure_cached(ta, mid); 
             result.insert(result.end(), postTau.begin(), postTau.end()); 
         }
     }
@@ -241,16 +251,9 @@ bool timing_ok(const TimedAutomaton& refined, const ZoneState* rz, const Transit
     //}
     //return false;
 }
-} // namespace
 
-// ===== RTWBSChecker optimisation member implementations =====
-const std::vector<const ZoneState*>& RTWBSChecker::tau_closure_cached(const TimedAutomaton& ta, const ZoneState* start){
-    auto it = tau_closure_cache_.find(start);
-    if(it!=tau_closure_cache_.end()) return it->second;
-    auto vec = tau_closure_raw(ta, start);
-    auto ins = tau_closure_cache_.emplace(start, std::move(vec));
-    return ins.first->second;
-}
+
+
 
 const std::vector<const ZoneState*>& RTWBSChecker::weak_observable_successors_cached(const TimedAutomaton& ta, const ZoneState* start, const std::string& action){
     WeakKey k{start->location_id, action};
@@ -343,7 +346,15 @@ bool RTWBSChecker::check_rtwbs_simulation(const TimedAutomaton& refined, const T
                 if(!timing_ok(refined,refined.get_zone_state(rZone),rt,abstract,abstract.get_zone_state(aZone),at)) continue;
                 bool found=false; PairKey supporting{};
                 for(auto rs: rSuccs){
+                    if(rs ==nullptr)
+                    {
+                        std::cout<<"Refined has none ";
+                    }
                     for(auto as: aSuccs){
+                        if(as ==nullptr)
+                    {
+                        std::cout<<"Abstract has none ";
+                    }
                         if(rs->location_id==as->location_id){
                             PairKey cand{refined.get_state_id(rs),abstract.get_state_id(as)};
                             if(relation_.count(cand)) { found=true; supporting=cand; break; }
@@ -474,7 +485,17 @@ bool RTWBSChecker::check_rtwbs_equivalence(const TimedAutomaton& refined, const 
             auto rOut = refined.get_outgoing_transitions(refined.get_zone_state(rZone)->location_id);
             for(auto rt: rOut){
                 if(is_tau(rt)) continue;
-                const auto& rSuccs = weak_observable_successors_cached(refined, refined.get_zone_state(rZone), rt->action);
+                // Compute enabled refined weak successors for this action; if none, skip this transition
+                std::vector<const ZoneState*> rSuccs;
+                if(local_reverse_deps_updates) {
+                     #pragma omp critical(successor_cache_refined_forward)
+                    {
+                        rSuccs = weak_observable_successors_cached(refined, refined.get_zone_state(rZone), rt->action);
+                    }
+                } else {
+                    rSuccs = weak_observable_successors_cached(refined, refined.get_zone_state(rZone), rt->action);
+                }
+                
                 if(rSuccs.empty()) continue; // transition not enabled from rZone
                 
                 bool matched=false;
@@ -490,7 +511,17 @@ bool RTWBSChecker::check_rtwbs_equivalence(const TimedAutomaton& refined, const 
                         if(rt->is_sender != at->is_sender) continue;
                         if(rt->is_receiver != at->is_receiver) continue;
                     }
-                    const auto& aSuccs = weak_observable_successors_cached(abstract, abstract.get_zone_state(aZone), at->action);
+                    std::vector<const ZoneState*> aSuccs;
+
+                    if(local_reverse_deps_updates) {
+                        #pragma omp critical(successor_cache_abstract_forward)
+                        {
+                            aSuccs = weak_observable_successors_cached(abstract, abstract.get_zone_state(aZone), at->action);
+                        }
+                    } else {
+                        aSuccs = weak_observable_successors_cached(abstract, abstract.get_zone_state(aZone), at->action);
+                    }
+                    
                     if(aSuccs.empty()){                         
                         continue;} // not enabled on abstract side
                     if(!timing_ok(refined, refined.get_zone_state(rZone), rt, abstract, abstract.get_zone_state(aZone), at))
@@ -498,9 +529,14 @@ bool RTWBSChecker::check_rtwbs_equivalence(const TimedAutomaton& refined, const 
                         continue; // timing incompatible
                     }
                     // Index abstract successors by location to reduce O(m*n)
+
+
+
                     std::unordered_map<int, std::vector<const ZoneState*>> aByLoc;
                     aByLoc.reserve(aSuccs.size());
-                    for(auto as: aSuccs) aByLoc[as->location_id].push_back(as);
+                    for(auto as: aSuccs){
+                        aByLoc[as->location_id].push_back(as);
+                    } 
                     bool found=false; PairKey supporting{};
                     for(auto rsucc: rSuccs){
                         auto it = aByLoc.find(rsucc->location_id);
@@ -530,7 +566,15 @@ bool RTWBSChecker::check_rtwbs_equivalence(const TimedAutomaton& refined, const 
             auto aOut = abstract.get_outgoing_transitions(abstract.get_zone_state(aZone)->location_id);
             for(auto at: aOut){
                 if(is_tau(at)) continue;
-                const auto& aSuccs = weak_observable_successors_cached(abstract, abstract.get_zone_state(aZone), at->action);
+                std::vector<const ZoneState*> aSuccs;
+                if(local_reverse_deps_updates) {
+                    #pragma omp critical(successor_cache_abstract_backward)
+                    {
+                        aSuccs = weak_observable_successors_cached(abstract, abstract.get_zone_state(aZone), at->action);
+                    }
+                } else {
+                    aSuccs = weak_observable_successors_cached(abstract, abstract.get_zone_state(aZone), at->action);
+                }
                 if(aSuccs.empty()) continue; // not enabled from aZone
                 bool matched=false;
                 for(auto rt: refined.get_outgoing_transitions(refined.get_zone_state(rZone)->location_id)){
@@ -545,7 +589,16 @@ bool RTWBSChecker::check_rtwbs_equivalence(const TimedAutomaton& refined, const 
                         if(at->is_sender != rt->is_sender) continue;
                         if(at->is_receiver != rt->is_receiver) continue;
                     }
-                    const auto& rSuccs = weak_observable_successors_cached(refined, refined.get_zone_state(rZone), rt->action);
+                    std::vector<const ZoneState*> rSuccs;
+                    if(local_reverse_deps_updates) {
+                        #pragma omp critical(successor_cache_refined_backward)
+                        {
+                            rSuccs = weak_observable_successors_cached(refined, refined.get_zone_state(rZone), rt->action);
+                        }
+                    } else {
+                        rSuccs = weak_observable_successors_cached(refined, refined.get_zone_state(rZone), rt->action);
+                    }
+                    //const auto& rSuccs = weak_observable_successors_cached(refined, refined.get_zone_state(rZone), rt->action);
                     if(rSuccs.empty()){
                         continue;
                     }  // not enabled on refined side
@@ -644,12 +697,12 @@ bool RTWBSChecker::check_rtwbs_equivalence(const TimedAutomaton& refined, const 
                 #pragma omp critical
                 {
                     to_remove.insert(to_remove.end(),
-                                    std::make_move_iterator(local_remove.begin()),
-                                    std::make_move_iterator(local_remove.end()));
+                                    local_remove.begin(),
+                                    local_remove.end());
 
                     all_reverse_deps_updates.insert(all_reverse_deps_updates.end(),
-                                    std::make_move_iterator(local_reverse_deps_updates.begin()),
-                                    std::make_move_iterator(local_reverse_deps_updates.end()));
+                                    local_reverse_deps_updates.begin(),
+                                    local_reverse_deps_updates.end());
                 }
             }
             

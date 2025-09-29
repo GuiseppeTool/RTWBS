@@ -121,3 +121,7 @@ The setup.sh bash file sets up the VERIFYTA_PATH os variable, that's why it shou
 If you get permission denied, please run chmod +x setup.sh beforehand. 
 
 If you dont need to install uppaal, then simply run ./setup.sh --no_uppaal and set up the VERIFYTA_PATH according to your installation. 
+
+
+Note: 
+Our experiments were conducted on a high-performance computing platform equipped with an NVIDIA A100 GPU (80 GB HBM2e, 6912 CUDA cores) for parallel refinement checking and an Intel Xeon 8468 CPU (48 cores, 2.1 GHz) for full model checking.
