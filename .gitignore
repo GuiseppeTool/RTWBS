@@ -14,8 +14,11 @@ UDBM/
 utap/
 
 #results folder for now
-results/
-results/**
+#results/
+#results/**
+#remove all folders that have results in their name
+#*results*/
+
 
 
 RTWBS/
@@ -352,8 +355,7 @@ AA_BENCHMARKS/
 
 RTWBS.pdf
 
-#remove all folders that have results in their name
-*results*/
+
 
 uppaal/
 

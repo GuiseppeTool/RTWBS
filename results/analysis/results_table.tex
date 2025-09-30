@@ -1,0 +1,29 @@
+\begin{table}[t]
+\centering
+\caption{Comparison of Verification Time and Memory Footprint of RTWBS vs. UPPAAL.The best time and memory values for each configuration are highlighted in bold.}
+\label{tab:evaluation}
+\resizebox{\columnwidth}{!}{
+\begin{tabular}{lcccccc}
+\toprule
+\multirow{2}{*}{\textbf{Configuration}} & \textbf{System} &\multicolumn{3}{c}{\textbf{Time (s)}} & \multicolumn{2}{c}{\textbf{Memory (KB)}} \\
+\cmidrule(lr){3-5} \cmidrule(lr){6-7}
+ & \textbf{Size}&\textbf{RTWBS}&\textbf{RTWBS (Paral.)} & \textbf{UPPAAL} & \textbf{RTWBS} & \textbf{UPPAAL}\\
+\midrule
+Small & $\sim$$3.36$$\times$$10^{3}$ &\textbf{0.001}&\textbf{0.001} & 0.101 & \textbf{0.516} & 17724\\
+Medium & $\sim$$4.88$$\times$$10^{4}$ &0.011&\textbf{0.004} & 0.101 & \textbf{2.141} & 17792\\
+Large & $\sim$$7.85$$\times$$10^{7}$ &2.65&0.508 & \textbf{0.101} & \textbf{578.812} & 17940\\
+Extra Large & $\sim$$6.91$$\times$$10^{8}$ &9.135&3.327 & \textbf{0.101} & \textbf{4481.26} & 18080\\
+Small (3 Comp) & $\sim$$1.93$$\times$$10^{5}$ &\textbf{0.006}&\textbf{0.006} & 210.452 & \textbf{2.977} & 81216\\
+Medium (3 Comp) & $\sim$$5.13$$\times$$10^{6}$ &0.043&\textbf{0.029} & >$36000^*$ & \textbf{40.055} & >$81216^*$\\
+Large (3 Comp) & $\sim$$1.09$$\times$$10^{9}$ &4.709&\textbf{3.205} & >$36000^*$ & \textbf{3312.93} & >$81216^*$\\
+Extra Large (3 Comp) & $\sim$$4.87$$\times$$10^{10}$ &364.389&\textbf{231.228} & >$36000^*$ & \textbf{39644.3} & >$81216^*$\\
+Small (5 Comp) & $\sim$$9.68$$\times$$10^{5}$ &0.026&\textbf{0.019} & >$36000^*$ & \textbf{23.703} & >$81216^*$\\
+Medium (5 Comp) & $\sim$$3.65$$\times$$10^{7}$ &0.3&\textbf{0.175} & >$36000^*$ & \textbf{164.797} & >$81216^*$\\
+Large (5 Comp) & $\sim$$2.93$$\times$$10^{9}$ &12.206&\textbf{4.6} & >$36000^*$ & \textbf{3435.74} & >$81216^*$\\
+Extra Large (5 Comp) & $\sim$$2.83$$\times$$10^{10}$ &191.091&\textbf{102.018} & >$36000^*$ & \textbf{58646.5} & >$81216^*$\\
+\bottomrule
+\end{tabular}
+}
+
+    *UPPAAL verification exceeded 10 hours and was terminated.
+\end{table}
