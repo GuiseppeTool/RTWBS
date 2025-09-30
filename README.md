@@ -1,6 +1,6 @@
 # RTWBS (Relaxed Weak Timed Bisimulation) Implementation
 
-This directory contains an implementation of RTWBS equivalence checking for timed automata, based on the research described in the ICSE_DT paper.
+This directory contains an implementation of RTWBS equivalence checking for timed automata.
 
 IMPORTANT: Branch points are not implemented
 ## Overview
