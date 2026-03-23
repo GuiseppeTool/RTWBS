@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <fstream>
 #include <regex>
+#include <mutex>
 
 
 namespace rtwbs {
@@ -1657,6 +1658,7 @@ void TimedAutomaton::construct_zone_graph() const {
 }
 
 const ZoneState* TimedAutomaton::get_zone_state(size_t state_id) const {
+    std::shared_lock<std::shared_mutex> rlock(state_mutex_);
     if (state_id >= states_.size()) {
         return nullptr;
     }
@@ -1665,7 +1667,7 @@ const ZoneState* TimedAutomaton::get_zone_state(size_t state_id) const {
 
 int TimedAutomaton::get_state_id(const ZoneState* state) const {
     if (!state) return -1;
-    
+    std::shared_lock<std::shared_mutex> rlock(state_mutex_);
     auto it = state_map_.find(*state);
     if (it != state_map_.end()) {
         return it->second;
@@ -1679,6 +1681,7 @@ const ZoneState* TimedAutomaton::find_zone_state(int location_id, const std::vec
     // Create temporary zone state for lookup
     ZoneState temp_state(location_id, zone, dimension_);
     
+    std::shared_lock<std::shared_mutex> rlock(state_mutex_);
     // Use the hash map for O(1) lookup
     auto it = state_map_.find(temp_state);
     if (it != state_map_.end()) {
@@ -1688,6 +1691,62 @@ const ZoneState* TimedAutomaton::find_zone_state(int location_id, const std::vec
     }
     
     return nullptr; // Not found
+}
+
+const ZoneState* TimedAutomaton::get_or_add_zone_state(int location_id, const std::vector<raw_t>& zone) {
+    // Validate zone size
+    size_t expected_size = static_cast<size_t>(dimension_) * dimension_;
+    if (zone.size() != expected_size) {
+        return nullptr;
+    }
+
+    // Create a temporary key for lookup
+    ZoneState key(location_id, zone, dimension_);
+
+    // ── Fast path: shared (read) lock ──
+    {
+        std::shared_lock<std::shared_mutex> rlock(state_mutex_);
+        auto it = state_map_.find(key);
+        if (it != state_map_.end()) {
+            return states_[it->second].get();
+        }
+    }
+
+    // ── Slow path: exclusive (write) lock ──
+    {
+        std::unique_lock<std::shared_mutex> wlock(state_mutex_);
+        // Double-check after acquiring write lock (another thread may have
+        // inserted the same state between the read-unlock and write-lock).
+        auto it = state_map_.find(key);
+        if (it != state_map_.end()) {
+            return states_[it->second].get();
+        }
+
+        // Allocate and register the new state
+        int state_id = static_cast<int>(states_.size());
+        auto new_state = std::make_unique<ZoneState>(location_id, zone, dimension_);
+        state_map_[*new_state] = state_id;
+        states_.push_back(std::move(new_state));
+        zone_transitions_.emplace_back(); // empty successor list
+        // NOTE: we intentionally do NOT push onto waiting_list_ because the
+        // on-the-fly DFS drives exploration; the waiting_list_ is only used
+        // by the eager construct_zone_graph() BFS.
+        return states_[state_id].get();
+    }
+}
+
+const ZoneState* TimedAutomaton::get_or_create_initial_state() {
+    // Build the zero-DBM for the initial location
+    std::vector<raw_t> initial_zone(static_cast<size_t>(dimension_) * dimension_);
+    dbm_init(initial_zone.data(), dimension_);
+
+    // Apply invariants of the initial location to the zero zone
+    auto inv_zone = apply_invariants(initial_zone, TA_CONFIG.default_initial_location);
+    if (inv_zone.empty()) {
+        return nullptr; // invariants unsatisfiable at initial location
+    }
+
+    return get_or_add_zone_state(TA_CONFIG.default_initial_location, inv_zone);
 }
 
 

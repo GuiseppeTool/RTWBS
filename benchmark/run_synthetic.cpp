@@ -8,9 +8,10 @@ int main(int argc, char* argv[]) {
         int n_workers = 0;
 
         rtwbs::RunningMode parallel_mode = rtwbs::RunningMode::SERIAL;
-        rtwbs::parse_arguments(argc, argv, results_folder, n_workers, parallel_mode);
+        rtwbs::AlgorithmMode algo = rtwbs::AlgorithmMode::GFP;
+        rtwbs::parse_arguments(argc, argv, &results_folder, &n_workers, &parallel_mode, nullptr, true, &algo);
 
-        std::string path = "assets/eval";
+        std::string path = "assets/syn_eval";
         
             std::vector<std::string> files;
             for (const auto& entry : std::filesystem::directory_iterator(path)) {
@@ -28,7 +29,7 @@ int main(int argc, char* argv[]) {
                 //sys.construct_all_zone_graphs();
                     //sys.print_all_statistics();
                 //run check with a timout of 10h
-                rtwbs::self_equivalence_checks(files,"./", results_folder.c_str(),"syn_benchmark_results_", parallel_mode, n_workers, 36000000); //10 h timeout
+                rtwbs::self_equivalence_checks(files,"./", results_folder.c_str(),"syn_benchmark_results_", parallel_mode, n_workers, 36000000, algo); //10 h timeout
             } catch (const std::exception& e) {
                 std::cerr << "Error processing files: " << e.what() << std::endl;
             }

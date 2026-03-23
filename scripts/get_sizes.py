@@ -3,7 +3,7 @@ import re
 import subprocess
 import csv
 
-EVAL_DIR = "assets/eval"
+EVAL_DIR = "assets/syn_eval"
 PARSE_BIN = "release/examples/parse_generated_benchmark"
 OUTPUT_CSV = "assets/system_size.csv"
 MAX_AUTOMATA = 5

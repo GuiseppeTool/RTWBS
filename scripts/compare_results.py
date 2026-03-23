@@ -9,7 +9,7 @@ plt.rcParams.update({
     'font.size': 10,
     'axes.titlesize': 12,
     'axes.labelsize': 11,
-    'xtick.labelsize': 9,
+    'xtick.labelsize': 8,
     'ytick.labelsize': 9,
     'legend.fontsize': 9,
     'figure.titlesize': 14,
@@ -20,7 +20,7 @@ plt.rcParams.update({
 })
 
 
-figsize = (4.4, 2.8)
+figsize = (4.8, 2.2)
 
 
 def format_sci_notation(val):
@@ -84,7 +84,7 @@ def plot_comparison(merged, use_log=True, output_folder="results", file_name ="c
 
 
     x = np.arange(len(benchmarks))
-    n_bars = 2 + len(properties) + len(parallel_df) if parallel_df else 2  # Uppaal, RTWBS, and all parallel
+    n_bars = 2 + len(properties) + len(parallel_df) if parallel_df else 2  # Uppaal, RWTBS, and all parallel
     bar_width = 0.2 / n_bars
 
     fig, axes = plt.subplots(2, 1, figsize=(12, 10))
@@ -94,12 +94,12 @@ def plot_comparison(merged, use_log=True, output_folder="results", file_name ="c
 
     # Prepare all time data
     time_data = [merged['Time(ms)'], merged['check_time_ms']]
-    time_labels = ['Uppaal', 'RTWBS']
+    time_labels = ['Uppaal', 'RWTBS']
     if parallel_df is not None:
         for n_workers,pdf in parallel_df.items():
             pdf = pdf.rename(columns={'model_name': 'model'}).set_index('model')
             time_data.append([pdf.loc[m, 'check_time_ms'] if m in pdf.index else 0 for m in merged['model']])
-            time_labels.append(f'RTWBS ({n_workers})')
+            time_labels.append(f'RWTBS ({n_workers})')
     #add to time _date merged['Time(ms)']*properties
     for prop in properties:
         time_data.append(merged['Time(ms)']*prop)
@@ -120,12 +120,12 @@ def plot_comparison(merged, use_log=True, output_folder="results", file_name ="c
         axes[0].set_yscale('log')
     # Prepare all memory data
     mem_data = [merged['Memory(KB)'], merged['memory_usage_kb']]
-    mem_labels = ['Uppaal', 'RTWBS']
+    mem_labels = ['Uppaal', 'RWTBS']
     if parallel_df is not None:
         for n_workers, pdf in parallel_df.items():
             pdf = pdf.rename(columns={'model_name': 'model'}).set_index('model')
             mem_data.append([pdf.loc[m, 'memory_usage_kb'] if m in pdf.index else 0 for m in merged['model']])
-            mem_labels.append(f'RTWBS ({n_workers})')
+            mem_labels.append(f'RWTBS ({n_workers})')
 
     # Plot memory bars
     for i, (y, label) in enumerate(zip(mem_data, mem_labels)):
@@ -155,17 +155,17 @@ def generate_latex_table(merged, zones_path, output_folder,file_name="results_ta
         }
     latex = r"""\begin{table}[t]
 \centering
-\caption{Comparison of Verification Time and Memory Footprint of RTWBS vs. UPPAAL.The best time and memory values for each configuration are highlighted in bold.}
+\caption{Comparison of Verification Time and Memory Footprint of RWTBS vs. UPPAAL.The best time and memory values for each configuration are highlighted in bold.}
 \label{tab:evaluation}
 \resizebox{\columnwidth}{!}{
-\begin{tabular}{lcccccc}
+\begin{tabular}{lccccc}
 \toprule
-\multirow{2}{*}{\textbf{Configuration}} & \textbf{System} &\multicolumn{3}{c}{\textbf{Time (s)}} & \multicolumn{2}{c}{\textbf{Memory (KB)}} \\
-\cmidrule(lr){3-5} \cmidrule(lr){6-7}
- & \textbf{Size}&\textbf{RTWBS}&\textbf{RTWBS (Paral.)} & \textbf{UPPAAL} & \textbf{RTWBS} & \textbf{UPPAAL}\\
+\multirow{2}{*}{\textbf{Configuration}}  &\multicolumn{3}{c}{\textbf{Time (s)}} & \multicolumn{2}{c}{\textbf{Memory (KB)}} \\
+\cmidrule(lr){2-4} \cmidrule(lr){5-6}
+ &\textbf{RWTBS}&\textbf{RWTBS (Paral.)} & \textbf{UPPAAL} & \textbf{RWTBS} & \textbf{UPPAAL}\\
 \midrule
 """
-    prefix_map = {'S': 'Small', 'M': 'Medium', 'L': 'Large', 'XL': 'Extra Large'}
+    prefix_map = {'S': 'Small', 'M': 'Medium', 'L': 'Large', 'XL': 'Extra Large', 'XXL': 'Extra Extra Large'}
     timed_out_threshold = 10 * 3600  # 10 hours in seconds
     memory_threshold = 81216
     has_timed_out = False
@@ -251,7 +251,7 @@ def generate_latex_table(merged, zones_path, output_folder,file_name="results_ta
                 text_uppaal_time = f"\\textbf{{{uppaal_time}}}"
         else:
             if has_timed_out:
-                text_uppaal_time = f">${timed_out_threshold}^*$"
+                text_uppaal_time = f"$>{timed_out_threshold}^*$"
             else:
                 text_uppaal_time = uppaal_time
 
@@ -260,10 +260,10 @@ def generate_latex_table(merged, zones_path, output_folder,file_name="results_ta
         if not has_timed_out:
             text_uppaal_mem = f"\\textbf{{{uppaal_mem}}}" if pd.notnull(rwtbs_mem) and pd.notnull(uppaal_mem) and float(uppaal_mem) < float(rwtbs_mem) else uppaal_mem
         else:
-            text_uppaal_mem = f">${memory_threshold}^*$"
+            text_uppaal_mem = f"$>{memory_threshold}^*$"
 
 
-        latex += rf"{config} & {tot_states} &{text_rwtbs_time}&{text_rwtbs_time_par} & {text_uppaal_time} & {text_rwtbs_mem} & {text_uppaal_mem}" + r"\\"+ "\n"
+        latex += rf"{config}  &{text_rwtbs_time}&{text_rwtbs_time_par} & {text_uppaal_time} & {text_rwtbs_mem} & {text_uppaal_mem}" + r"\\"+ "\n"
     
     # Add parallel configurations if any, for the uppaal, simply "-", no
     if parallel_df is not None and len(parallel_df) > 0 and False:
@@ -293,7 +293,7 @@ def generate_latex_table(merged, zones_path, output_folder,file_name="results_ta
                     uppaal_time = "-"
                 rwtbs_time_val = row.get('check_time_ms', None)
                 if pd.notnull(rwtbs_time_val) and float(rwtbs_time_val) >= timed_out_threshold*1000:
-                    rwtbs_time = f">${timed_out_threshold}^*$"
+                    rwtbs_time = f"$>{timed_out_threshold}^*$"
                     has_timed_out = True
                 elif pd.notnull(rwtbs_time_val):
                     rwtbs_time = trim_float_str(f"{rwtbs_time_val/1000:.3f}")
@@ -356,11 +356,11 @@ def plot_comparison_two_figs(merged, use_log=True, output_folder="results", file
     # --- Time Figure ---
     fig_time, ax_time = plt.subplots(figsize=figsize)
     time_data = [merged['Time(ms)'], merged['check_time_ms']]
-    time_labels = ['Uppaal', 'RTWBS']
+    time_labels = ['Uppaal', 'RWTBS']
     for n_workers,pdf in parallel_df.items():
         pdf = pdf.rename(columns={'model_name': 'model'}).set_index('model')
         time_data.append([pdf.loc[m, 'check_time_ms'] if m in pdf.index else 0 for m in merged['model']])
-        time_labels.append(f'RTWBS ({n_workers})')
+        time_labels.append(f'RWTBS ({n_workers})')
     #add to time _date merged['Time(ms)'] multiplied by the properties
     for prop in properties:
         time_data.append(merged['Time(ms)']*prop)
@@ -383,6 +383,8 @@ def plot_comparison_two_figs(merged, use_log=True, output_folder="results", file
     ax_time.legend(handles, labels_, loc='best', frameon=True)
     if use_log:
         ax_time.set_yscale('log')
+    #limit the y axis to 2000
+    #ax_time.set_ylim(0,1000)
     fig_time.tight_layout()
     
     print(f"Time bar chart saved: {output_folder}/comparison_time.png and .pgf")
@@ -394,6 +396,8 @@ def plot_comparison_two_figs(merged, use_log=True, output_folder="results", file
     ax_time.legend(loc='upper center', ncol=3, bbox_to_anchor=(0.5, 1.17))
     fig_time.savefig(f'{output_folder}/comparison_time.png', dpi=600, bbox_inches='tight')
     fig_time.savefig(f'{output_folder}/comparison_time.pgf', dpi=600, bbox_inches='tight')
+    fig_time.savefig(f'{output_folder}/comparison_time.eps', dpi=600, bbox_inches='tight')
+    fig_time.savefig(f"{output_folder}/comparison_time.pdf", dpi=600, bbox_inches='tight')
     plt.close(fig_time)
 
 
@@ -402,11 +406,11 @@ def plot_comparison_two_figs(merged, use_log=True, output_folder="results", file
     # --- Memory Figure ---
     fig_mem, ax_mem = plt.subplots(figsize=figsize)
     mem_data = [merged['Memory(KB)'], merged['memory_usage_kb']]
-    mem_labels = ['Uppaal', 'RTWBS']
+    mem_labels = ['Uppaal', 'RWTBS']
     for n_workers,pdf in parallel_df.items():
         pdf = pdf.rename(columns={'model_name': 'model'}).set_index('model')
         mem_data.append([pdf.loc[m, 'memory_usage_kb'] if m in pdf.index else 0 for m in merged['model']])
-        mem_labels.append(f'RTWBS ({n_workers})')
+        mem_labels.append(f'RWTBS ({n_workers})')
     for i, (y, label) in enumerate(zip(mem_data, mem_labels)):
         ax_mem.bar(x + (i - n_bars/2)*bar_width + bar_width/2, y, bar_width,
                    color=gray_colors[i % len(gray_colors)],
@@ -432,13 +436,16 @@ def plot_comparison_two_figs(merged, use_log=True, output_folder="results", file
     
     fig_mem.savefig(f'{output_folder}/comparison_memory.png', dpi=600, bbox_inches='tight')
     fig_mem.savefig(f'{output_folder}/comparison_memory.pgf', dpi=600, bbox_inches='tight')
+    fig_mem.savefig(f'{output_folder}/comparison_memory.eps', dpi=600, bbox_inches='tight')
+    fig_mem.savefig(f'{output_folder}/comparison_memory.pdf', dpi=600, bbox_inches='tight')
+    
     plt.close(fig_mem)
 
 
 
 def plot_ratio_vs_uppaal(merged, output_folder="results", file_name="comparison_speedup.png", parallel_df={}):
     """
-    Creates a ratio plot (speedup) of RTWBS and parallel RTWBS vs Uppaal baseline.
+    Creates a ratio plot (speedup) of RWTBS and parallel RWTBS vs Uppaal baseline.
     Ratio = Uppaal time / Other time
     >1 means faster than Uppaal.
     """
@@ -463,7 +470,7 @@ def plot_ratio_vs_uppaal(merged, output_folder="results", file_name="comparison_
         labels.append(label)
 
     x = np.arange(len(benchmarks))
-    n_bars = 1 + len(parallel_df)  # RTWBS + parallel versions
+    n_bars = 1 + len(parallel_df)  # RWTBS + parallel versions
     bar_width = 0.8 / (n_bars + 1)
 
     # --- Ratio Figure ---
@@ -472,18 +479,18 @@ def plot_ratio_vs_uppaal(merged, output_folder="results", file_name="comparison_
     uppaal_times = merged['Time(ms)'].replace(0, np.nan)  # avoid divide by zero
     ratios = []
 
-    # RTWBS ratio
+    # RWTBS ratio
     rtwbs_ratio = uppaal_times / merged['check_time_ms'].replace(0, np.nan)
-    ratios.append((rtwbs_ratio, "RTWBS"))
+    ratios.append((rtwbs_ratio, "RWTBS"))
 
     
 
-    # Parallel RTWBS ratios
+    # Parallel RWTBS ratios
     for n_workers, pdf in parallel_df.items():
         pdf = pdf.rename(columns={'model_name': 'model'}).set_index('model')
         par_times = pd.Series([pdf.loc[m, 'check_time_ms'] if m in pdf.index else np.nan for m in merged['model']])
         par_ratio = uppaal_times / par_times.replace(0, np.nan)
-        ratios.append((par_ratio, f'RTWBS ({n_workers})'))
+        ratios.append((par_ratio, f'RWTBS ({n_workers})'))
 
     #print(ratios)
     # Plot bars
@@ -514,6 +521,8 @@ def plot_ratio_vs_uppaal(merged, output_folder="results", file_name="comparison_
     plt.tight_layout()
     fig.savefig(f"{output_folder}/{file_name}", dpi=300, bbox_inches='tight')
     fig.savefig(f"{output_folder}/{file_name.replace('.png','.pgf')}", dpi=300, bbox_inches='tight')
+    fig.savefig(f"{output_folder}/{file_name.replace('.png','.eps')}", dpi=600, bbox_inches='tight')
+    fig.savefig(f"{output_folder}/{file_name.replace('.png','.pdf')}", dpi=600, bbox_inches='tight')
     plt.close(fig)
 
     print(f"Ratio (speedup) chart saved: {output_folder}/{file_name} and .pgf")
@@ -522,13 +531,13 @@ def plot_ratio_vs_uppaal(merged, output_folder="results", file_name="comparison_
 def get_ratios(merged, output_folder="results", file_name="ratios.csv", parallel_df={}):
     rtwbs_ratio =  merged['check_time_ms'].replace(0, 1)
     uppaal_times = merged['Time(ms)'].replace(0, 1)  # avoid divide by zero
-    ratios = {'UPPAAL_RTWBS': uppaal_times / rtwbs_ratio}
+    ratios = {'UPPAAL_RWTBS': uppaal_times / rtwbs_ratio}
     for n_workers, pdf in parallel_df.items():
         pdf = pdf.rename(columns={'model_name': 'model'}).set_index('model')
         par_times = pd.Series([pdf.loc[m, 'check_time_ms'] if m in pdf.index else 1 for m in merged['model']])
         par_ratio = uppaal_times / par_times.replace(0, 1)
         ratios[f'UPPAAL_{n_workers}'] = par_ratio
-        ratios[f"RTWBS_{n_workers}"] = rtwbs_ratio / par_times
+        ratios[f"RWTBS_{n_workers}"] = rtwbs_ratio / par_times
 
     #save ratios
     ratio_df = pd.DataFrame(ratios)
@@ -552,30 +561,33 @@ def plot_ratios(csv_path="results/ratios.csv", output_folder="results"):
     plt.xticks(rotation=45, ha="right")
     plt.tight_layout()
     plt.savefig(f"{output_folder}/ratios_bar.png", dpi=300)
+
     plt.close()
 
     # --- 2. Normalized scatter plot ---
     norm_df = df.copy()
     for col in methods:
-        norm_df[col] = df[col] / df["UPPAAL_RTWBS"]
+        norm_df[col] = df[col] / df["UPPAAL_RWTBS"]
 
     plt.figure(figsize=(10, 6))
     for col in methods:
-        if col == "UPPAAL_RTWBS":
+        if col == "UPPAAL_RWTBS":
             continue
         plt.scatter(norm_df["model"], norm_df[col], label=col)
 
     #plt.yscale("log")
     plt.xlabel("Model")
-    plt.ylabel("Normalized speedup (vs UPPAAL_RTWBS)")
-    plt.title("Normalized speedups relative to UPPAAL_RTWBS")
+    plt.ylabel("Normalized speedup (vs UPPAAL_RWTBS)")
+    plt.title("Normalized speedups relative to UPPAAL_RWTBS")
     plt.legend()
     plt.xticks(rotation=45, ha="right")
     plt.tight_layout()
     plt.savefig(f"{output_folder}/ratios_normalized.png", dpi=300)
+    plt.savefig(f"{output_folder}/ratios_normalized.eps", dpi=600, bbox_inches='tight')
     plt.close()
 
     print(f"Plots saved in {output_folder}/ratios_bar.png and ratios_normalized.png")
+
 
 
 # Example call (after you run get_ratios and save ratios.csv):
@@ -583,14 +595,14 @@ def plot_ratios(csv_path="results/ratios.csv", output_folder="results"):
 
 
 if __name__ == "__main__":
-    csv1_path = "results/upp_bench/results_2025-09-29_09-24-40.csv"
-    csv2_path = "results/rtwbs/syn_benchmark_results_20250929_005237.csv"
-    csv3_path = "results/rtbws_openmp/syn_benchmark_results_20250929_020000.csv"
+    csv1_path = "results/uppaal_test/results_2026-03-03_23-23-16.csv"
+    csv2_path = "results/rtwbs/syn_benchmark_results_20260305_101312.csv"
+    csv3_path = "results/rtbws_openmp/syn_benchmark_results_20260305_101325.csv"
     n_workers = "Parallel"
     
     zones_path = "assets/system_size.csv"
-    from get_sizes import get_sizes
-    get_sizes()
+    #from get_sizes import get_sizes
+    #get_sizes()
     output_folder = "results"
     output_subfolder = "analysis"
 
@@ -620,7 +632,7 @@ if __name__ == "__main__":
         parts = model.split('/')[-1].split('_')
         prefix = parts[0]
         num = int(parts[1].split('.')[0])
-        prefix_order = {'s': 0, 'm': 1, 'l': 2, 'xl': 3}[prefix]
+        prefix_order = {'s': 0, 'm': 1, 'l': 2, 'xl': 3, 'xxl': 4}[prefix]
         return (num, prefix_order)
 
     merged['sort_key'] = merged['model'].apply(get_sort_key)

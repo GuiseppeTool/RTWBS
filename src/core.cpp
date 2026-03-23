@@ -65,6 +65,35 @@ inline bool is_tau(const Transition* t){
 }
 
 /**
+ * @brief Extract the maximum possible delay from a ready zone (DBM).
+ *
+ * The maximum delay a timed automaton can spend in a zone is bounded by
+ * the largest upper bound on any clock variable.  In the UDBM layout the
+ * entry  dbm[i * dim + 0]  encodes the constraint  x_i − x_0 ≤ bound,
+ * and since x_0 (reference clock) is always 0 this gives  x_i ≤ bound.
+ *
+ * The function returns the supremum across all clocks, ignoring unbounded
+ * entries (dbm_LS_INFINITY), which would indicate that the invariant or
+ * guard does not constrain the clock at all.
+ *
+ * @param zone The zone DBM (flattened row-major)
+ * @param dim  The dimension (# clocks + 1, including reference clock 0)
+ * @return The maximum finite delay bound, or 0 if no clock is bounded.
+ */
+static int32_t extract_max_delay_bound(const std::vector<raw_t>& zone, cindex_t dim) {
+    int32_t max_bound = 0;
+    for (cindex_t i = 1; i < dim; ++i) {
+        raw_t upper = zone[i * dim]; // dbm[i][0] = x_i − x_0 ≤ bound
+        // Skip unbounded entries (infinity means invariant does not constrain
+        // this clock, so it does not limit the delay)
+        if (upper >= dbm_LS_INFINITY) continue;
+        int32_t bound = dbm_raw2bound(upper);
+        if (bound > max_bound) max_bound = bound;
+    }
+    return max_bound;
+}
+
+/**
  * @brief Compute the τ-closure (reachable zones using only weak/internal moves).
  *
  * Process:
@@ -103,7 +132,9 @@ std::vector<const ZoneState*> RTWBSChecker::tau_closure_raw(const TimedAutomaton
             if(post.empty()) continue; 
             post = ta.apply_invariants(post, tr->to_location); 
             if(post.empty()) continue; 
-            const ZoneState* existing = ta.find_zone_state(tr->to_location, post); 
+            // Lazily register the successor zone state (on-the-fly safe).
+            // get_or_add_zone_state creates the state if it doesn't exist yet.
+            const ZoneState* existing = const_cast<TimedAutomaton&>(ta).get_or_add_zone_state(tr->to_location, post); 
             if(existing && !visited.count(existing)){ 
                 visited.insert(existing); 
                 q.push(existing);
@@ -115,12 +146,60 @@ std::vector<const ZoneState*> RTWBSChecker::tau_closure_raw(const TimedAutomaton
 
 
 // ===== RTWBSChecker optimisation member implementations =====
-const std::vector<const ZoneState*>& RTWBSChecker::tau_closure_cached(const TimedAutomaton& ta, const ZoneState* start){
-    auto it = tau_closure_cache_.find(start);
-    if(it!=tau_closure_cache_.end()) return it->second;
+std::vector<const ZoneState*> RTWBSChecker::tau_closure_cached(const TimedAutomaton& ta, const ZoneState* start){
+#ifdef RTWBS_HAS_TBB
+    // TBB concurrent_hash_map: fine-grained per-bucket locking, no global critical section
+    {
+        typename decltype(tau_closure_cache_)::const_accessor reader;
+        if (tau_closure_cache_.find(reader, start)) {
+            // Cache hit — copy out while accessor holds per-bucket lock
+            auto result = reader->second;
+            reader.release();
+            #pragma omp atomic
+            last_stats_.tau_closure_queries++;
+            #pragma omp atomic
+            last_stats_.tau_closure_total_size += result.size();
+            #pragma omp atomic
+            last_stats_.symbolic_states_explored += result.size();
+            return result;
+        }
+    }
+    // Cache miss — compute then insert
     auto vec = tau_closure_raw(ta, start);
+    size_t sz = vec.size();
+    {
+        typename decltype(tau_closure_cache_)::accessor writer;
+        if (tau_closure_cache_.insert(writer, start)) {
+            // We won the insert race — move data in
+            writer->second = std::move(vec);
+        }
+        // If another thread inserted first, writer->second already has valid data
+        auto result = writer->second;
+        writer.release();
+        #pragma omp atomic
+        last_stats_.tau_closure_queries++;
+        #pragma omp atomic
+        last_stats_.tau_closure_total_size += result.size();
+        #pragma omp atomic
+        last_stats_.symbolic_states_explored += result.size();
+        return result;
+    }
+#else
+    // Sequential fallback: standard unordered_map
+    auto it = tau_closure_cache_.find(start);
+    if(it!=tau_closure_cache_.end()) {
+        last_stats_.tau_closure_queries++;
+        last_stats_.tau_closure_total_size += it->second.size();
+        last_stats_.symbolic_states_explored += it->second.size();
+        return it->second;
+    }
+    auto vec = tau_closure_raw(ta, start);
+    last_stats_.tau_closure_queries++;
+    last_stats_.tau_closure_total_size += vec.size();
+    last_stats_.symbolic_states_explored += vec.size();
     auto ins = tau_closure_cache_.emplace(start, std::move(vec));
     return ins.first->second;
+#endif
 }
 
 /**
@@ -158,7 +237,8 @@ std::vector<const ZoneState*> RTWBSChecker::weak_observable_successors_raw(const
             if(post.empty()) continue; 
             post = ta.apply_invariants(post, tr->to_location); 
             if(post.empty()) continue; 
-            const ZoneState* mid = ta.find_zone_state(tr->to_location, post); 
+            // Lazily register the successor zone state (on-the-fly safe).
+            const ZoneState* mid = const_cast<TimedAutomaton&>(ta).get_or_add_zone_state(tr->to_location, post); 
             if(!mid) continue; 
             auto postTau = tau_closure_cached(ta, mid); 
             result.insert(result.end(), postTau.begin(), postTau.end()); 
@@ -170,7 +250,8 @@ std::vector<const ZoneState*> RTWBSChecker::weak_observable_successors_raw(const
 }
 
 /**
- * @brief Check asymmetric timing compatibility between enabling zones.
+ * @brief Check asymmetric timing compatibility between enabling zones,
+ *        including the end-to-end response time bounding constraint.
  *
  * Constructs Up((Z ∩ Inv) ∩ Guard) for both refined and abstract sides.
  * Uses DBM relation to decide subset/superset.
@@ -179,10 +260,57 @@ std::vector<const ZoneState*> RTWBSChecker::weak_observable_successors_raw(const
  *  - Synchronous send  (!)  : refined ⊆ abstract (must not widen send window)
  *  - Synchronous receive (?) : abstract ⊆ refined (refined may wait longer / allow earlier)
  *
+ * ── End-to-end response time preservation (paper Conditions 3 + 4) ──
+ *
+ * For received events (?) the refined automaton may accept a wider timing
+ * zone (Cond 4: abstract ⊆ refined).  However this relaxation must not lead
+ * to unbounded reception delays.  The paper requires that the total delay
+ * from a receive event to the next sent event is preserved:
+ *
+ *     δ_R + δ_R_next  ≤  δ_A + δ_A_next          (end-to-end constraint)
+ *
+ * where δ_R / δ_A are the receive delays and δ_R_next / δ_A_next the
+ * subsequent send delays in the refined / abstract automaton respectively.
+ *
+ * Implementation:
+ *   • For a receive event we compute the delay excess:
+ *         excess = max_delay(rReady) − max_delay(aReady)
+ *     The excess is positive when refined allows MORE delay (relaxation).
+ *     This excess becomes "delay debt" that must be compensated later.
+ *
+ *   • For a send event we verify the compensation:
+ *         compensation = max_delay(aReady) − max_delay(rReady)
+ *     The compensation must be ≥ accumulated_recv_excess (the debt from
+ *     the preceding relaxed receive).  If it is not, the end-to-end
+ *     response time is violated and timing_ok returns false.
+ *
+ * The computed excess (positive for receive debt, negative/zero for send
+ * payoff) is written to *computed_excess so that the caller can propagate
+ * it to the successor pair's EndToEndContext.
+ *
+ * @param refined   Refined timed automaton.
+ * @param rz        Refined zone state (source of the transition).
+ * @param rt        Refined transition being examined.
+ * @param abs       Abstract timed automaton.
+ * @param az        Abstract zone state (source of the abstract match).
+ * @param at        Abstract transition being examined.
+ * @param accumulated_recv_excess  Input: accumulated delay debt from earlier
+ *                                 relaxed receive events (≥ 0).
+ * @param computed_excess          Output: new delay excess produced by THIS
+ *                                 transition.  Positive for receive (debt
+ *                                 increases), zero or negative for send
+ *                                 (debt decreases).  May be nullptr if the
+ *                                 caller does not need the value.
  * @return true if timing relation satisfies RTWBS rule for this action.
  */
 bool timing_ok(const TimedAutomaton& refined, const ZoneState* rz, const Transition* rt,
-               const TimedAutomaton& abs, const ZoneState* az, const Transition* at){
+               const TimedAutomaton& abs, const ZoneState* az, const Transition* at,
+               int32_t accumulated_recv_excess = 0,
+               int32_t* computed_excess = nullptr){
+
+    // Initialise output to zero (no excess) by default
+    if (computed_excess) *computed_excess = 0;
+
     auto rInv = refined.apply_invariants(rz->zone, rz->location_id);
     if(rInv.empty()) return false;
     auto rUp = refined.time_elapse(rInv);
@@ -215,9 +343,7 @@ bool timing_ok(const TimedAutomaton& refined, const ZoneState* rz, const Transit
     if(!dbm_close(aReady.data(), abs.get_dimension()) || dbm_isEmpty(aReady.data(), abs.get_dimension())){
         guards_ok_in_a= false;
     }
-    if(guards_ok_in_r and guards_ok_in_a){
 
-    }
     if(guards_ok_in_r && guards_ok_in_a){
         // Both can move → check zone relation
         relation_t rel = dbm_relation(rReady.data(), aReady.data(), refined.get_dimension()); 
@@ -226,9 +352,65 @@ bool timing_ok(const TimedAutomaton& refined, const ZoneState* rz, const Transit
 
         if(!rt->has_synchronization() && !at->has_synchronization())
             return r_subset_a; // internal
+
         if(rt->has_synchronization() && at->has_synchronization() && rt->channel == at->channel){ 
-            if(rt->is_sender && at->is_sender) return r_subset_a; 
-            if(rt->is_receiver && at->is_receiver) return a_subset_r; 
+
+            // ── SENT event (!) ──
+            // Condition 3 (strict): refined ⊆ abstract  ⇒  refined does not
+            // widen the send window.
+            if(rt->is_sender && at->is_sender) {
+                if (!r_subset_a) return false;
+
+                // End-to-end check for send events: the send must compensate
+                // any accumulated delay debt from prior relaxed receives.
+                //
+                //   compensation = max_delay(aReady) − max_delay(rReady)
+                //
+                // Since r ⊆ a, compensation ≥ 0 is guaranteed.  We additionally
+                // require  compensation ≥ accumulated_recv_excess  to ensure
+                // δ_R + δ_R_next ≤ δ_A + δ_A_next.
+                int32_t r_max = extract_max_delay_bound(rReady, refined.get_dimension());
+                int32_t a_max = extract_max_delay_bound(aReady, abs.get_dimension());
+                int32_t compensation = a_max - r_max; // ≥ 0 because r ⊆ a
+
+                if (compensation < accumulated_recv_excess) {
+                    // End-to-end response time violation: the send event
+                    // cannot compensate the delay relaxation from the
+                    // preceding receive event(s).
+                    return false;
+                }
+
+                // A send event pays off (part of) the debt.
+                // Remaining excess after compensation (may be negative = surplus,
+                // clamped to 0 since debt cannot go negative)
+                if (computed_excess) {
+                    *computed_excess = std::max(0, accumulated_recv_excess - compensation);
+                }
+                return true;
+            }
+
+            // ── RECEIVED event (?) ──
+            // Condition 4 (relaxed): abstract ⊆ refined  ⇒  refined may
+            // accept a wider timing window for incoming events.
+            if(rt->is_receiver && at->is_receiver) {
+                if (!a_subset_r) return false;
+
+                // Compute the delay excess: how much wider the refined
+                // receive zone is compared to the abstract one.
+                //
+                //   excess = max_delay(rReady) − max_delay(aReady)
+                //
+                // This is ≥ 0 when refined is strictly more permissive.
+                int32_t r_max = extract_max_delay_bound(rReady, refined.get_dimension());
+                int32_t a_max = extract_max_delay_bound(aReady, abs.get_dimension());
+                int32_t excess = std::max(int32_t(0), r_max - a_max);
+
+                // Accumulate the excess onto the existing debt
+                if (computed_excess) {
+                    *computed_excess = accumulated_recv_excess + excess;
+                }
+                return true;
+            }
         }
         return false; // guards ok but cannot match
     }
@@ -240,28 +422,56 @@ bool timing_ok(const TimedAutomaton& refined, const ZoneState* rz, const Transit
         // Only one can move → bisimulation fails
         return false;
     }
-    //
-    //relation_t rel = dbm_relation(rReady.data(), aReady.data(), refined.get_dimension()); 
-    //bool r_subset_a = (rel == base_SUBSET || rel == base_EQUAL); 
-    //bool a_subset_r = (rel == base_SUPERSET || rel == base_EQUAL);
-    //if(!rt->has_synchronization() && !at->has_synchronization()) return r_subset_a; // internal
-    //if(rt->has_synchronization() && at->has_synchronization() && rt->channel == at->channel){ 
-    //    if(rt->is_sender && at->is_sender) return r_subset_a; 
-    //    if(rt->is_receiver && at->is_receiver) return a_subset_r; 
-    //}
-    //return false;
 }
 
 
 
 
-const std::vector<const ZoneState*>& RTWBSChecker::weak_observable_successors_cached(const TimedAutomaton& ta, const ZoneState* start, const std::string& action){
+std::vector<const ZoneState*> RTWBSChecker::weak_observable_successors_cached(const TimedAutomaton& ta, const ZoneState* start, const std::string& action){
     WeakKey k{start->location_id, action};
-    auto it = weak_succ_cache_.find(k);
-    if(it!=weak_succ_cache_.end()) return it->second;
+#ifdef RTWBS_HAS_TBB
+    // TBB concurrent_hash_map: fine-grained per-bucket locking
+    {
+        typename decltype(weak_succ_cache_)::const_accessor reader;
+        if (weak_succ_cache_.find(reader, k)) {
+            auto result = reader->second;
+            reader.release();
+            #pragma omp atomic
+            last_stats_.weak_successor_queries++;
+            #pragma omp atomic
+            last_stats_.total_weak_successors += result.size();
+            return result;
+        }
+    }
+    // Cache miss — compute then insert
     auto vec = weak_observable_successors_raw(ta, start, action);
+    {
+        typename decltype(weak_succ_cache_)::accessor writer;
+        if (weak_succ_cache_.insert(writer, k)) {
+            writer->second = std::move(vec);
+        }
+        auto result = writer->second;
+        writer.release();
+        #pragma omp atomic
+        last_stats_.weak_successor_queries++;
+        #pragma omp atomic
+        last_stats_.total_weak_successors += result.size();
+        return result;
+    }
+#else
+    // Sequential fallback
+    auto it = weak_succ_cache_.find(k);
+    if(it!=weak_succ_cache_.end()) {
+        last_stats_.weak_successor_queries++;
+        last_stats_.total_weak_successors += it->second.size();
+        return it->second;
+    }
+    auto vec = weak_observable_successors_raw(ta, start, action);
+    last_stats_.weak_successor_queries++;
+    last_stats_.total_weak_successors += vec.size();
     auto ins = weak_succ_cache_.emplace(std::move(k), std::move(vec));
     return ins.first->second;
+#endif
 }
 
 void RTWBSChecker::clear_optimisation_state(){
@@ -269,7 +479,15 @@ void RTWBSChecker::clear_optimisation_state(){
     weak_succ_cache_.clear();
     reverse_deps_.clear();
     relation_.clear();
+    e2e_context_.clear();
     while(!worklist_.empty()) worklist_.pop();
+#ifdef RTWBS_HAS_TBB
+    otf_visited_valid_tbb_.clear();
+    otf_visited_invalid_tbb_.clear();
+#else
+    otf_visited_valid_shared_.clear();
+    otf_visited_invalid_shared_.clear();
+#endif
 }
 /**
  * @brief Core RTWBS simulation (refinement) check between two automata.
@@ -297,9 +515,410 @@ void RTWBSChecker::clear_optimisation_state(){
  *  O(|R| * T_match) where T_match involves computing weak successors repeatedly.
  */
 
+// =====================================================================
+// ===== On-The-Fly (Local Co-inductive DFS) Implementation ============
+// =====================================================================
+
+/**
+ * @brief Serial On-The-Fly RTWBS equivalence check using recursive DFS.
+ *
+ * Algorithm:
+ *   1. If (rZone, aZone) is on the recursion stack, return true
+ *      (co-inductive hypothesis: assume the pair holds).
+ *   2. If (rZone, aZone) was already proven valid, return true.
+ *   3. If (rZone, aZone) was already proven invalid, return false.
+ *   4. Push the pair onto the stack, then for each observable refined
+ *      transition find a matching abstract transition (same action,
+ *      timing_ok, at least one successor pair that recursively holds).
+ *   5. Symmetrically check abstract → refined (bisimulation).
+ *   6. If all transitions matched, memoise as valid; otherwise invalid.
+ *
+ * The e2e delay debt is threaded through the recursion rather than
+ * stored in a global map, keeping the stack-local context correct.
+ */
+bool RTWBSChecker::explore_otf_serial(
+    const TimedAutomaton& refined,
+    const TimedAutomaton& abstract,
+    const ZoneState* rZone,
+    const ZoneState* aZone,
+    int32_t accumulated_recv_excess,
+    std::unordered_set<PairKey, PairKeyHash>& stack,
+    std::unordered_set<PairKey, PairKeyHash>& visited_valid,
+    std::unordered_set<PairKey, PairKeyHash>& visited_invalid)
+{
+    if (is_cancelled()) return false;
+
+    int rId = refined.get_state_id(rZone);
+    int aId = abstract.get_state_id(aZone);
+    PairKey pk{rId, aId};
+
+    // Co-inductive base: pair on recursion stack → assume valid
+    if (stack.count(pk)) return true;
+    // Memoisation hits
+    if (visited_valid.count(pk)) return true;
+    if (visited_invalid.count(pk)) return false;
+
+    last_stats_.relation_pairs_validated++;
+    last_stats_.symbolic_states_explored++;
+
+    // Push onto recursion stack
+    stack.insert(pk);
+
+    bool pair_valid = true;
+
+    // ── Forward direction: refined → abstract ──
+    {
+        auto rOut = refined.get_outgoing_transitions(rZone->location_id);
+        for (auto rt : rOut) {
+            if (is_cancelled()) { pair_valid = false; break; }
+            if (is_tau(rt)) continue;
+
+            auto rSuccs = weak_observable_successors_cached(refined, rZone, rt->action);
+            if (rSuccs.empty()) continue; // transition not enabled
+
+            bool matched = false;
+            for (auto at : abstract.get_outgoing_transitions(aZone->location_id)) {
+                if (is_tau(at)) continue;
+                if (rt->action != at->action) continue;
+                // Sync precheck
+                bool rs = rt->has_synchronization();
+                bool asy = at->has_synchronization();
+                if (rs != asy) continue;
+                if (rs) {
+                    if (rt->channel != at->channel) continue;
+                    if (rt->is_sender != at->is_sender) continue;
+                    if (rt->is_receiver != at->is_receiver) continue;
+                }
+
+                auto aSuccs = weak_observable_successors_cached(abstract, aZone, at->action);
+                if (aSuccs.empty()) continue;
+
+                int32_t computed_excess = 0;
+                if (!timing_ok(refined, rZone, rt, abstract, aZone, at,
+                               accumulated_recv_excess, &computed_excess))
+                    continue;
+
+                // Find at least one successor pair that recursively holds
+                bool found = false;
+                for (auto rsucc : rSuccs) {
+                    for (auto asucc : aSuccs) {
+                        if (rsucc->location_id == asucc->location_id) {
+                            if (explore_otf_serial(refined, abstract,
+                                                   rsucc, asucc,
+                                                   computed_excess,
+                                                   stack, visited_valid, visited_invalid)) {
+                                found = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (found) break;
+                }
+                if (found) { matched = true; break; }
+            }
+            if (!matched) { pair_valid = false; break; }
+        }
+    }
+
+    // ── Backward direction: abstract → refined ──
+    if (pair_valid) {
+        auto aOut = abstract.get_outgoing_transitions(aZone->location_id);
+        for (auto at : aOut) {
+            if (is_cancelled()) { pair_valid = false; break; }
+            if (is_tau(at)) continue;
+
+            auto aSuccs = weak_observable_successors_cached(abstract, aZone, at->action);
+            if (aSuccs.empty()) continue;
+
+            bool matched = false;
+            for (auto rt : refined.get_outgoing_transitions(rZone->location_id)) {
+                if (is_tau(rt)) continue;
+                if (at->action != rt->action) continue;
+                bool asy = at->has_synchronization();
+                bool rs = rt->has_synchronization();
+                if (asy != rs) continue;
+                if (asy) {
+                    if (at->channel != rt->channel) continue;
+                    if (at->is_sender != rt->is_sender) continue;
+                    if (at->is_receiver != rt->is_receiver) continue;
+                }
+
+                auto rSuccs = weak_observable_successors_cached(refined, rZone, rt->action);
+                if (rSuccs.empty()) continue;
+
+                // Mirror timing check: abstract in "refined" role
+                int32_t computed_excess = 0;
+                if (!timing_ok(abstract, aZone, at, refined, rZone, rt,
+                               accumulated_recv_excess, &computed_excess))
+                    continue;
+
+                bool found = false;
+                for (auto asucc : aSuccs) {
+                    for (auto rsucc : rSuccs) {
+                        if (asucc->location_id == rsucc->location_id) {
+                            if (explore_otf_serial(refined, abstract,
+                                                   rsucc, asucc,
+                                                   computed_excess,
+                                                   stack, visited_valid, visited_invalid)) {
+                                found = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (found) break;
+                }
+                if (found) { matched = true; break; }
+            }
+            if (!matched) { pair_valid = false; break; }
+        }
+    }
+
+    // Pop from recursion stack
+    stack.erase(pk);
+
+    // Memoise result
+    if (pair_valid) {
+        visited_valid.insert(pk);
+    } else {
+        visited_invalid.insert(pk);
+    }
+    return pair_valid;
+}
+
+/**
+ * @brief OpenMP On-The-Fly RTWBS equivalence check via parallel task DFS.
+ *
+ * Key thread-safety design:
+ *   - path_stack is passed BY VALUE to each task so that each task lineage
+ *     has its own copy of the recursion path.  This avoids false cycle
+ *     detections across unrelated concurrent paths.
+ *   - visited_valid / visited_invalid are shared across all tasks and
+ *     protected by TBB concurrent_hash_map (if available) or
+ *     #pragma omp critical.
+ *   - Independent successor branches are explored in parallel via
+ *     #pragma omp task, with #pragma omp taskwait used to synchronise
+ *     results before returning.
+ */
+bool RTWBSChecker::explore_otf_omp(
+    const TimedAutomaton& refined,
+    const TimedAutomaton& abstract,
+    const ZoneState* rZone,
+    const ZoneState* aZone,
+    int32_t accumulated_recv_excess,
+    std::unordered_set<PairKey, PairKeyHash> path_stack)  // BY VALUE — each task gets its own copy
+{
+    if (is_cancelled()) return false;
+
+    // Pointer aliases for the automata — used by OpenMP tasks so that
+    // {refined, abstract} are captured as trivially-copyable pointers
+    // (firstprivate) instead of triggering a copy of the non-copyable
+    // TimedAutomaton (which contains a std::shared_mutex).
+    const TimedAutomaton* refined_ptr = &refined;
+    const TimedAutomaton* abstract_ptr = &abstract;
+
+    int rId = refined.get_state_id(rZone);
+    int aId = abstract.get_state_id(aZone);
+    PairKey pk{rId, aId};
+
+    // Co-inductive base: pair on THIS task's recursion path → assume valid
+    if (path_stack.count(pk)) return true;
+
+    // Check shared memoisation (thread-safe reads)
+#ifdef RTWBS_HAS_TBB
+    {
+        typename decltype(otf_visited_valid_tbb_)::const_accessor reader;
+        if (otf_visited_valid_tbb_.find(reader, pk)) return true;
+    }
+    {
+        typename decltype(otf_visited_invalid_tbb_)::const_accessor reader;
+        if (otf_visited_invalid_tbb_.find(reader, pk)) return false;
+    }
+#else
+    {
+        bool found_valid = false, found_invalid = false;
+        #pragma omp critical(otf_visited_read)
+        {
+            found_valid = otf_visited_valid_shared_.count(pk) > 0;
+            found_invalid = otf_visited_invalid_shared_.count(pk) > 0;
+        }
+        if (found_valid) return true;
+        if (found_invalid) return false;
+    }
+#endif
+
+    #pragma omp atomic
+    last_stats_.relation_pairs_validated++;
+    #pragma omp atomic
+    last_stats_.symbolic_states_explored++;
+
+    // Push onto this task's path stack
+    path_stack.insert(pk);
+
+    bool pair_valid = true;
+
+    // ── Forward direction: refined → abstract ──
+    {
+        auto rOut = refined.get_outgoing_transitions(rZone->location_id);
+        for (auto rt : rOut) {
+            if (is_cancelled()) { pair_valid = false; break; }
+            if (is_tau(rt)) continue;
+
+            auto rSuccs = weak_observable_successors_cached(refined, rZone, rt->action);
+            if (rSuccs.empty()) continue;
+
+            bool matched = false;
+            for (auto at : abstract.get_outgoing_transitions(aZone->location_id)) {
+                if (is_tau(at)) continue;
+                if (rt->action != at->action) continue;
+                bool rs = rt->has_synchronization();
+                bool asy = at->has_synchronization();
+                if (rs != asy) continue;
+                if (rs) {
+                    if (rt->channel != at->channel) continue;
+                    if (rt->is_sender != at->is_sender) continue;
+                    if (rt->is_receiver != at->is_receiver) continue;
+                }
+
+                auto aSuccs = weak_observable_successors_cached(abstract, aZone, at->action);
+                if (aSuccs.empty()) continue;
+
+                int32_t computed_excess = 0;
+                if (!timing_ok(refined, rZone, rt, abstract, aZone, at,
+                               accumulated_recv_excess, &computed_excess))
+                    continue;
+
+                // Explore successor pairs in parallel using OpenMP tasks
+                // Collect results via a shared vector
+                std::vector<std::pair<const ZoneState*, const ZoneState*>> candidates;
+                for (auto rsucc : rSuccs) {
+                    for (auto asucc : aSuccs) {
+                        if (rsucc->location_id == asucc->location_id) {
+                            candidates.emplace_back(rsucc, asucc);
+                        }
+                    }
+                }
+
+                if (!candidates.empty()) {
+                    std::atomic<bool> any_found{false};
+                    // Spawn tasks for each candidate
+                    for (size_t ci = 0; ci < candidates.size(); ++ci) {
+                        if (any_found.load(std::memory_order_relaxed)) break;
+                        auto [rs_cand, as_cand] = candidates[ci];
+                        #pragma omp task shared(any_found) firstprivate(rs_cand, as_cand, computed_excess, path_stack, refined_ptr, abstract_ptr)
+                        {
+                            if (!any_found.load(std::memory_order_relaxed)) {
+                                bool ok = explore_otf_omp(*refined_ptr, *abstract_ptr,
+                                                          rs_cand, as_cand,
+                                                          computed_excess,
+                                                          path_stack);  // copy of path_stack
+                                if (ok) {
+                                    any_found.store(true, std::memory_order_relaxed);
+                                }
+                            }
+                        }
+                    }
+                    #pragma omp taskwait
+                    if (any_found.load()) { matched = true; break; }
+                }
+            }
+            if (!matched) { pair_valid = false; break; }
+        }
+    }
+
+    // ── Backward direction: abstract → refined ──
+    if (pair_valid) {
+        auto aOut = abstract.get_outgoing_transitions(aZone->location_id);
+        for (auto at : aOut) {
+            if (is_cancelled()) { pair_valid = false; break; }
+            if (is_tau(at)) continue;
+
+            auto aSuccs = weak_observable_successors_cached(abstract, aZone, at->action);
+            if (aSuccs.empty()) continue;
+
+            bool matched = false;
+            for (auto rt : refined.get_outgoing_transitions(rZone->location_id)) {
+                if (is_tau(rt)) continue;
+                if (at->action != rt->action) continue;
+                bool asy = at->has_synchronization();
+                bool rs = rt->has_synchronization();
+                if (asy != rs) continue;
+                if (asy) {
+                    if (at->channel != rt->channel) continue;
+                    if (at->is_sender != rt->is_sender) continue;
+                    if (at->is_receiver != rt->is_receiver) continue;
+                }
+
+                auto rSuccs = weak_observable_successors_cached(refined, rZone, rt->action);
+                if (rSuccs.empty()) continue;
+
+                int32_t computed_excess = 0;
+                if (!timing_ok(abstract, aZone, at, refined, rZone, rt,
+                               accumulated_recv_excess, &computed_excess))
+                    continue;
+
+                std::vector<std::pair<const ZoneState*, const ZoneState*>> candidates;
+                for (auto asucc : aSuccs) {
+                    for (auto rsucc : rSuccs) {
+                        if (asucc->location_id == rsucc->location_id) {
+                            candidates.emplace_back(rsucc, asucc);
+                        }
+                    }
+                }
+
+                if (!candidates.empty()) {
+                    std::atomic<bool> any_found{false};
+                    for (size_t ci = 0; ci < candidates.size(); ++ci) {
+                        if (any_found.load(std::memory_order_relaxed)) break;
+                        auto [rs_cand, as_cand] = candidates[ci];
+                        #pragma omp task shared(any_found) firstprivate(rs_cand, as_cand, computed_excess, path_stack, refined_ptr, abstract_ptr)
+                        {
+                            if (!any_found.load(std::memory_order_relaxed)) {
+                                bool ok = explore_otf_omp(*refined_ptr, *abstract_ptr,
+                                                          rs_cand, as_cand,
+                                                          computed_excess,
+                                                          path_stack);
+                                if (ok) {
+                                    any_found.store(true, std::memory_order_relaxed);
+                                }
+                            }
+                        }
+                    }
+                    #pragma omp taskwait
+                    if (any_found.load()) { matched = true; break; }
+                }
+            }
+            if (!matched) { pair_valid = false; break; }
+        }
+    }
+
+    // Memoise result (thread-safe writes)
+#ifdef RTWBS_HAS_TBB
+    if (pair_valid) {
+        typename decltype(otf_visited_valid_tbb_)::accessor writer;
+        otf_visited_valid_tbb_.insert(writer, pk);
+        writer->second = true;
+    } else {
+        typename decltype(otf_visited_invalid_tbb_)::accessor writer;
+        otf_visited_invalid_tbb_.insert(writer, pk);
+        writer->second = true;
+    }
+#else
+    #pragma omp critical(otf_visited_write)
+    {
+        if (pair_valid) {
+            otf_visited_valid_shared_.insert(pk);
+        } else {
+            otf_visited_invalid_shared_.insert(pk);
+        }
+    }
+#endif
+
+    return pair_valid;
+}
 
 
-bool RTWBSChecker::check_rtwbs_simulation(const TimedAutomaton& refined, const TimedAutomaton& abstract){
+bool RTWBSChecker::check_rtwbs_simulation(const TimedAutomaton& refined, const TimedAutomaton& abstract,
+                                          AlgorithmMode algo){
     auto start = std::chrono::high_resolution_clock::now();
     clear_optimisation_state();
     if (is_cancelled()) return false;
@@ -326,12 +945,35 @@ bool RTWBSChecker::check_rtwbs_simulation(const TimedAutomaton& refined, const T
     }
     if(relation_.empty()) return false;
 
+    // Record initial relation size (before fixpoint elimination)
+    last_stats_.relation_pairs_seeded += relation_.size();
+
     // 2) Localised validation loop using worklist and reverse dependencies
+    //
+    // End-to-end delay bounding (paper Conditions 3+4):
+    //   The validate_pair lambda now consults the per-pair EndToEndContext
+    //   (e2e_context_) to enforce:
+    //     a) Alternating send/receive watchdog – two consecutive receives
+    //        without an intervening send are rejected.
+    //     b) End-to-end response time – any delay debt accumulated at a
+    //        relaxed receive must be compensated at the next send event.
+    //   The context is propagated to successor pairs so that the fixpoint
+    //   iteration globally enforces the constraint.
     auto validate_pair = [&](const PairKey& pk)->bool{
         auto rZone = pk.r; auto aZone = pk.a;
+
+        // Retrieve the end-to-end context accumulated for this pair.
+        // Default-constructed context has zero debt and last_was_receive=false.
+        EndToEndContext ctx;
+        {
+            auto ctx_it = e2e_context_.find(pk);
+            if (ctx_it != e2e_context_.end()) ctx = ctx_it->second;
+        }
+
         auto rOut = refined.get_outgoing_transitions(refined.get_zone_state(rZone)->location_id);
         for(auto rt: rOut){
             if(is_tau(rt)) continue;
+
             // Compute enabled refined weak successors for this action; if none, skip this transition
             const auto& rSuccs = weak_observable_successors_cached(refined, refined.get_zone_state(rZone), rt->action);
             if(rSuccs.empty()) continue; // not enabled at this zone
@@ -343,7 +985,18 @@ bool RTWBSChecker::check_rtwbs_simulation(const TimedAutomaton& refined, const T
                 // Abstract side must also be enabled for this action
                 const auto& aSuccs = weak_observable_successors_cached(abstract, abstract.get_zone_state(aZone), at->action);
                 if(aSuccs.empty()) continue;
-                if(!timing_ok(refined,refined.get_zone_state(rZone),rt,abstract,abstract.get_zone_state(aZone),at)) continue;
+
+                // ── timing_ok with end-to-end context ──
+                // Pass accumulated delay debt into timing_ok; it returns the
+                // updated excess via computed_excess.  The e2e compensation
+                // check inside timing_ok is the sole enforcement of bounded
+                // reception delays (no separate alternating watchdog needed).
+                int32_t computed_excess = 0;
+                if(!timing_ok(refined, refined.get_zone_state(rZone), rt,
+                              abstract, abstract.get_zone_state(aZone), at,
+                              ctx.accumulated_recv_excess, &computed_excess))
+                    continue;
+
                 bool found=false; PairKey supporting{};
                 for(auto rs: rSuccs){
                     if(rs ==nullptr)
@@ -365,6 +1018,15 @@ bool RTWBSChecker::check_rtwbs_simulation(const TimedAutomaton& refined, const T
                 if(found){
                     // record reverse dependency: pk depends on supporting
                     reverse_deps_[supporting].push_back(pk);
+
+                    // ── Propagate end-to-end context to the successor pair ──
+                    // The successor inherits the updated delay debt.
+                    // Conservative merge: keep the WORST-case (highest debt).
+                    EndToEndContext succ_ctx(computed_excess, false);
+                    auto& existing = e2e_context_[supporting];
+                    existing.accumulated_recv_excess =
+                        std::max(existing.accumulated_recv_excess, succ_ctx.accumulated_recv_excess);
+
                     matched=true; break;
                 }
             }
@@ -375,12 +1037,15 @@ bool RTWBSChecker::check_rtwbs_simulation(const TimedAutomaton& refined, const T
     
     while(!worklist_.empty()){
         if (is_cancelled()) { relation_.clear(); break; }
+        last_stats_.fixpoint_iterations++;
         PairKey current = worklist_.front(); worklist_.pop();
         // It might have been removed already
         if(!relation_.count(current)) continue;
+        last_stats_.relation_pairs_validated++;
         if(!validate_pair(current)){
-            // remove and enqueue dependents
+            // remove and enqueue dependents; also clear the e2e context
             relation_.erase(current);
+            e2e_context_.erase(current);
             auto it = reverse_deps_.find(current);
             if(it!=reverse_deps_.end()){
                 for(auto &parent: it->second){
@@ -395,7 +1060,7 @@ bool RTWBSChecker::check_rtwbs_simulation(const TimedAutomaton& refined, const T
     last_stats_.refined_states += RZ.size();
     last_stats_.abstract_states += AZ.size();
     last_stats_.simulation_pairs += relation_.size();
-    last_stats_.check_time_ms += std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count();
+    last_stats_.check_time_ms += std::chrono::duration<double, std::milli>(end-start).count();
     last_stats_.memory_usage_bytes += relation_.size()*sizeof(PairKey);
     return !relation_.empty();
 }
@@ -446,10 +1111,76 @@ bool RTWBSChecker::check_rtwbs_simulation(const System& system_refined, const Sy
 
 
 
-bool RTWBSChecker::check_rtwbs_equivalence(const TimedAutomaton& refined, const TimedAutomaton& abstract, bool use_omp){
+bool RTWBSChecker::check_rtwbs_equivalence(const TimedAutomaton& refined, const TimedAutomaton& abstract, bool use_omp,
+                                           AlgorithmMode algo){
     auto start = std::chrono::high_resolution_clock::now();
     clear_optimisation_state();
     if (is_cancelled()) return false;
+
+    // ===================================================================
+    // On-The-Fly mode: local co-inductive DFS from the initial pair only.
+    // Does NOT eagerly build the full zone graph.  Zone states are created
+    // lazily by get_or_add_zone_state() inside tau_closure_raw /
+    // weak_observable_successors_raw as the DFS discovers them.
+    // ===================================================================
+    if (algo == AlgorithmMode::ON_THE_FLY) {
+        // Obtain the initial zone state for each automaton.
+        // get_or_create_initial_state() creates only the single initial
+        // state — no BFS exploration of the full zone graph.
+        const ZoneState* rInit = const_cast<TimedAutomaton&>(refined).get_or_create_initial_state();
+        const ZoneState* aInit = const_cast<TimedAutomaton&>(abstract).get_or_create_initial_state();
+        if (!rInit || !aInit) return false;
+
+        DEV_PRINT("OTF: starting from initial pair ("
+                  << rInit->location_id << ", " << aInit->location_id << ")\n");
+
+        bool result = false;
+        if (!use_omp) {
+            // Serial OTF
+            std::unordered_set<PairKey, PairKeyHash> stack;
+            std::unordered_set<PairKey, PairKeyHash> visited_valid;
+            std::unordered_set<PairKey, PairKeyHash> visited_invalid;
+            result = explore_otf_serial(refined, abstract,
+                                        rInit, aInit, 0,
+                                        stack, visited_valid, visited_invalid);
+            last_stats_.simulation_pairs += visited_valid.size();
+        } else {
+            // OpenMP OTF
+#ifdef RTWBS_HAS_TBB
+            otf_visited_valid_tbb_.clear();
+            otf_visited_invalid_tbb_.clear();
+#else
+            otf_visited_valid_shared_.clear();
+            otf_visited_invalid_shared_.clear();
+#endif
+            std::unordered_set<PairKey, PairKeyHash> initial_path;
+            #pragma omp parallel
+            {
+                #pragma omp single
+                {
+                    result = explore_otf_omp(refined, abstract,
+                                             rInit, aInit, 0,
+                                             initial_path);
+                }
+            }
+#ifdef RTWBS_HAS_TBB
+            last_stats_.simulation_pairs += otf_visited_valid_tbb_.size();
+#else
+            last_stats_.simulation_pairs += otf_visited_valid_shared_.size();
+#endif
+        }
+
+        auto end = std::chrono::high_resolution_clock::now();
+        // Report how many zone states were lazily discovered
+        last_stats_.refined_states += refined.get_all_zone_states().size();
+        last_stats_.abstract_states += abstract.get_all_zone_states().size();
+        last_stats_.check_time_ms += std::chrono::duration<double, std::milli>(end - start).count();
+        return result;
+    }
+
+    // ===================================================================
+    // GFP mode (existing global greatest fixed-point algorithm)
+    // ===================================================================
     const_cast<TimedAutomaton&>(refined).construct_zone_graph();
     const_cast<TimedAutomaton&>(abstract).construct_zone_graph();
     const auto& RZ = refined.get_all_zone_states();
@@ -475,26 +1206,50 @@ bool RTWBSChecker::check_rtwbs_equivalence(const TimedAutomaton& refined, const 
     }
     if(relation_.empty()) return false;
 
+    // Record initial relation size (before fixpoint elimination)
+    last_stats_.relation_pairs_seeded += relation_.size();
+
     // 2) Localised validation loop using worklist and reverse dependencies
     //    Now symmetric: both refined→abstract and abstract→refined must match (bisimulation)
+    //
+    //    End-to-end delay bounding (paper Conditions 3+4):
+    //      The validate_pair lambda consults the per-pair EndToEndContext
+    //      (e2e_context_) to enforce:
+    //        a) Alternating send/receive watchdog – two consecutive receives
+    //           without an intervening send are rejected.
+    //        b) End-to-end response time – delay debt accumulated at a relaxed
+    //           receive must be compensated at the next send event.
+    //      Context is propagated to successor pairs via e2e_context_ (or via
+    //      the thread-local vector when running in OpenMP mode).
+    //
     // Thread-safe validate_pair for OpenMP: collects reverse_deps_ updates in a local vector
-    auto validate_pair = [&](const PairKey& pk, const std::unordered_set<rtwbs::RTWBSChecker::PairKey, rtwbs::RTWBSChecker::PairKeyHash>& relation_, std::vector<std::pair<PairKey, PairKey>>* local_reverse_deps_updates = nullptr)->bool{
+    // and e2e context updates in a separate local vector.
+    auto validate_pair = [&](const PairKey& pk,
+                             const std::unordered_set<rtwbs::RTWBSChecker::PairKey,
+                                                      rtwbs::RTWBSChecker::PairKeyHash>& relation_,
+                             std::vector<std::pair<PairKey, PairKey>>* local_reverse_deps_updates = nullptr,
+                             std::vector<std::pair<PairKey, EndToEndContext>>* local_e2e_updates = nullptr
+                             )->bool{
         auto rZone = pk.r; auto aZone = pk.a;
+
+        // Retrieve the end-to-end context accumulated for this pair.
+        EndToEndContext ctx;
+        {
+            auto ctx_it = e2e_context_.find(pk);
+            if (ctx_it != e2e_context_.end()) ctx = ctx_it->second;
+        }
+
         // Forward direction: refined -> abstract
         {
             auto rOut = refined.get_outgoing_transitions(refined.get_zone_state(rZone)->location_id);
             for(auto rt: rOut){
                 if(is_tau(rt)) continue;
+
+                bool this_is_receive = rt->has_synchronization() && rt->is_receiver;
+
                 // Compute enabled refined weak successors for this action; if none, skip this transition
-                std::vector<const ZoneState*> rSuccs;
-                if(local_reverse_deps_updates) {
-                     #pragma omp critical(successor_cache_refined_forward)
-                    {
-                        rSuccs = weak_observable_successors_cached(refined, refined.get_zone_state(rZone), rt->action);
-                    }
-                } else {
-                    rSuccs = weak_observable_successors_cached(refined, refined.get_zone_state(rZone), rt->action);
-                }
+                // Cache is thread-safe (TBB concurrent_hash_map) — no critical section needed
+                auto rSuccs = weak_observable_successors_cached(refined, refined.get_zone_state(rZone), rt->action);
                 
                 if(rSuccs.empty()) continue; // transition not enabled from rZone
                 
@@ -511,27 +1266,21 @@ bool RTWBSChecker::check_rtwbs_equivalence(const TimedAutomaton& refined, const 
                         if(rt->is_sender != at->is_sender) continue;
                         if(rt->is_receiver != at->is_receiver) continue;
                     }
-                    std::vector<const ZoneState*> aSuccs;
-
-                    if(local_reverse_deps_updates) {
-                        #pragma omp critical(successor_cache_abstract_forward)
-                        {
-                            aSuccs = weak_observable_successors_cached(abstract, abstract.get_zone_state(aZone), at->action);
-                        }
-                    } else {
-                        aSuccs = weak_observable_successors_cached(abstract, abstract.get_zone_state(aZone), at->action);
-                    }
+                    // Cache is thread-safe (TBB concurrent_hash_map) — no critical section needed
+                    auto aSuccs = weak_observable_successors_cached(abstract, abstract.get_zone_state(aZone), at->action);
                     
                     if(aSuccs.empty()){                         
                         continue;} // not enabled on abstract side
-                    if(!timing_ok(refined, refined.get_zone_state(rZone), rt, abstract, abstract.get_zone_state(aZone), at))
+
+                    // ── timing_ok with end-to-end context (forward) ──
+                    int32_t computed_excess = 0;
+                    if(!timing_ok(refined, refined.get_zone_state(rZone), rt,
+                                  abstract, abstract.get_zone_state(aZone), at,
+                                  ctx.accumulated_recv_excess, &computed_excess))
                     {
-                        continue; // timing incompatible
+                        continue; // timing incompatible (including e2e violation)
                     }
                     // Index abstract successors by location to reduce O(m*n)
-
-
-
                     std::unordered_map<int, std::vector<const ZoneState*>> aByLoc;
                     aByLoc.reserve(aSuccs.size());
                     for(auto as: aSuccs){
@@ -554,6 +1303,20 @@ bool RTWBSChecker::check_rtwbs_equivalence(const TimedAutomaton& refined, const 
                         } else {
                             reverse_deps_[supporting].push_back(pk);
                         }
+
+                        // ── Propagate end-to-end context to successor (forward) ──
+                        // Only track accumulated delay debt; the e2e compensation
+                        // check in timing_ok bounds reception delays without
+                        // requiring a hard alternating-send/receive watchdog.
+                        EndToEndContext succ_ctx(computed_excess, false);
+                        if (local_e2e_updates) {
+                            local_e2e_updates->emplace_back(supporting, succ_ctx);
+                        } else {
+                            auto& existing = e2e_context_[supporting];
+                            existing.accumulated_recv_excess =
+                                std::max(existing.accumulated_recv_excess, succ_ctx.accumulated_recv_excess);
+                        }
+
                         matched=true; break;
                     }
                 }
@@ -566,15 +1329,11 @@ bool RTWBSChecker::check_rtwbs_equivalence(const TimedAutomaton& refined, const 
             auto aOut = abstract.get_outgoing_transitions(abstract.get_zone_state(aZone)->location_id);
             for(auto at: aOut){
                 if(is_tau(at)) continue;
-                std::vector<const ZoneState*> aSuccs;
-                if(local_reverse_deps_updates) {
-                    #pragma omp critical(successor_cache_abstract_backward)
-                    {
-                        aSuccs = weak_observable_successors_cached(abstract, abstract.get_zone_state(aZone), at->action);
-                    }
-                } else {
-                    aSuccs = weak_observable_successors_cached(abstract, abstract.get_zone_state(aZone), at->action);
-                }
+
+                bool this_is_receive = at->has_synchronization() && at->is_receiver;
+
+                // Cache is thread-safe (TBB concurrent_hash_map) — no critical section needed
+                auto aSuccs = weak_observable_successors_cached(abstract, abstract.get_zone_state(aZone), at->action);
                 if(aSuccs.empty()) continue; // not enabled from aZone
                 bool matched=false;
                 for(auto rt: refined.get_outgoing_transitions(refined.get_zone_state(rZone)->location_id)){
@@ -589,20 +1348,19 @@ bool RTWBSChecker::check_rtwbs_equivalence(const TimedAutomaton& refined, const 
                         if(at->is_sender != rt->is_sender) continue;
                         if(at->is_receiver != rt->is_receiver) continue;
                     }
-                    std::vector<const ZoneState*> rSuccs;
-                    if(local_reverse_deps_updates) {
-                        #pragma omp critical(successor_cache_refined_backward)
-                        {
-                            rSuccs = weak_observable_successors_cached(refined, refined.get_zone_state(rZone), rt->action);
-                        }
-                    } else {
-                        rSuccs = weak_observable_successors_cached(refined, refined.get_zone_state(rZone), rt->action);
-                    }
-                    //const auto& rSuccs = weak_observable_successors_cached(refined, refined.get_zone_state(rZone), rt->action);
+                    // Cache is thread-safe (TBB concurrent_hash_map) — no critical section needed
+                    auto rSuccs = weak_observable_successors_cached(refined, refined.get_zone_state(rZone), rt->action);
                     if(rSuccs.empty()){
                         continue;
                     }  // not enabled on refined side
-                    if(!timing_ok(abstract, abstract.get_zone_state(aZone), at, refined, refined.get_zone_state(rZone), rt)) continue; // mirror timing
+
+                    // ── timing_ok with end-to-end context (backward / mirror) ──
+                    int32_t computed_excess = 0;
+                    if(!timing_ok(abstract, abstract.get_zone_state(aZone), at,
+                                  refined, refined.get_zone_state(rZone), rt,
+                                  ctx.accumulated_recv_excess, &computed_excess))
+                        continue; // mirror timing (including e2e)
+
                     // Index refined successors by location
                     std::unordered_map<int, std::vector<const ZoneState*>> rByLoc;
                     rByLoc.reserve(rSuccs.size());
@@ -623,6 +1381,17 @@ bool RTWBSChecker::check_rtwbs_equivalence(const TimedAutomaton& refined, const 
                         } else {
                             reverse_deps_[supporting].push_back(pk);
                         }
+
+                        // ── Propagate end-to-end context to successor (backward) ──
+                        EndToEndContext succ_ctx(computed_excess, false);
+                        if (local_e2e_updates) {
+                            local_e2e_updates->emplace_back(supporting, succ_ctx);
+                        } else {
+                            auto& existing = e2e_context_[supporting];
+                            existing.accumulated_recv_excess =
+                                std::max(existing.accumulated_recv_excess, succ_ctx.accumulated_recv_excess);
+                        }
+
                         matched=true; break;
                     }
                 }
@@ -637,15 +1406,18 @@ bool RTWBSChecker::check_rtwbs_equivalence(const TimedAutomaton& refined, const 
     if(!use_omp){
         while(!worklist_.empty()){
             if (is_cancelled()) { relation_.clear(); break; }
+            last_stats_.fixpoint_iterations++;
             PairKey current = worklist_.front(); worklist_.pop();
             // It might have been removed already
             if(!relation_.count(current)) continue;
+            last_stats_.relation_pairs_validated++;
             bool valid = validate_pair(current, relation_);
             
             
             if(!valid){
-                // remove and enqueue dependents
+                // remove and enqueue dependents; also clear e2e context
                 relation_.erase(current);
+                e2e_context_.erase(current);
                 auto it = reverse_deps_.find(current);
                 if(it!=reverse_deps_.end()){
                     for(auto &parent: it->second){
@@ -658,37 +1430,38 @@ bool RTWBSChecker::check_rtwbs_equivalence(const TimedAutomaton& refined, const 
         }
         
     }else{
-        // transform it in a lambda
-        auto get_batch = [](std::queue<PairKey>& worklist, size_t batch_size) {
-            std::vector<PairKey> batch;
-            batch.reserve(batch_size);
-            for (size_t i = 0; i < batch_size && !worklist.empty(); ++i) {
-                batch.push_back(worklist.front());
-                worklist.pop();
-            }
-            return batch;
-        };
-        
         while (!worklist_.empty()) {
+            last_stats_.fixpoint_iterations++;
             // 1. Extract a batch of pairs from worklist_
-            size_t batch_size = std::max(static_cast<size_t>(1), worklist_.size() / (2 * std::thread::hardware_concurrency()));
-            std::vector<PairKey> batch = get_batch(worklist_, batch_size);
+            // Use larger batches to amortize synchronisation — process ALL available work
+            std::vector<PairKey> batch;
+            batch.reserve(worklist_.size());
+            while (!worklist_.empty()) {
+                batch.push_back(worklist_.front());
+                worklist_.pop();
+            }
 
-
-            // 2. Parallel for each pair in batch (only read shared containers)
+            // 2. Parallel validation — threads are created once, reused across iterations
             std::vector<PairKey> to_remove;
             std::vector<std::pair<PairKey, PairKey>> all_reverse_deps_updates;
+            std::vector<std::pair<PairKey, EndToEndContext>> all_e2e_updates;
             const auto& relation_snapshot = relation_; // snapshot for thread safety
+
             #pragma omp parallel
             {
                 std::vector<PairKey> local_remove;
                 std::vector<std::pair<PairKey, PairKey>> local_reverse_deps_updates;
+                std::vector<std::pair<PairKey, EndToEndContext>> local_e2e_updates;
+                size_t local_validated = 0;
 
-                #pragma omp for nowait
+                #pragma omp for schedule(dynamic, 64) nowait
                 for (size_t i = 0; i < batch.size(); ++i) {
                     PairKey current = batch[i];
                     if (!relation_snapshot.count(current)) continue;
-                    if (!validate_pair(current, relation_, &local_reverse_deps_updates)) {
+                    local_validated++;
+                    if (!validate_pair(current, relation_,
+                                       &local_reverse_deps_updates,
+                                       &local_e2e_updates)) {
                         local_remove.push_back(current);
                     }
                 }
@@ -703,16 +1476,30 @@ bool RTWBSChecker::check_rtwbs_equivalence(const TimedAutomaton& refined, const 
                     all_reverse_deps_updates.insert(all_reverse_deps_updates.end(),
                                     local_reverse_deps_updates.begin(),
                                     local_reverse_deps_updates.end());
+
+                    all_e2e_updates.insert(all_e2e_updates.end(),
+                                    local_e2e_updates.begin(),
+                                    local_e2e_updates.end());
+
+                    last_stats_.relation_pairs_validated += local_validated;
                 }
             }
             
-            // 3. Synchronize: merge reverse_deps_ updates (main thread only)
+            // 3. Synchronize: merge reverse_deps_ and e2e context updates (main thread only)
             for (const auto& update : all_reverse_deps_updates) {
                 reverse_deps_[update.first].push_back(update.second);
             }
-            // For each pair to remove, enqueue its dependents and erase from reverse_deps_
+            // Merge e2e context updates with conservative (worst-case) semantics
+            for (const auto& e2e_update : all_e2e_updates) {
+                auto& existing = e2e_context_[e2e_update.first];
+                existing.accumulated_recv_excess =
+                    std::max(existing.accumulated_recv_excess,
+                             e2e_update.second.accumulated_recv_excess);
+            }
+            // For each pair to remove, enqueue its dependents and erase from reverse_deps_ / e2e
             for (auto& pk : to_remove) {
                 relation_.erase(pk);
+                e2e_context_.erase(pk);
                 auto it = reverse_deps_.find(pk);
                 if (it != reverse_deps_.end()) {
                     for (auto& parent : it->second) {
@@ -728,7 +1515,7 @@ bool RTWBSChecker::check_rtwbs_equivalence(const TimedAutomaton& refined, const 
         last_stats_.refined_states += RZ.size();
         last_stats_.abstract_states += AZ.size();
         last_stats_.simulation_pairs += relation_.size();
-        last_stats_.check_time_ms += std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count();
+        last_stats_.check_time_ms += std::chrono::duration<double, std::milli>(end-start).count();
         last_stats_.memory_usage_bytes += relation_.size()*sizeof(PairKey);
         DEV_PRINT( "Thread " << std::this_thread::get_id() << " finished equivalence check\n for "<< refined.get_name() << " and " << abstract.get_name() << std::endl);        
         for (const auto& p : relation_)
@@ -742,7 +1529,8 @@ bool RTWBSChecker::check_rtwbs_equivalence(const TimedAutomaton& refined, const 
 }
 
 
-bool RTWBSChecker::check_rtwbs_equivalence__(const System& system_refined, const System& system_abstract, bool use_openmp)
+bool RTWBSChecker::check_rtwbs_equivalence__(const System& system_refined, const System& system_abstract, bool use_openmp,
+                                              AlgorithmMode algo)
 {
        bool all = true; 
     size_t total = system_refined.size();
@@ -751,8 +1539,8 @@ bool RTWBSChecker::check_rtwbs_equivalence__(const System& system_refined, const
     for(size_t i = 0; i < total; ++i) {
         if (is_cancelled()) { all = false; break; }
                 // Run equivalence check
-                if(!check_rtwbs_equivalence(system_refined.get_automaton(i), system_abstract.get_automaton(i), use_openmp))
-                    all = false; 
+                if(!check_rtwbs_equivalence(system_refined.get_automaton(i), system_abstract.get_automaton(i), use_openmp, algo))
+                    all = false;
 
                 // Report result of current automaton
                 
@@ -788,7 +1576,7 @@ bool RTWBSChecker::check_rtwbs_equivalence__(const System& system_refined, const
  * @brief Pairwise system-level refinement: all corresponding automata must refine.
  * @return true iff every automaton pair satisfies RTWBS refinement.
  */
-bool RTWBSChecker::check_rtwbs_equivalence(const System& system_refined, const System& system_abstract, RunningMode parallel_mode, size_t num_workers, long timeout_ms) {
+bool RTWBSChecker::check_rtwbs_equivalence(const System& system_refined, const System& system_abstract, RunningMode parallel_mode, size_t num_workers, long timeout_ms, AlgorithmMode algo) {
     if(system_refined.size() != system_abstract.size()) 
         return false; 
 
@@ -834,12 +1622,12 @@ bool RTWBSChecker::check_rtwbs_equivalence(const System& system_refined, const S
 
     auto run_work = [&]() -> bool {
         if (parallel_mode == RunningMode::SERIAL) {
-            return check_rtwbs_equivalence__(system_refined, system_abstract, false);
+            return check_rtwbs_equivalence__(system_refined, system_abstract, false, algo);
         }
 
         if (parallel_mode == RunningMode::OPENMP) {
             std::cout << "Running it in openmp mode" << std::endl;
-            return check_rtwbs_equivalence__(system_refined, system_abstract, true);
+            return check_rtwbs_equivalence__(system_refined, system_abstract, true, algo);
         }
 
         // Pre-construct all zone graphs sequentially (avoid concurrent mutations)
@@ -855,11 +1643,12 @@ bool RTWBSChecker::check_rtwbs_equivalence(const System& system_refined, const S
         ThreadPool pool(num_workers);
         futures.reserve(system_refined.size());
         for (size_t i = 0; i < system_refined.size(); ++i) {
-            futures.push_back(pool.enqueue([&system_refined, &system_abstract, i]() {
+            futures.push_back(pool.enqueue([&system_refined, &system_abstract, i, algo]() {
                 RTWBSChecker local;
                 bool correct = local.check_rtwbs_equivalence(
                     system_refined.get_automaton(i),
-                    system_abstract.get_automaton(i)
+                    system_abstract.get_automaton(i),
+                    false, algo
                 );
                 return std::make_pair(correct, local.get_last_check_statistics());
             }));

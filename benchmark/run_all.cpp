@@ -7,14 +7,15 @@ int main(int argc, char* argv[]) {
         std::string results_folder = rtwbs::RESULTS_FOLDER;
         int n_workers = 0;
         rtwbs::RunningMode parallel_mode = rtwbs::RunningMode::SERIAL;
+        rtwbs::AlgorithmMode algo = rtwbs::AlgorithmMode::GFP;
 
-        rtwbs::parse_arguments(argc, argv, results_folder, n_workers, parallel_mode);
+        rtwbs::parse_arguments(argc, argv, &results_folder, &n_workers, &parallel_mode, nullptr, true, &algo);
 
         std::vector<std::string> FMICS_filenames = {
             "FMICS2021/modelMitigation.xml", 
             "FMICS2021/modelLowerMaxLostMsgFastVerification.xml",
              "FMICS2021/modelLowerMaxLostMsg.xml", 
-             "FMICS2021/modelConfStandard.xml",
+             "FMICS2021/modelConfStandard.xml", 
               "FMICS2021/modelNoTransmissionDelayThreat.xml",
                "FMICS2021/modelFastVerification.xml", 
         };
@@ -32,10 +33,10 @@ int main(int argc, char* argv[]) {
             "ASTRail/STTT2021/model - scenario slower leading train.xml",
             "ASTRail/STTT2021/model.xml"
         };
-        rtwbs::self_equivalence_checks(FMICS_filenames,"assets/", results_folder.c_str(),"FMICS_benchmark_results_", parallel_mode, n_workers);
-        rtwbs::comparison_checks(FMICS_filenames,"assets/",results_folder.c_str(),"FMICS_comparison_results_", parallel_mode, n_workers);
-        rtwbs::self_equivalence_checks(ASTRail_filenames,"assets/", results_folder.c_str(),"ASTRail_benchmark_results_", parallel_mode, n_workers);
-        rtwbs::comparison_checks(ASTRail_filenames,"assets/",results_folder.c_str(),"ASTRail_comparison_results_", parallel_mode, n_workers);
+        rtwbs::self_equivalence_checks(FMICS_filenames,"assets/", results_folder.c_str(),"FMICS_benchmark_results_", parallel_mode, n_workers, -1, algo);
+        rtwbs::comparison_checks(FMICS_filenames,"assets/",results_folder.c_str(),"FMICS_comparison_results_", parallel_mode, n_workers, algo);
+        rtwbs::self_equivalence_checks(ASTRail_filenames,"assets/", results_folder.c_str(),"ASTRail_benchmark_results_", parallel_mode, n_workers, -1, algo);
+        rtwbs::comparison_checks(ASTRail_filenames,"assets/",results_folder.c_str(),"ASTRail_comparison_results_", parallel_mode, n_workers, algo);
 
          std::cout << "Results folder: " << results_folder << std::endl;
         std::cout << "Number of workers: " << n_workers << std::endl;

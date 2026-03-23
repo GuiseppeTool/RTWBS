@@ -28,9 +28,17 @@ RTWBS/**
 run_all
 run_synthetic
 
+results_old/**
 
 
+assets/eval_1/
+assets/eval_2/
+assets/eval_old/
+assets/eval_old_2/
+assets/system_size_ol.csv
+assets/zone_stats_eval_1.csv
 
+assets/zone_stats_old.csv
 assets/SugarBeetField/** 
 
 

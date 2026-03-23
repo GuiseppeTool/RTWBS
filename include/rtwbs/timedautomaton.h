@@ -9,6 +9,7 @@
 #include <memory>
 #include <functional>
 #include <string>
+#include <shared_mutex>
 
 #include "macros.h"
 #include "context.h"
@@ -173,6 +174,10 @@ private:
     std::vector<std::vector<int>> zone_transitions_;  // adjacency list: state_id -> list of successor state_ids
     std::queue<int> waiting_list_;
     bool constructed_;
+
+    /// Read-write lock protecting states_, state_map_, zone_transitions_
+    /// for concurrent on-the-fly zone-state registration.
+    mutable std::shared_mutex state_mutex_;
     
     // Timing constraint constants for candidate-delay method
     std::set<int> timing_constants_;                              // All timing constants from guards and invariants
@@ -409,7 +414,30 @@ public:
      * Returns the zone state pointer if found, nullptr if not found
      */
     const ZoneState* find_zone_state(int location_id, const std::vector<raw_t>& zone) const;
-    
+
+    /**
+     * Thread-safe lazy state registration for on-the-fly exploration.
+     *
+     * Looks up the canonicalised zone state (location_id, zone).  If it
+     * already exists, returns the existing pointer.  If it does not exist,
+     * dynamically allocates and registers a new ZoneState in states_ /
+     * state_map_ and returns the new pointer.
+     *
+     * Thread safety: uses a std::shared_mutex (reader-writer lock) so that
+     * concurrent reads (lookups) proceed in parallel while writes (new
+     * state insertions) are serialised.  Safe for OpenMP task parallelism.
+     */
+    const ZoneState* get_or_add_zone_state(int location_id, const std::vector<raw_t>& zone);
+
+    /**
+     * Obtain the initial zone state, creating it lazily if needed.
+     *
+     * Returns the zone state at (default_initial_location, zero-DBM).
+     * If no zone graph has been built yet, this method creates ONLY the
+     * initial state (no full exploration).  Thread-safe.
+     */
+    const ZoneState* get_or_create_initial_state();
+
     const std::vector<std::unique_ptr<ZoneState>>& get_all_zone_states() const { return states_; }
 
 

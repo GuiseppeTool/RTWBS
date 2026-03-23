@@ -5,8 +5,8 @@ import datetime
 import psutil
 
 
-eval_path = "assets/eval"
-results_path = "results/uppaal"
+eval_path = "assets/syn_eval"
+results_path = "results/uppaal_test"
 timeout_h = 10  # hours
 
 def sort_key(x):
@@ -67,7 +67,8 @@ def syn_bench_uppaal(benchmarks, timeout_h, csv_file):
                     timed_out = True
                     break
 
-                interval = int((end_time - start_time) // 1)  # 5-second buckets
+                #interval = int((end_time - start_time) // 1)  # 5-second buckets
+                interval = int((end_time - start_time) // 5)  # 600 buckets
                 if interval > last_triggered:
                     last_triggered = interval
                     print(f"[verifyta] still running... elapsed time: {int(end_time - start_time)} seconds")

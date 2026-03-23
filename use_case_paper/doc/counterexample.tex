@@ -1,0 +1,60 @@
+% counterexample.tex — Classical weak timed bisimulation rejection witness
+% To be included in the EMSOFT case study section.
+
+\paragraph{Classical Bisimulation Counterexample.}
+We exhibit a concrete execution trace showing that classical weak
+timed bisimulation~\cite{} rejects~$\mathit{DA}_{\mathrm{ref}}$ as a
+refinement of~$\mathit{DA}_{\mathrm{abs}}$.  The Fleet Coordinator
+detects an anomaly at $t=0$\,ms and sends a waypoint update at
+$t=10$\,ms.  Table~\ref{tab:counterexample} records the observable
+actions in both systems.
+
+\begin{table}[t]
+\centering
+\caption{Witness trace for classical bisimulation rejection.  The
+  input action \texttt{rcv\_waypoint?}\ is observable at different
+  timestamps, violating the symmetric timing condition of classical
+  weak timed bisimulation.}
+\label{tab:counterexample}
+\small
+\begin{tabular}{r l l l}
+\toprule
+\textbf{Time (ms)} & \textbf{Action} & \textbf{System} & \textbf{Verdict} \\
+\midrule
+ 0   & anomaly detected         & both                     & --- \\
+10   & \texttt{rcv\_waypoint?}  & $\mathit{DA}_{\mathrm{abs}}$ (processed) & --- \\
+10   & \texttt{rcv\_waypoint?}  & $\mathit{DA}_{\mathrm{ref}}$ (buffered)  & --- \\
+10   & $\tau$ (immediate proc.) & $\mathit{DA}_{\mathrm{abs}}$             & --- \\
+50   & $\tau$ (duty-cycle wake) & $\mathit{DA}_{\mathrm{ref}}$             & --- \\
+15   & processing begins        & $\mathit{DA}_{\mathrm{abs}}$             & --- \\
+55   & processing begins        & $\mathit{DA}_{\mathrm{ref}}$             & --- \\
+20   & \texttt{snd\_report!}    & $\mathit{DA}_{\mathrm{abs}}$             & $\checkmark$ \\
+60   & \texttt{snd\_report!}    & $\mathit{DA}_{\mathrm{ref}}$             & $\checkmark$ \\
+\midrule
+\multicolumn{4}{l}{\textbf{Classical bisimulation check:}} \\
+\midrule
+10--50 & \texttt{rcv\_waypoint?}\ observable & timing mismatch & \textbf{$\times$ fails} \\
+\bottomrule
+\end{tabular}
+
+\medskip\noindent
+\textbf{Violated condition.}\quad
+Classical weak timed bisimulation requires that for every observable
+action~$a$ performed by the refined system at time~$t'$, the abstract
+system must be able to match~$a$ at the \emph{same} time~$t'$ (up to
+silent transitions).  Here, \texttt{rcv\_waypoint?}\ is
+\emph{consumed} (i.e., its processing begins) at $t=10$\,ms in
+$\mathit{DA}_{\mathrm{abs}}$ but only at $t=50$\,ms in
+$\mathit{DA}_{\mathrm{ref}}$, producing a 40\,ms timing discrepancy
+on this observable input action.  This violates the symmetric timing
+condition on observable transitions.
+
+\medskip\noindent
+\textbf{Why RTWBS accepts.}\quad
+RTWBS Condition~4 permits the refined system to \emph{consume} input
+events later than the abstract system, provided that the subsequent
+output deadline (Condition~3) is still met.  Since
+\texttt{snd\_report!}\ occurs at $t=60$\,ms $\ll 300$\,ms in both
+cases, and the treatment command remains within the 500\,ms guarantee,
+the relaxed refinement holds.
+\end{table}

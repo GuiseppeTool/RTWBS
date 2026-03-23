@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.6//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_6.dtd'>
+<nta>
+	<declaration>// Smart Farming Drone Monitoring System - V2 (Buffered/Delayed Communication)
+// Two drones coordinate to scan farm sectors without overlap
+// Communication uses bounded-delay buffers (introduces internal/tau transitions)
+
+const int N = 2;
+const int NUM_SECTORS = 3;  // Farm divided into 3 sectors
+const int Tscan_min = 3;    // Minimum scanning time
+const int Tscan_max = 5;    // Maximum scanning time
+const int Tidle_max = 8;    // Maximum idle time before next cycle
+const int Delta = 2;        // Maximum communication delay
+
+typedef int[0,N-1] id_t;
+
+// Buffered channels: drones send to buffers, buffers deliver after delay
+chan pos01_in, pos01_out;  // Drone 0 -&gt; Buffer -&gt; Drone 1
+chan pos10_in, pos10_out;  // Drone 1 -&gt; Buffer -&gt; Drone 0
+
+// Sector assignments
+int sector[N] = {0, 1};      // Current sector being scanned
+int next_sector[N] = {1, 2}; // Next sector to scan
+
+// Safety helper: check if both drones in same sector
+bool sameSector() {
+    return sector[0] == sector[1];
+}</declaration>
+	<template>
+		<name>Drone</name>
+		<parameter>id_t id,id_t peer</parameter>
+		<declaration>clock x;
+</declaration>
+		<location id="id0" x="-159" y="-1">
+			<name x="-249" y="-41">Idle</name>
+			<label kind="invariant" x="-249" y="24">x &lt;= Tidle_max</label>
+		</location>
+		<location id="id1" x="200" y="0">
+			<name x="190" y="-34">Scan</name>
+			<label kind="invariant" x="230" y="-12">x &lt;= Tscan_max</label>
+		</location>
+		<location id="id2" x="526" y="-231">
+			<name x="516" y="-265">SendPos</name>
+			<committed/>
+		</location>
+		<location id="id3" x="400" y="100">
+			<name x="390" y="117">WaitPeer</name>
+		</location>
+		<init ref="id0"/>
+		<transition id="id4">
+			<source ref="id0"/>
+			<target ref="id1"/>
+			<label kind="guard" x="-73" y="-61">x &gt;= 1 &amp;&amp; 
+next_sector[id] != sector[peer]</label>
+			<label kind="assignment" x="-72" y="10">sector[id] = next_sector[id], 
+x := 0</label>
+		</transition>
+		<transition id="id5">
+			<source ref="id1"/>
+			<target ref="id2"/>
+			<label kind="guard" x="141" y="-166">x &gt;= Tscan_min &amp;&amp; id == 0</label>
+		</transition>
+		<transition id="id6">
+			<source ref="id1"/>
+			<target ref="id3"/>
+			<label kind="guard" x="64" y="48">x &gt;= Tscan_min &amp;&amp; id == 1</label>
+		</transition>
+		<transition id="id7">
+			<source ref="id2"/>
+			<target ref="id3"/>
+			<label kind="guard" x="401" y="-95">id == 0</label>
+			<label kind="synchronisation" x="374" y="-73">pos01_in!</label>
+		</transition>
+		<transition id="id8">
+			<source ref="id2"/>
+			<target ref="id0"/>
+			<label kind="guard" x="130" y="-297">id == 1</label>
+			<label kind="synchronisation" x="124" y="-270">pos10_in!</label>
+			<label kind="assignment" x="223" y="-296">next_sector[id] = 
+(next_sector[id] + 1) % NUM_SECTORS, 
+x := 0</label>
+			<nail x="96" y="-217"/>
+		</transition>
+		<transition id="id9">
+			<source ref="id3"/>
+			<target ref="id2"/>
+			<label kind="guard" x="594" y="-75">id == 1</label>
+			<label kind="synchronisation" x="590" y="-41">pos01_out?</label>
+			<nail x="611" y="89"/>
+		</transition>
+		<transition id="id10">
+			<source ref="id3"/>
+			<target ref="id0"/>
+			<label kind="guard" x="150" y="117">id == 0</label>
+			<label kind="synchronisation" x="150" y="134">pos10_out?</label>
+			<label kind="assignment" x="-45" y="142">next_sector[id] = 
+(next_sector[id] + 1) % NUM_SECTORS, 
+x := 0</label>
+			<nail x="-41" y="139"/>
+		</transition>
+	</template>
+	<template>
+		<name>Buffer</name>
+		<parameter>chan&amp; in, chan&amp; out</parameter>
+		<declaration>clock d; // Delay clock for bounded communication latency</declaration>
+		<location id="id11" x="0" y="0">
+			<name x="-10" y="-34">Empty</name>
+		</location>
+		<location id="id12" x="184" y="-86">
+			<name x="174" y="-120">Buffering</name>
+			<label kind="invariant" x="174" y="-69">d &lt;= Delta</label>
+		</location>
+		<init ref="id11"/>
+		<transition id="id13">
+			<source ref="id11"/>
+			<target ref="id12"/>
+			<label kind="synchronisation" x="75" y="-17">in?</label>
+			<label kind="assignment" x="75" y="0">d := 0</label>
+		</transition>
+		<transition id="id14">
+			<source ref="id12"/>
+			<target ref="id11"/>
+			<label kind="guard" x="75" y="34">d &gt;= 0</label>
+			<label kind="synchronisation" x="75" y="51">out!</label>
+		</transition>
+	</template>
+	<system>// Instantiate two drones
+Drone0 = Drone(0,1);
+Drone1 = Drone(1,0);
+
+// Instantiate communication buffers (one per direction)
+Buffer01 = Buffer(pos01_in, pos01_out);
+Buffer10 = Buffer(pos10_in, pos10_out);
+
+system Drone0, Drone1, Buffer01, Buffer10;</system>
+	<queries>
+		<query>
+			<formula>A[] not (Drone0.Scan &amp;&amp; Drone1.Scan &amp;&amp; sameSector())</formula>
+			<comment>Safety: Drones must not scan the same sector simultaneously</comment>
+			<result outcome="success" type="quality" timestamp="2026-02-16 16:54:24 +0100">
+			</result>
+		</query>
+		<query>
+			<formula>Drone0.Idle --&gt; Drone0.Scan</formula>
+			<comment>Liveness: Drone0 eventually scans after being idle</comment>
+			<result outcome="success" type="quality" timestamp="2026-02-16 16:54:24 +0100">
+			</result>
+		</query>
+		<query>
+			<formula>Drone1.Idle --&gt; Drone1.Scan</formula>
+			<comment>Liveness: Drone1 eventually scans after being idle</comment>
+			<result outcome="success" type="quality" timestamp="2026-02-16 16:54:24 +0100">
+			</result>
+		</query>
+		<query>
+			<formula>A[] not deadlock</formula>
+			<comment>Deadlock freedom</comment>
+			<result outcome="success" type="quality" timestamp="2026-02-16 16:54:24 +0100">
+			</result>
+		</query>
+	</queries>
+</nta>

@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.6//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_6.dtd'>
+<nta>
+	<declaration>// Sugar Beet Monitoring - Drone Agent (Updated / Refined)
+// The drone uses duty-cycled processing: the CPU sleeps between
+// fixed processing windows and only consumes incoming messages at
+// the next wake cycle.  This introduces up to 40ms additional
+// input-processing latency but does not affect output timing.
+
+const int T_DETECT   = 100;  // Max time in monitoring before anomaly detection
+const int T_PROC     = 50;   // Max processing time after waypoint reception
+const int T_REPORT   = 300;  // Deadline: report within 300ms of anomaly detection
+const int T_IDLE_MAX = 200;  // Max idle time before next monitoring cycle
+const int T_DUTY     = 40;   // Duty cycle period (wake every 40ms)
+
+// Channels
+chan rcv_waypoint;   // Input:  receive waypoint from FC
+chan snd_report;     // Output: send anomaly report to FC</declaration>
+	<template>
+		<name>DroneAgent</name>
+		<declaration>clock x;   // General-purpose clock (reset on transitions)
+clock y;   // Anomaly-to-report deadline clock
+clock d;   // Duty cycle clock</declaration>
+		<location id="id0" x="0" y="0">
+			<name x="-10" y="-34">Idle</name>
+			<label kind="invariant" x="-10" y="17">x &lt;= T_IDLE_MAX</label>
+		</location>
+		<location id="id1" x="200" y="0">
+			<name x="190" y="-34">Monitoring</name>
+			<label kind="invariant" x="190" y="17">x &lt;= T_DETECT</label>
+		</location>
+		<location id="id2" x="400" y="0">
+			<name x="390" y="-34">RcvWaypoint</name>
+			<label kind="invariant" x="390" y="17">d &lt;= T_DUTY</label>
+		</location>
+		<location id="id3" x="400" y="80">
+			<name x="410" y="70">WakeProcess</name>
+			<committed/>
+		</location>
+		<location id="id4" x="400" y="180">
+			<name x="410" y="170">Processing</name>
+			<label kind="invariant" x="410" y="187">x &lt;= T_PROC</label>
+		</location>
+		<location id="id5" x="200" y="180">
+			<name x="140" y="170">SendReport</name>
+			<label kind="invariant" x="130" y="187">y &lt;= T_REPORT</label>
+		</location>
+		<init ref="id0"/>
+		<!-- Idle -> Monitoring: start monitoring cycle -->
+		<transition id="id6">
+			<source ref="id0"/>
+			<target ref="id1"/>
+			<label kind="guard" x="50" y="-50">x &gt;= 10</label>
+			<label kind="assignment" x="50" y="-17">x := 0, y := 0</label>
+		</transition>
+		<!-- Monitoring -> RcvWaypoint: anomaly detected, waypoint arrives, start duty wait -->
+		<transition id="id7">
+			<source ref="id1"/>
+			<target ref="id2"/>
+			<label kind="guard" x="250" y="-50">x &gt;= 10</label>
+			<label kind="synchronisation" x="250" y="-34">rcv_waypoint?</label>
+			<label kind="assignment" x="250" y="-17">d := 0</label>
+		</transition>
+		<!-- RcvWaypoint -> WakeProcess: duty cycle fires (tau / internal transition) -->
+		<transition id="id8">
+			<source ref="id2"/>
+			<target ref="id3"/>
+			<label kind="guard" x="410" y="25">d &gt;= 1</label>
+		</transition>
+		<!-- WakeProcess -> Processing: committed, immediate start of processing -->
+		<transition id="id9">
+			<source ref="id3"/>
+			<target ref="id4"/>
+			<label kind="assignment" x="410" y="115">x := 0</label>
+		</transition>
+		<!-- Processing -> SendReport: processing complete, ready to send -->
+		<transition id="id10">
+			<source ref="id4"/>
+			<target ref="id5"/>
+			<label kind="guard" x="300" y="230">x &gt;= 5</label>
+		</transition>
+		<!-- SendReport -> Idle: send the anomaly report -->
+		<transition id="id11">
+			<source ref="id5"/>
+			<target ref="id0"/>
+			<label kind="synchronisation" x="50" y="130">snd_report!</label>
+			<label kind="assignment" x="50" y="147">x := 0</label>
+		</transition>
+	</template>
+	<system>DA = DroneAgent();
+system DA;</system>
+	<queries>
+		<query>
+			<formula>A[] not deadlock</formula>
+			<comment>Deadlock freedom</comment>
+		</query>
+		<query>
+			<formula>DA.SendReport --&gt; DA.Idle</formula>
+			<comment>Liveness: report is eventually sent</comment>
+		</query>
+	</queries>
+</nta>

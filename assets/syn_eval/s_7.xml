@@ -1,0 +1,1684 @@
+<?xml version='1.0' encoding='utf-8'?>
+<nta>
+  <declaration>urgent chan tau_backbone;
+chan ce0, ce1, ce2, ce3, ce4, ce5, ce6, ce7, ce8, ce9, ce10, ce11, ce12, ce13;
+</declaration>
+  <template>
+    <name>EvalS_0</name>
+    <declaration>clock x0, x1;
+int v0 = 0;</declaration>
+    <location id="EvalS_0_L0" x="100" y="100">
+      <name>L0</name>
+      </location>
+    <location id="EvalS_0_L1" x="260" y="100">
+      <name>L1</name>
+      <label kind="invariant">x0 &lt;= 18</label>
+      </location>
+    <location id="EvalS_0_L2" x="420" y="100">
+      <name>L2</name>
+      <label kind="invariant">x0 &lt;= 14</label>
+      </location>
+    <location id="EvalS_0_L3" x="580" y="100">
+      <name>L3</name>
+      </location>
+    <location id="EvalS_0_L4" x="740" y="100">
+      <name>L4</name>
+      </location>
+    <location id="EvalS_0_L5" x="900" y="100">
+      <name>L5</name>
+      </location>
+    <location id="EvalS_0_L6" x="100" y="220">
+      <name>L6</name>
+      <label kind="invariant">x0 &lt;= 23</label>
+      </location>
+    <location id="EvalS_0_L7" x="260" y="220">
+      <name>L7</name>
+      <label kind="invariant">x0 &lt;= 12</label>
+      </location>
+    <location id="EvalS_0_L8" x="420" y="220">
+      <name>L8</name>
+      <label kind="invariant">x0 &lt;= 26</label>
+      </location>
+    <location id="EvalS_0_L9" x="580" y="220">
+      <name>L9</name>
+      </location>
+    <init ref="EvalS_0_L0" />
+    <transition>
+      <source ref="EvalS_0_L0" />
+      <target ref="EvalS_0_L1" />
+      <label kind="synchronisation">tau_backbone!</label>
+      <label kind="assignment">x0 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_0_L1" />
+      <target ref="EvalS_0_L2" />
+      <label kind="synchronisation">tau_backbone!</label>
+      <label kind="assignment">x0 := 0, x1 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_0_L2" />
+      <target ref="EvalS_0_L3" />
+      <label kind="synchronisation">tau_backbone!</label>
+      <label kind="assignment">v0 := 5</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_0_L3" />
+      <target ref="EvalS_0_L4" />
+      <label kind="synchronisation">tau_backbone!</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_0_L4" />
+      <target ref="EvalS_0_L5" />
+      <label kind="synchronisation">tau_backbone!</label>
+      <label kind="assignment">v0 := 3</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_0_L5" />
+      <target ref="EvalS_0_L6" />
+      <label kind="synchronisation">tau_backbone!</label>
+      <label kind="assignment">x0 := 0, x1 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_0_L6" />
+      <target ref="EvalS_0_L7" />
+      <label kind="synchronisation">tau_backbone!</label>
+      <label kind="assignment">x0 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_0_L7" />
+      <target ref="EvalS_0_L8" />
+      <label kind="synchronisation">tau_backbone!</label>
+      <label kind="assignment">x0 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_0_L8" />
+      <target ref="EvalS_0_L9" />
+      <label kind="synchronisation">tau_backbone!</label>
+      <label kind="assignment">v0 := 3</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_0_L9" />
+      <target ref="EvalS_0_L0" />
+      <label kind="synchronisation">tau_backbone!</label>
+      <label kind="assignment">x1 := 0, v0 := 1</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_0_L0" />
+      <target ref="EvalS_0_L8" />
+      <label kind="guard">x1 &gt;= 8</label>
+      <label kind="assignment">x0 := 0, v0 := 5</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_0_L0" />
+      <target ref="EvalS_0_L3" />
+      <label kind="assignment">v0 := 4</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_0_L1" />
+      <target ref="EvalS_0_L8" />
+      <label kind="guard">x1 &gt;= 4 &amp;&amp; x1 &lt;= 5</label>
+      <label kind="synchronisation">ce0!</label>
+      <label kind="assignment">x0 := 0, v0 := 4</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_0_L1" />
+      <target ref="EvalS_0_L6" />
+      <label kind="guard">x1 &gt;= 3 &amp;&amp; x1 &lt;= 17</label>
+      <label kind="assignment">x0 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_0_L2" />
+      <target ref="EvalS_0_L3" />
+      <label kind="guard">x1 &gt;= 1 &amp;&amp; x1 &lt;= 11</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_0_L2" />
+      <target ref="EvalS_0_L7" />
+      <label kind="assignment">x0 := 0, v0 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_0_L3" />
+      <target ref="EvalS_0_L9" />
+      <label kind="guard">x1 &gt;= 5</label>
+      <label kind="assignment">x1 := 0, v0 := 1</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_0_L3" />
+      <target ref="EvalS_0_L4" />
+      <label kind="assignment">x1 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_0_L4" />
+      <target ref="EvalS_0_L0" />
+      <label kind="guard">x1 &gt;= 9 &amp;&amp; x1 &lt;= 9</label>
+      <label kind="assignment">x1 := 0, v0 := 1</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_0_L4" />
+      <target ref="EvalS_0_L2" />
+      <label kind="guard">x1 &gt;= 9 &amp;&amp; x1 &lt;= 11</label>
+      <label kind="assignment">x0 := 0, x1 := 0, v0 := 1</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_0_L5" />
+      <target ref="EvalS_0_L6" />
+      <label kind="guard">x1 &gt;= 8 &amp;&amp; x1 &lt;= 25</label>
+      <label kind="synchronisation">ce1?</label>
+      <label kind="assignment">x0 := 0, x1 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_0_L5" />
+      <target ref="EvalS_0_L4" />
+      </transition>
+    <transition>
+      <source ref="EvalS_0_L6" />
+      <target ref="EvalS_0_L2" />
+      <label kind="guard">x1 &gt;= 6 &amp;&amp; x1 &lt;= 12</label>
+      <label kind="assignment">x0 := 0, x1 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_0_L6" />
+      <target ref="EvalS_0_L3" />
+      </transition>
+    <transition>
+      <source ref="EvalS_0_L7" />
+      <target ref="EvalS_0_L5" />
+      <label kind="guard">x1 &gt;= 2 &amp;&amp; x1 &lt;= 5</label>
+      <label kind="assignment">x1 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_0_L7" />
+      <target ref="EvalS_0_L1" />
+      <label kind="assignment">x0 := 0, x1 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_0_L8" />
+      <target ref="EvalS_0_L1" />
+      <label kind="guard">x1 &gt;= 1 &amp;&amp; x1 &lt;= 8</label>
+      <label kind="assignment">x0 := 0, x1 := 0, v0 := 5</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_0_L8" />
+      <target ref="EvalS_0_L6" />
+      <label kind="assignment">x0 := 0, x1 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_0_L9" />
+      <target ref="EvalS_0_L1" />
+      <label kind="guard">x1 &gt;= 10 &amp;&amp; x1 &lt;= 28</label>
+      <label kind="assignment">x0 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_0_L9" />
+      <target ref="EvalS_0_L5" />
+      <label kind="guard">x1 &gt;= 1 &amp;&amp; x1 &lt;= 22</label>
+      <label kind="assignment">x1 := 0</label>
+      </transition>
+    </template>
+  <template>
+    <name>EvalS_1</name>
+    <declaration>clock x0, x1;
+int v0 = 0;</declaration>
+    <location id="EvalS_1_L0" x="100" y="100">
+      <name>L0</name>
+      </location>
+    <location id="EvalS_1_L1" x="260" y="100">
+      <name>L1</name>
+      </location>
+    <location id="EvalS_1_L2" x="420" y="100">
+      <name>L2</name>
+      </location>
+    <location id="EvalS_1_L3" x="580" y="100">
+      <name>L3</name>
+      <label kind="invariant">x0 &lt;= 9</label>
+      </location>
+    <location id="EvalS_1_L4" x="740" y="100">
+      <name>L4</name>
+      </location>
+    <location id="EvalS_1_L5" x="900" y="100">
+      <name>L5</name>
+      </location>
+    <location id="EvalS_1_L6" x="100" y="220">
+      <name>L6</name>
+      <label kind="invariant">x0 &lt;= 6</label>
+      </location>
+    <location id="EvalS_1_L7" x="260" y="220">
+      <name>L7</name>
+      <label kind="invariant">x0 &lt;= 10</label>
+      </location>
+    <location id="EvalS_1_L8" x="420" y="220">
+      <name>L8</name>
+      <label kind="invariant">x0 &lt;= 5</label>
+      </location>
+    <location id="EvalS_1_L9" x="580" y="220">
+      <name>L9</name>
+      <label kind="invariant">x0 &lt;= 6</label>
+      </location>
+    <init ref="EvalS_1_L0" />
+    <transition>
+      <source ref="EvalS_1_L0" />
+      <target ref="EvalS_1_L1" />
+      <label kind="synchronisation">tau_backbone!</label>
+      <label kind="assignment">v0 := 3</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_1_L1" />
+      <target ref="EvalS_1_L2" />
+      <label kind="synchronisation">tau_backbone!</label>
+      <label kind="assignment">x1 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_1_L2" />
+      <target ref="EvalS_1_L3" />
+      <label kind="synchronisation">tau_backbone!</label>
+      <label kind="assignment">x0 := 0, x1 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_1_L3" />
+      <target ref="EvalS_1_L4" />
+      <label kind="synchronisation">tau_backbone!</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_1_L4" />
+      <target ref="EvalS_1_L5" />
+      <label kind="synchronisation">tau_backbone!</label>
+      <label kind="assignment">x1 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_1_L5" />
+      <target ref="EvalS_1_L6" />
+      <label kind="synchronisation">tau_backbone!</label>
+      <label kind="assignment">x0 := 0, v0 := 2</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_1_L6" />
+      <target ref="EvalS_1_L7" />
+      <label kind="synchronisation">tau_backbone!</label>
+      <label kind="assignment">x0 := 0, x1 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_1_L7" />
+      <target ref="EvalS_1_L8" />
+      <label kind="synchronisation">tau_backbone!</label>
+      <label kind="assignment">x0 := 0, x1 := 0, v0 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_1_L8" />
+      <target ref="EvalS_1_L9" />
+      <label kind="synchronisation">tau_backbone!</label>
+      <label kind="assignment">x0 := 0, x1 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_1_L9" />
+      <target ref="EvalS_1_L0" />
+      <label kind="synchronisation">tau_backbone!</label>
+      <label kind="assignment">v0 := 1</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_1_L0" />
+      <target ref="EvalS_1_L1" />
+      <label kind="guard">x1 &gt;= 2</label>
+      <label kind="assignment">x1 := 0, v0 := 4</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_1_L0" />
+      <target ref="EvalS_1_L7" />
+      <label kind="assignment">x0 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_1_L1" />
+      <target ref="EvalS_1_L8" />
+      <label kind="guard">x1 &gt;= 3 &amp;&amp; x1 &lt;= 11</label>
+      <label kind="synchronisation">ce3?</label>
+      <label kind="assignment">x0 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_1_L1" />
+      <target ref="EvalS_1_L0" />
+      <label kind="guard">x1 &gt;= 0</label>
+      <label kind="assignment">x1 := 0, v0 := 1</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_1_L2" />
+      <target ref="EvalS_1_L8" />
+      <label kind="guard">x1 &gt;= 3 &amp;&amp; x1 &lt;= 7</label>
+      <label kind="assignment">x0 := 0, x1 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_1_L2" />
+      <target ref="EvalS_1_L0" />
+      <label kind="guard">x1 &gt;= 3 &amp;&amp; x1 &lt;= 7</label>
+      <label kind="assignment">x1 := 0, v0 := 5</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_1_L3" />
+      <target ref="EvalS_1_L1" />
+      <label kind="guard">x1 &gt;= 2 &amp;&amp; x1 &lt;= 8</label>
+      <label kind="assignment">x1 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_1_L3" />
+      <target ref="EvalS_1_L2" />
+      <label kind="assignment">x1 := 0, v0 := 3</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_1_L4" />
+      <target ref="EvalS_1_L6" />
+      <label kind="guard">x1 &gt;= 1 &amp;&amp; x1 &lt;= 1</label>
+      <label kind="assignment">x0 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_1_L4" />
+      <target ref="EvalS_1_L7" />
+      <label kind="assignment">x0 := 0, v0 := 2</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_1_L5" />
+      <target ref="EvalS_1_L7" />
+      <label kind="guard">x1 &gt;= 3</label>
+      <label kind="synchronisation">ce2!</label>
+      <label kind="assignment">x0 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_1_L5" />
+      <target ref="EvalS_1_L3" />
+      <label kind="assignment">x0 := 0, x1 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_1_L6" />
+      <target ref="EvalS_1_L0" />
+      <label kind="guard">x1 &gt;= 1 &amp;&amp; x1 &lt;= 4</label>
+      <label kind="assignment">v0 := 2</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_1_L6" />
+      <target ref="EvalS_1_L2" />
+      <label kind="guard">x1 &gt;= 2 &amp;&amp; x1 &lt;= 2</label>
+      <label kind="assignment">x1 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_1_L7" />
+      <target ref="EvalS_1_L6" />
+      <label kind="guard">x1 &gt;= 1 &amp;&amp; x1 &lt;= 8</label>
+      <label kind="assignment">x0 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_1_L7" />
+      <target ref="EvalS_1_L0" />
+      <label kind="assignment">v0 := 2</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_1_L8" />
+      <target ref="EvalS_1_L6" />
+      <label kind="guard">x1 &gt;= 1 &amp;&amp; x1 &lt;= 5</label>
+      <label kind="assignment">x0 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_1_L8" />
+      <target ref="EvalS_1_L4" />
+      <label kind="assignment">x1 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_1_L9" />
+      <target ref="EvalS_1_L7" />
+      <label kind="guard">x1 &gt;= 1 &amp;&amp; x1 &lt;= 5</label>
+      <label kind="assignment">x0 := 0, x1 := 0, v0 := 3</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_1_L9" />
+      <target ref="EvalS_1_L4" />
+      <label kind="assignment">x1 := 0, v0 := 0</label>
+      </transition>
+    </template>
+  <template>
+    <name>EvalS_2</name>
+    <declaration>clock x0, x1;
+int v0 = 0;</declaration>
+    <location id="EvalS_2_L0" x="100" y="100">
+      <name>L0</name>
+      </location>
+    <location id="EvalS_2_L1" x="260" y="100">
+      <name>L1</name>
+      <label kind="invariant">x0 &lt;= 13</label>
+      </location>
+    <location id="EvalS_2_L2" x="420" y="100">
+      <name>L2</name>
+      <label kind="invariant">x0 &lt;= 9</label>
+      </location>
+    <location id="EvalS_2_L3" x="580" y="100">
+      <name>L3</name>
+      </location>
+    <location id="EvalS_2_L4" x="740" y="100">
+      <name>L4</name>
+      </location>
+    <location id="EvalS_2_L5" x="900" y="100">
+      <name>L5</name>
+      </location>
+    <location id="EvalS_2_L6" x="100" y="220">
+      <name>L6</name>
+      </location>
+    <location id="EvalS_2_L7" x="260" y="220">
+      <name>L7</name>
+      <label kind="invariant">x0 &lt;= 16</label>
+      </location>
+    <location id="EvalS_2_L8" x="420" y="220">
+      <name>L8</name>
+      </location>
+    <location id="EvalS_2_L9" x="580" y="220">
+      <name>L9</name>
+      </location>
+    <init ref="EvalS_2_L0" />
+    <transition>
+      <source ref="EvalS_2_L0" />
+      <target ref="EvalS_2_L1" />
+      <label kind="synchronisation">tau_backbone!</label>
+      <label kind="assignment">x0 := 0, x1 := 0, v0 := 3</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_2_L1" />
+      <target ref="EvalS_2_L2" />
+      <label kind="synchronisation">tau_backbone!</label>
+      <label kind="assignment">x0 := 0, x1 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_2_L2" />
+      <target ref="EvalS_2_L3" />
+      <label kind="synchronisation">tau_backbone!</label>
+      <label kind="assignment">x1 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_2_L3" />
+      <target ref="EvalS_2_L4" />
+      <label kind="synchronisation">tau_backbone!</label>
+      <label kind="assignment">x1 := 0, v0 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_2_L4" />
+      <target ref="EvalS_2_L5" />
+      <label kind="synchronisation">tau_backbone!</label>
+      <label kind="assignment">v0 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_2_L5" />
+      <target ref="EvalS_2_L6" />
+      <label kind="synchronisation">tau_backbone!</label>
+      <label kind="assignment">x1 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_2_L6" />
+      <target ref="EvalS_2_L7" />
+      <label kind="synchronisation">tau_backbone!</label>
+      <label kind="assignment">x0 := 0, x1 := 0, v0 := 3</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_2_L7" />
+      <target ref="EvalS_2_L8" />
+      <label kind="synchronisation">tau_backbone!</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_2_L8" />
+      <target ref="EvalS_2_L9" />
+      <label kind="synchronisation">tau_backbone!</label>
+      <label kind="assignment">x1 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_2_L9" />
+      <target ref="EvalS_2_L0" />
+      <label kind="synchronisation">tau_backbone!</label>
+      <label kind="assignment">x1 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_2_L0" />
+      <target ref="EvalS_2_L5" />
+      <label kind="guard">x1 &gt;= 6 &amp;&amp; x1 &lt;= 21</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_2_L0" />
+      <target ref="EvalS_2_L6" />
+      </transition>
+    <transition>
+      <source ref="EvalS_2_L1" />
+      <target ref="EvalS_2_L4" />
+      <label kind="guard">x1 &gt;= 2 &amp;&amp; x1 &lt;= 6</label>
+      <label kind="assignment">v0 := 1</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_2_L1" />
+      <target ref="EvalS_2_L8" />
+      <label kind="guard">x1 &gt;= 3 &amp;&amp; x1 &lt;= 5</label>
+      <label kind="synchronisation">ce4!</label>
+      <label kind="assignment">x1 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_2_L2" />
+      <target ref="EvalS_2_L3" />
+      <label kind="guard">x1 &gt;= 3 &amp;&amp; x1 &lt;= 6</label>
+      <label kind="assignment">x1 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_2_L2" />
+      <target ref="EvalS_2_L6" />
+      <label kind="assignment">x1 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_2_L3" />
+      <target ref="EvalS_2_L6" />
+      <label kind="guard">x1 &gt;= 7 &amp;&amp; x1 &lt;= 19</label>
+      <label kind="assignment">v0 := 4</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_2_L3" />
+      <target ref="EvalS_2_L2" />
+      <label kind="assignment">x0 := 0, x1 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_2_L4" />
+      <target ref="EvalS_2_L9" />
+      <label kind="guard">x1 &gt;= 2 &amp;&amp; x1 &lt;= 17</label>
+      <label kind="synchronisation">ce5?</label>
+      <label kind="assignment">x1 := 0, v0 := 5</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_2_L4" />
+      <target ref="EvalS_2_L9" />
+      <label kind="guard">x1 &gt;= 7</label>
+      <label kind="assignment">x1 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_2_L5" />
+      <target ref="EvalS_2_L4" />
+      <label kind="guard">x1 &gt;= 5</label>
+      <label kind="assignment">x1 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_2_L5" />
+      <target ref="EvalS_2_L6" />
+      <label kind="assignment">x1 := 0, v0 := 2</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_2_L6" />
+      <target ref="EvalS_2_L8" />
+      <label kind="guard">x1 &gt;= 3 &amp;&amp; x1 &lt;= 15</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_2_L6" />
+      <target ref="EvalS_2_L0" />
+      <label kind="assignment">x1 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_2_L7" />
+      <target ref="EvalS_2_L4" />
+      <label kind="guard">x1 &gt;= 1 &amp;&amp; x1 &lt;= 12</label>
+      <label kind="assignment">x1 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_2_L7" />
+      <target ref="EvalS_2_L4" />
+      <label kind="guard">x1 &gt;= 0 &amp;&amp; x1 &lt;= 8</label>
+      <label kind="assignment">x1 := 0, v0 := 4</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_2_L8" />
+      <target ref="EvalS_2_L3" />
+      <label kind="guard">x1 &gt;= 2</label>
+      <label kind="assignment">v0 := 1</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_2_L8" />
+      <target ref="EvalS_2_L6" />
+      <label kind="assignment">x1 := 0, v0 := 3</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_2_L9" />
+      <target ref="EvalS_2_L5" />
+      <label kind="guard">x1 &gt;= 6 &amp;&amp; x1 &lt;= 12</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_2_L9" />
+      <target ref="EvalS_2_L7" />
+      <label kind="guard">x1 &gt;= 4</label>
+      <label kind="assignment">x0 := 0</label>
+      </transition>
+    </template>
+  <template>
+    <name>EvalS_3</name>
+    <declaration>clock x0, x1;
+int v0 = 0;</declaration>
+    <location id="EvalS_3_L0" x="100" y="100">
+      <name>L0</name>
+      </location>
+    <location id="EvalS_3_L1" x="260" y="100">
+      <name>L1</name>
+      <label kind="invariant">x0 &lt;= 9</label>
+      </location>
+    <location id="EvalS_3_L2" x="420" y="100">
+      <name>L2</name>
+      </location>
+    <location id="EvalS_3_L3" x="580" y="100">
+      <name>L3</name>
+      <label kind="invariant">x0 &lt;= 8</label>
+      </location>
+    <location id="EvalS_3_L4" x="740" y="100">
+      <name>L4</name>
+      <label kind="invariant">x0 &lt;= 9</label>
+      </location>
+    <location id="EvalS_3_L5" x="900" y="100">
+      <name>L5</name>
+      </location>
+    <location id="EvalS_3_L6" x="100" y="220">
+      <name>L6</name>
+      <label kind="invariant">x0 &lt;= 8</label>
+      </location>
+    <location id="EvalS_3_L7" x="260" y="220">
+      <name>L7</name>
+      </location>
+    <location id="EvalS_3_L8" x="420" y="220">
+      <name>L8</name>
+      </location>
+    <location id="EvalS_3_L9" x="580" y="220">
+      <name>L9</name>
+      </location>
+    <init ref="EvalS_3_L0" />
+    <transition>
+      <source ref="EvalS_3_L0" />
+      <target ref="EvalS_3_L1" />
+      <label kind="synchronisation">tau_backbone!</label>
+      <label kind="assignment">x0 := 0, x1 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_3_L1" />
+      <target ref="EvalS_3_L2" />
+      <label kind="synchronisation">tau_backbone!</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_3_L2" />
+      <target ref="EvalS_3_L3" />
+      <label kind="synchronisation">tau_backbone!</label>
+      <label kind="assignment">x0 := 0, x1 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_3_L3" />
+      <target ref="EvalS_3_L4" />
+      <label kind="synchronisation">tau_backbone!</label>
+      <label kind="assignment">x0 := 0, x1 := 0, v0 := 5</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_3_L4" />
+      <target ref="EvalS_3_L5" />
+      <label kind="synchronisation">tau_backbone!</label>
+      <label kind="assignment">x1 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_3_L5" />
+      <target ref="EvalS_3_L6" />
+      <label kind="synchronisation">tau_backbone!</label>
+      <label kind="assignment">x0 := 0, x1 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_3_L6" />
+      <target ref="EvalS_3_L7" />
+      <label kind="synchronisation">tau_backbone!</label>
+      <label kind="assignment">v0 := 2</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_3_L7" />
+      <target ref="EvalS_3_L8" />
+      <label kind="synchronisation">tau_backbone!</label>
+      <label kind="assignment">x1 := 0, v0 := 5</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_3_L8" />
+      <target ref="EvalS_3_L9" />
+      <label kind="synchronisation">tau_backbone!</label>
+      <label kind="assignment">x1 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_3_L9" />
+      <target ref="EvalS_3_L0" />
+      <label kind="synchronisation">tau_backbone!</label>
+      <label kind="assignment">x1 := 0, v0 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_3_L0" />
+      <target ref="EvalS_3_L6" />
+      <label kind="guard">x1 &gt;= 1 &amp;&amp; x1 &lt;= 5</label>
+      <label kind="assignment">x0 := 0, x1 := 0, v0 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_3_L0" />
+      <target ref="EvalS_3_L2" />
+      <label kind="assignment">x1 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_3_L1" />
+      <target ref="EvalS_3_L8" />
+      <label kind="guard">x1 &gt;= 1 &amp;&amp; x1 &lt;= 8</label>
+      <label kind="assignment">x1 := 0, v0 := 1</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_3_L1" />
+      <target ref="EvalS_3_L4" />
+      <label kind="synchronisation">ce7?</label>
+      <label kind="assignment">x0 := 0, x1 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_3_L2" />
+      <target ref="EvalS_3_L9" />
+      <label kind="guard">x1 &gt;= 1 &amp;&amp; x1 &lt;= 2</label>
+      <label kind="assignment">x1 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_3_L2" />
+      <target ref="EvalS_3_L8" />
+      <label kind="guard">x1 &gt;= 1</label>
+      <label kind="assignment">x1 := 0, v0 := 4</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_3_L3" />
+      <target ref="EvalS_3_L7" />
+      <label kind="guard">x1 &gt;= 1 &amp;&amp; x1 &lt;= 7</label>
+      <label kind="assignment">x1 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_3_L3" />
+      <target ref="EvalS_3_L7" />
+      <label kind="assignment">x1 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_3_L4" />
+      <target ref="EvalS_3_L6" />
+      <label kind="guard">x1 &gt;= 3 &amp;&amp; x1 &lt;= 8</label>
+      <label kind="assignment">x0 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_3_L4" />
+      <target ref="EvalS_3_L9" />
+      <label kind="assignment">x1 := 0, v0 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_3_L5" />
+      <target ref="EvalS_3_L4" />
+      <label kind="guard">x1 &gt;= 2</label>
+      <label kind="assignment">x0 := 0, x1 := 0, v0 := 5</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_3_L5" />
+      <target ref="EvalS_3_L3" />
+      <label kind="assignment">x0 := 0, x1 := 0, v0 := 3</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_3_L6" />
+      <target ref="EvalS_3_L1" />
+      <label kind="guard">x1 &gt;= 1 &amp;&amp; x1 &lt;= 4</label>
+      <label kind="assignment">x0 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_3_L6" />
+      <target ref="EvalS_3_L4" />
+      <label kind="guard">x1 &gt;= 0 &amp;&amp; x1 &lt;= 5</label>
+      <label kind="assignment">x0 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_3_L7" />
+      <target ref="EvalS_3_L3" />
+      <label kind="guard">x1 &gt;= 2 &amp;&amp; x1 &lt;= 3</label>
+      <label kind="assignment">x0 := 0, x1 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_3_L7" />
+      <target ref="EvalS_3_L9" />
+      <label kind="assignment">x1 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_3_L8" />
+      <target ref="EvalS_3_L9" />
+      <label kind="guard">x1 &gt;= 3</label>
+      <label kind="synchronisation">ce6!</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_3_L8" />
+      <target ref="EvalS_3_L6" />
+      <label kind="guard">x1 &gt;= 1</label>
+      <label kind="assignment">x0 := 0, x1 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_3_L9" />
+      <target ref="EvalS_3_L5" />
+      <label kind="guard">x1 &gt;= 3 &amp;&amp; x1 &lt;= 7</label>
+      <label kind="assignment">v0 := 2</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_3_L9" />
+      <target ref="EvalS_3_L0" />
+      <label kind="guard">x1 &gt;= 3</label>
+      <label kind="assignment">x1 := 0</label>
+      </transition>
+    </template>
+  <template>
+    <name>EvalS_4</name>
+    <declaration>clock x0, x1;
+int v0 = 0;</declaration>
+    <location id="EvalS_4_L0" x="100" y="100">
+      <name>L0</name>
+      </location>
+    <location id="EvalS_4_L1" x="260" y="100">
+      <name>L1</name>
+      </location>
+    <location id="EvalS_4_L2" x="420" y="100">
+      <name>L2</name>
+      </location>
+    <location id="EvalS_4_L3" x="580" y="100">
+      <name>L3</name>
+      <label kind="invariant">x0 &lt;= 17</label>
+      </location>
+    <location id="EvalS_4_L4" x="740" y="100">
+      <name>L4</name>
+      </location>
+    <location id="EvalS_4_L5" x="900" y="100">
+      <name>L5</name>
+      </location>
+    <location id="EvalS_4_L6" x="100" y="220">
+      <name>L6</name>
+      </location>
+    <location id="EvalS_4_L7" x="260" y="220">
+      <name>L7</name>
+      </location>
+    <location id="EvalS_4_L8" x="420" y="220">
+      <name>L8</name>
+      <label kind="invariant">x0 &lt;= 7</label>
+      </location>
+    <location id="EvalS_4_L9" x="580" y="220">
+      <name>L9</name>
+      <label kind="invariant">x0 &lt;= 11</label>
+      </location>
+    <init ref="EvalS_4_L0" />
+    <transition>
+      <source ref="EvalS_4_L0" />
+      <target ref="EvalS_4_L1" />
+      <label kind="synchronisation">tau_backbone!</label>
+      <label kind="assignment">x1 := 0, v0 := 1</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_4_L1" />
+      <target ref="EvalS_4_L2" />
+      <label kind="synchronisation">tau_backbone!</label>
+      <label kind="assignment">x1 := 0, v0 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_4_L2" />
+      <target ref="EvalS_4_L3" />
+      <label kind="synchronisation">tau_backbone!</label>
+      <label kind="assignment">x0 := 0, x1 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_4_L3" />
+      <target ref="EvalS_4_L4" />
+      <label kind="synchronisation">tau_backbone!</label>
+      <label kind="assignment">x1 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_4_L4" />
+      <target ref="EvalS_4_L5" />
+      <label kind="synchronisation">tau_backbone!</label>
+      <label kind="assignment">x1 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_4_L5" />
+      <target ref="EvalS_4_L6" />
+      <label kind="synchronisation">tau_backbone!</label>
+      <label kind="assignment">x1 := 0, v0 := 1</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_4_L6" />
+      <target ref="EvalS_4_L7" />
+      <label kind="synchronisation">tau_backbone!</label>
+      <label kind="assignment">x1 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_4_L7" />
+      <target ref="EvalS_4_L8" />
+      <label kind="synchronisation">tau_backbone!</label>
+      <label kind="assignment">x0 := 0, x1 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_4_L8" />
+      <target ref="EvalS_4_L9" />
+      <label kind="synchronisation">tau_backbone!</label>
+      <label kind="assignment">x0 := 0, x1 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_4_L9" />
+      <target ref="EvalS_4_L0" />
+      <label kind="synchronisation">tau_backbone!</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_4_L0" />
+      <target ref="EvalS_4_L1" />
+      <label kind="guard">x1 &gt;= 2 &amp;&amp; x1 &lt;= 20</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_4_L0" />
+      <target ref="EvalS_4_L6" />
+      <label kind="assignment">x1 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_4_L1" />
+      <target ref="EvalS_4_L8" />
+      <label kind="guard">x1 &gt;= 4</label>
+      <label kind="assignment">x0 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_4_L1" />
+      <target ref="EvalS_4_L0" />
+      <label kind="guard">x1 &gt;= 0 &amp;&amp; x1 &lt;= 5</label>
+      <label kind="assignment">x1 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_4_L2" />
+      <target ref="EvalS_4_L8" />
+      <label kind="guard">x1 &gt;= 4 &amp;&amp; x1 &lt;= 7</label>
+      <label kind="synchronisation">ce9?</label>
+      <label kind="assignment">x0 := 0, x1 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_4_L2" />
+      <target ref="EvalS_4_L7" />
+      <label kind="assignment">v0 := 2</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_4_L3" />
+      <target ref="EvalS_4_L6" />
+      <label kind="guard">x1 &gt;= 5 &amp;&amp; x1 &lt;= 16</label>
+      <label kind="assignment">x1 := 0, v0 := 2</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_4_L3" />
+      <target ref="EvalS_4_L0" />
+      </transition>
+    <transition>
+      <source ref="EvalS_4_L4" />
+      <target ref="EvalS_4_L3" />
+      <label kind="guard">x1 &gt;= 5 &amp;&amp; x1 &lt;= 6</label>
+      <label kind="assignment">x0 := 0, x1 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_4_L4" />
+      <target ref="EvalS_4_L8" />
+      <label kind="assignment">x0 := 0, x1 := 0, v0 := 3</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_4_L5" />
+      <target ref="EvalS_4_L9" />
+      <label kind="guard">x1 &gt;= 2</label>
+      <label kind="assignment">x0 := 0, x1 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_4_L5" />
+      <target ref="EvalS_4_L7" />
+      <label kind="synchronisation">ce8!</label>
+      <label kind="assignment">x1 := 0, v0 := 1</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_4_L6" />
+      <target ref="EvalS_4_L7" />
+      <label kind="guard">x1 &gt;= 2 &amp;&amp; x1 &lt;= 4</label>
+      <label kind="assignment">x1 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_4_L6" />
+      <target ref="EvalS_4_L0" />
+      <label kind="assignment">x1 := 0, v0 := 2</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_4_L7" />
+      <target ref="EvalS_4_L3" />
+      <label kind="guard">x1 &gt;= 6</label>
+      <label kind="assignment">x0 := 0, x1 := 0, v0 := 3</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_4_L7" />
+      <target ref="EvalS_4_L4" />
+      <label kind="assignment">v0 := 3</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_4_L8" />
+      <target ref="EvalS_4_L2" />
+      <label kind="guard">x1 &gt;= 2 &amp;&amp; x1 &lt;= 3</label>
+      <label kind="assignment">v0 := 4</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_4_L8" />
+      <target ref="EvalS_4_L4" />
+      <label kind="assignment">v0 := 2</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_4_L9" />
+      <target ref="EvalS_4_L7" />
+      <label kind="guard">x1 &gt;= 1 &amp;&amp; x1 &lt;= 10</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_4_L9" />
+      <target ref="EvalS_4_L7" />
+      </transition>
+    </template>
+  <template>
+    <name>EvalS_5</name>
+    <declaration>clock x0, x1;
+int v0 = 0;</declaration>
+    <location id="EvalS_5_L0" x="100" y="100">
+      <name>L0</name>
+      </location>
+    <location id="EvalS_5_L1" x="260" y="100">
+      <name>L1</name>
+      </location>
+    <location id="EvalS_5_L2" x="420" y="100">
+      <name>L2</name>
+      <label kind="invariant">x0 &lt;= 18</label>
+      </location>
+    <location id="EvalS_5_L3" x="580" y="100">
+      <name>L3</name>
+      <label kind="invariant">x0 &lt;= 16</label>
+      </location>
+    <location id="EvalS_5_L4" x="740" y="100">
+      <name>L4</name>
+      <label kind="invariant">x0 &lt;= 10</label>
+      </location>
+    <location id="EvalS_5_L5" x="900" y="100">
+      <name>L5</name>
+      </location>
+    <location id="EvalS_5_L6" x="100" y="220">
+      <name>L6</name>
+      </location>
+    <location id="EvalS_5_L7" x="260" y="220">
+      <name>L7</name>
+      </location>
+    <location id="EvalS_5_L8" x="420" y="220">
+      <name>L8</name>
+      </location>
+    <location id="EvalS_5_L9" x="580" y="220">
+      <name>L9</name>
+      </location>
+    <init ref="EvalS_5_L0" />
+    <transition>
+      <source ref="EvalS_5_L0" />
+      <target ref="EvalS_5_L1" />
+      <label kind="synchronisation">tau_backbone!</label>
+      <label kind="assignment">x1 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_5_L1" />
+      <target ref="EvalS_5_L2" />
+      <label kind="synchronisation">tau_backbone!</label>
+      <label kind="assignment">x0 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_5_L2" />
+      <target ref="EvalS_5_L3" />
+      <label kind="synchronisation">tau_backbone!</label>
+      <label kind="assignment">x0 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_5_L3" />
+      <target ref="EvalS_5_L4" />
+      <label kind="synchronisation">tau_backbone!</label>
+      <label kind="assignment">x0 := 0, x1 := 0, v0 := 4</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_5_L4" />
+      <target ref="EvalS_5_L5" />
+      <label kind="synchronisation">tau_backbone!</label>
+      <label kind="assignment">x1 := 0, v0 := 5</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_5_L5" />
+      <target ref="EvalS_5_L6" />
+      <label kind="synchronisation">tau_backbone!</label>
+      <label kind="assignment">x1 := 0, v0 := 3</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_5_L6" />
+      <target ref="EvalS_5_L7" />
+      <label kind="synchronisation">tau_backbone!</label>
+      <label kind="assignment">x1 := 0, v0 := 3</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_5_L7" />
+      <target ref="EvalS_5_L8" />
+      <label kind="synchronisation">tau_backbone!</label>
+      <label kind="assignment">x1 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_5_L8" />
+      <target ref="EvalS_5_L9" />
+      <label kind="synchronisation">tau_backbone!</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_5_L9" />
+      <target ref="EvalS_5_L0" />
+      <label kind="synchronisation">tau_backbone!</label>
+      <label kind="assignment">x1 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_5_L0" />
+      <target ref="EvalS_5_L4" />
+      <label kind="guard">x1 &gt;= 4</label>
+      <label kind="assignment">x0 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_5_L0" />
+      <target ref="EvalS_5_L7" />
+      <label kind="synchronisation">ce10!</label>
+      <label kind="assignment">v0 := 2</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_5_L1" />
+      <target ref="EvalS_5_L0" />
+      <label kind="guard">x1 &gt;= 1 &amp;&amp; x1 &lt;= 12</label>
+      <label kind="assignment">v0 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_5_L1" />
+      <target ref="EvalS_5_L9" />
+      <label kind="assignment">v0 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_5_L2" />
+      <target ref="EvalS_5_L5" />
+      <label kind="guard">x1 &gt;= 3 &amp;&amp; x1 &lt;= 10</label>
+      <label kind="synchronisation">ce11?</label>
+      <label kind="assignment">v0 := 4</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_5_L2" />
+      <target ref="EvalS_5_L1" />
+      <label kind="assignment">v0 := 2</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_5_L3" />
+      <target ref="EvalS_5_L4" />
+      <label kind="guard">x1 &gt;= 2 &amp;&amp; x1 &lt;= 4</label>
+      <label kind="assignment">x0 := 0, v0 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_5_L3" />
+      <target ref="EvalS_5_L5" />
+      </transition>
+    <transition>
+      <source ref="EvalS_5_L4" />
+      <target ref="EvalS_5_L6" />
+      <label kind="guard">x1 &gt;= 1 &amp;&amp; x1 &lt;= 3</label>
+      <label kind="assignment">x1 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_5_L4" />
+      <target ref="EvalS_5_L2" />
+      <label kind="guard">x1 &gt;= 0 &amp;&amp; x1 &lt;= 8</label>
+      <label kind="assignment">x0 := 0, x1 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_5_L5" />
+      <target ref="EvalS_5_L3" />
+      <label kind="guard">x1 &gt;= 4</label>
+      <label kind="assignment">x0 := 0, x1 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_5_L5" />
+      <target ref="EvalS_5_L2" />
+      <label kind="assignment">x0 := 0, x1 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_5_L6" />
+      <target ref="EvalS_5_L8" />
+      <label kind="guard">x1 &gt;= 1</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_5_L6" />
+      <target ref="EvalS_5_L5" />
+      <label kind="guard">x1 &gt;= 5 &amp;&amp; x1 &lt;= 19</label>
+      <label kind="assignment">v0 := 2</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_5_L7" />
+      <target ref="EvalS_5_L8" />
+      <label kind="guard">x1 &gt;= 5 &amp;&amp; x1 &lt;= 15</label>
+      <label kind="assignment">v0 := 3</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_5_L7" />
+      <target ref="EvalS_5_L8" />
+      <label kind="assignment">x1 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_5_L8" />
+      <target ref="EvalS_5_L4" />
+      <label kind="guard">x1 &gt;= 1</label>
+      <label kind="assignment">x0 := 0, x1 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_5_L8" />
+      <target ref="EvalS_5_L2" />
+      <label kind="assignment">x0 := 0, x1 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_5_L9" />
+      <target ref="EvalS_5_L4" />
+      <label kind="guard">x1 &gt;= 4 &amp;&amp; x1 &lt;= 7</label>
+      <label kind="assignment">x0 := 0, x1 := 0, v0 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_5_L9" />
+      <target ref="EvalS_5_L7" />
+      <label kind="guard">x1 &gt;= 0 &amp;&amp; x1 &lt;= 3</label>
+      <label kind="assignment">v0 := 4</label>
+      </transition>
+    </template>
+  <template>
+    <name>EvalS_6</name>
+    <declaration>clock x0, x1;
+int v0 = 0;</declaration>
+    <location id="EvalS_6_L0" x="100" y="100">
+      <name>L0</name>
+      </location>
+    <location id="EvalS_6_L1" x="260" y="100">
+      <name>L1</name>
+      </location>
+    <location id="EvalS_6_L2" x="420" y="100">
+      <name>L2</name>
+      </location>
+    <location id="EvalS_6_L3" x="580" y="100">
+      <name>L3</name>
+      </location>
+    <location id="EvalS_6_L4" x="740" y="100">
+      <name>L4</name>
+      </location>
+    <location id="EvalS_6_L5" x="900" y="100">
+      <name>L5</name>
+      </location>
+    <location id="EvalS_6_L6" x="100" y="220">
+      <name>L6</name>
+      </location>
+    <location id="EvalS_6_L7" x="260" y="220">
+      <name>L7</name>
+      </location>
+    <location id="EvalS_6_L8" x="420" y="220">
+      <name>L8</name>
+      <label kind="invariant">x0 &lt;= 18</label>
+      </location>
+    <location id="EvalS_6_L9" x="580" y="220">
+      <name>L9</name>
+      </location>
+    <init ref="EvalS_6_L0" />
+    <transition>
+      <source ref="EvalS_6_L0" />
+      <target ref="EvalS_6_L1" />
+      <label kind="synchronisation">tau_backbone!</label>
+      <label kind="assignment">x1 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_6_L1" />
+      <target ref="EvalS_6_L2" />
+      <label kind="synchronisation">tau_backbone!</label>
+      <label kind="assignment">x1 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_6_L2" />
+      <target ref="EvalS_6_L3" />
+      <label kind="synchronisation">tau_backbone!</label>
+      <label kind="assignment">x1 := 0, v0 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_6_L3" />
+      <target ref="EvalS_6_L4" />
+      <label kind="synchronisation">tau_backbone!</label>
+      <label kind="assignment">x1 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_6_L4" />
+      <target ref="EvalS_6_L5" />
+      <label kind="synchronisation">tau_backbone!</label>
+      <label kind="assignment">x1 := 0, v0 := 3</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_6_L5" />
+      <target ref="EvalS_6_L6" />
+      <label kind="synchronisation">tau_backbone!</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_6_L6" />
+      <target ref="EvalS_6_L7" />
+      <label kind="synchronisation">tau_backbone!</label>
+      <label kind="assignment">x1 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_6_L7" />
+      <target ref="EvalS_6_L8" />
+      <label kind="synchronisation">tau_backbone!</label>
+      <label kind="assignment">x0 := 0, x1 := 0, v0 := 4</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_6_L8" />
+      <target ref="EvalS_6_L9" />
+      <label kind="synchronisation">tau_backbone!</label>
+      <label kind="assignment">v0 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_6_L9" />
+      <target ref="EvalS_6_L0" />
+      <label kind="synchronisation">tau_backbone!</label>
+      <label kind="assignment">x1 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_6_L0" />
+      <target ref="EvalS_6_L5" />
+      <label kind="guard">x1 &gt;= 3 &amp;&amp; x1 &lt;= 27</label>
+      <label kind="assignment">x1 := 0, v0 := 1</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_6_L0" />
+      <target ref="EvalS_6_L1" />
+      <label kind="synchronisation">ce12!</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_6_L1" />
+      <target ref="EvalS_6_L9" />
+      <label kind="guard">x1 &gt;= 6 &amp;&amp; x1 &lt;= 8</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_6_L1" />
+      <target ref="EvalS_6_L8" />
+      <label kind="assignment">x0 := 0, x1 := 0, v0 := 5</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_6_L2" />
+      <target ref="EvalS_6_L3" />
+      <label kind="guard">x1 &gt;= 7 &amp;&amp; x1 &lt;= 16</label>
+      <label kind="assignment">x1 := 0, v0 := 5</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_6_L2" />
+      <target ref="EvalS_6_L7" />
+      <label kind="assignment">x1 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_6_L3" />
+      <target ref="EvalS_6_L1" />
+      <label kind="guard">x1 &gt;= 4 &amp;&amp; x1 &lt;= 17</label>
+      <label kind="assignment">x1 := 0, v0 := 1</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_6_L3" />
+      <target ref="EvalS_6_L5" />
+      <label kind="synchronisation">ce13?</label>
+      <label kind="assignment">x1 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_6_L4" />
+      <target ref="EvalS_6_L8" />
+      <label kind="guard">x1 &gt;= 2 &amp;&amp; x1 &lt;= 18</label>
+      <label kind="assignment">x0 := 0, v0 := 1</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_6_L4" />
+      <target ref="EvalS_6_L5" />
+      <label kind="guard">x1 &gt;= 4 &amp;&amp; x1 &lt;= 10</label>
+      <label kind="assignment">x1 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_6_L5" />
+      <target ref="EvalS_6_L1" />
+      <label kind="guard">x1 &gt;= 2</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_6_L5" />
+      <target ref="EvalS_6_L4" />
+      <label kind="assignment">x1 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_6_L6" />
+      <target ref="EvalS_6_L9" />
+      <label kind="guard">x1 &gt;= 6 &amp;&amp; x1 &lt;= 26</label>
+      <label kind="assignment">x1 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_6_L6" />
+      <target ref="EvalS_6_L3" />
+      </transition>
+    <transition>
+      <source ref="EvalS_6_L7" />
+      <target ref="EvalS_6_L6" />
+      <label kind="guard">x1 &gt;= 6 &amp;&amp; x1 &lt;= 22</label>
+      <label kind="assignment">x1 := 0, v0 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_6_L7" />
+      <target ref="EvalS_6_L8" />
+      <label kind="assignment">x0 := 0, v0 := 3</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_6_L8" />
+      <target ref="EvalS_6_L9" />
+      <label kind="guard">x1 &gt;= 5 &amp;&amp; x1 &lt;= 13</label>
+      <label kind="assignment">v0 := 2</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_6_L8" />
+      <target ref="EvalS_6_L9" />
+      <label kind="assignment">x1 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_6_L9" />
+      <target ref="EvalS_6_L8" />
+      <label kind="guard">x1 &gt;= 8</label>
+      <label kind="assignment">x0 := 0</label>
+      </transition>
+    <transition>
+      <source ref="EvalS_6_L9" />
+      <target ref="EvalS_6_L0" />
+      <label kind="guard">x1 &gt;= 2 &amp;&amp; x1 &lt;= 3</label>
+      <label kind="assignment">x1 := 0</label>
+      </transition>
+    </template>
+  <template>
+    <name>Env</name>
+    <declaration />
+    <location id="Env_L0" x="100" y="100">
+      <name>E0</name>
+      </location>
+    <location id="Env_L1" x="240" y="100">
+      <name>E1</name>
+      </location>
+    <location id="Env_L2" x="380" y="100">
+      <name>E2</name>
+      </location>
+    <location id="Env_L3" x="520" y="100">
+      <name>E3</name>
+      </location>
+    <location id="Env_L4" x="660" y="100">
+      <name>E4</name>
+      </location>
+    <location id="Env_L5" x="800" y="100">
+      <name>E5</name>
+      </location>
+    <location id="Env_L6" x="940" y="100">
+      <name>E6</name>
+      </location>
+    <location id="Env_L7" x="1080" y="100">
+      <name>E7</name>
+      </location>
+    <location id="Env_L8" x="100" y="220">
+      <name>E8</name>
+      </location>
+    <location id="Env_L9" x="240" y="220">
+      <name>E9</name>
+      </location>
+    <location id="Env_L10" x="380" y="220">
+      <name>E10</name>
+      </location>
+    <location id="Env_L11" x="520" y="220">
+      <name>E11</name>
+      </location>
+    <location id="Env_L12" x="660" y="220">
+      <name>E12</name>
+      </location>
+    <location id="Env_L13" x="800" y="220">
+      <name>E13</name>
+      </location>
+    <init ref="Env_L0" />
+    <transition>
+      <source ref="Env_L0" />
+      <target ref="Env_L1" />
+      <label kind="synchronisation">ce0?</label>
+      </transition>
+    <transition>
+      <source ref="Env_L1" />
+      <target ref="Env_L2" />
+      <label kind="synchronisation">ce1!</label>
+      </transition>
+    <transition>
+      <source ref="Env_L2" />
+      <target ref="Env_L3" />
+      <label kind="synchronisation">ce2?</label>
+      </transition>
+    <transition>
+      <source ref="Env_L3" />
+      <target ref="Env_L4" />
+      <label kind="synchronisation">ce3!</label>
+      </transition>
+    <transition>
+      <source ref="Env_L4" />
+      <target ref="Env_L5" />
+      <label kind="synchronisation">ce4?</label>
+      </transition>
+    <transition>
+      <source ref="Env_L5" />
+      <target ref="Env_L6" />
+      <label kind="synchronisation">ce5!</label>
+      </transition>
+    <transition>
+      <source ref="Env_L6" />
+      <target ref="Env_L7" />
+      <label kind="synchronisation">ce6?</label>
+      </transition>
+    <transition>
+      <source ref="Env_L7" />
+      <target ref="Env_L8" />
+      <label kind="synchronisation">ce7!</label>
+      </transition>
+    <transition>
+      <source ref="Env_L8" />
+      <target ref="Env_L9" />
+      <label kind="synchronisation">ce8?</label>
+      </transition>
+    <transition>
+      <source ref="Env_L9" />
+      <target ref="Env_L10" />
+      <label kind="synchronisation">ce9!</label>
+      </transition>
+    <transition>
+      <source ref="Env_L10" />
+      <target ref="Env_L11" />
+      <label kind="synchronisation">ce10?</label>
+      </transition>
+    <transition>
+      <source ref="Env_L11" />
+      <target ref="Env_L12" />
+      <label kind="synchronisation">ce11!</label>
+      </transition>
+    <transition>
+      <source ref="Env_L12" />
+      <target ref="Env_L13" />
+      <label kind="synchronisation">ce12?</label>
+      </transition>
+    <transition>
+      <source ref="Env_L13" />
+      <target ref="Env_L0" />
+      <label kind="synchronisation">ce13!</label>
+      </transition>
+    <transition>
+      <source ref="Env_L0" />
+      <target ref="Env_L0" />
+      <label kind="synchronisation">tau_backbone?</label>
+      </transition>
+    <transition>
+      <source ref="Env_L1" />
+      <target ref="Env_L1" />
+      <label kind="synchronisation">tau_backbone?</label>
+      </transition>
+    <transition>
+      <source ref="Env_L2" />
+      <target ref="Env_L2" />
+      <label kind="synchronisation">tau_backbone?</label>
+      </transition>
+    <transition>
+      <source ref="Env_L3" />
+      <target ref="Env_L3" />
+      <label kind="synchronisation">tau_backbone?</label>
+      </transition>
+    <transition>
+      <source ref="Env_L4" />
+      <target ref="Env_L4" />
+      <label kind="synchronisation">tau_backbone?</label>
+      </transition>
+    <transition>
+      <source ref="Env_L5" />
+      <target ref="Env_L5" />
+      <label kind="synchronisation">tau_backbone?</label>
+      </transition>
+    <transition>
+      <source ref="Env_L6" />
+      <target ref="Env_L6" />
+      <label kind="synchronisation">tau_backbone?</label>
+      </transition>
+    <transition>
+      <source ref="Env_L7" />
+      <target ref="Env_L7" />
+      <label kind="synchronisation">tau_backbone?</label>
+      </transition>
+    <transition>
+      <source ref="Env_L8" />
+      <target ref="Env_L8" />
+      <label kind="synchronisation">tau_backbone?</label>
+      </transition>
+    <transition>
+      <source ref="Env_L9" />
+      <target ref="Env_L9" />
+      <label kind="synchronisation">tau_backbone?</label>
+      </transition>
+    <transition>
+      <source ref="Env_L10" />
+      <target ref="Env_L10" />
+      <label kind="synchronisation">tau_backbone?</label>
+      </transition>
+    <transition>
+      <source ref="Env_L11" />
+      <target ref="Env_L11" />
+      <label kind="synchronisation">tau_backbone?</label>
+      </transition>
+    <transition>
+      <source ref="Env_L12" />
+      <target ref="Env_L12" />
+      <label kind="synchronisation">tau_backbone?</label>
+      </transition>
+    <transition>
+      <source ref="Env_L13" />
+      <target ref="Env_L13" />
+      <label kind="synchronisation">tau_backbone?</label>
+      </transition>
+    </template>
+  <system>EvalS_0_i = EvalS_0();
+EvalS_1_i = EvalS_1();
+EvalS_2_i = EvalS_2();
+EvalS_3_i = EvalS_3();
+EvalS_4_i = EvalS_4();
+EvalS_5_i = EvalS_5();
+EvalS_6_i = EvalS_6();
+Env_i = Env();
+
+system EvalS_0_i, EvalS_1_i, EvalS_2_i, EvalS_3_i, EvalS_4_i, EvalS_5_i, EvalS_6_i, Env_i;</system>
+  <queries>
+    <query>
+      <formula>A[] true</formula>
+      <comment>No queries defined.</comment>
+      </query>
+    </queries>
+  </nta>

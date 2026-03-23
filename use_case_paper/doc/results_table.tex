@@ -1,0 +1,22 @@
+% results_table.tex — Summary table for the Sugar Beet case study
+% To be included directly in the EMSOFT paper.
+
+\begin{table}[t]
+\centering
+\caption{Summary of the drone-agent software update validation.
+  Timing values are from the formal trace simulation;
+  energy values assume a Cortex-M4 class MCU
+  (idle\,36\,mW, sleep\,22\,mW, active\,40\,mW) over a 550\,ms window.}
+\label{tab:results}
+\small
+\begin{tabular}{l c c c}
+\toprule
+\textbf{Property} & $\mathbf{DA}_{\mathrm{abs}}$ & $\mathbf{DA}_{\mathrm{ref}}$ & \textbf{Verdict} \\
+\midrule
+Classical bisimulation  & reference            & $\times$\,rejected   & fails  \\
+RTWBS refinement        & reference            & $\checkmark$\,accepted  & holds  \\
+Output deadline (500\,ms) & $\checkmark$\;met at 450\,ms & $\checkmark$\;met at 490\,ms & preserved \\
+Energy consumed (CPU)   & 19.83\,mJ             & 14.24\,mJ             & 28.2\%\;reduction \\
+\bottomrule
+\end{tabular}
+\end{table}

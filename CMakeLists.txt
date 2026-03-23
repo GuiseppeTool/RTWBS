@@ -43,6 +43,14 @@ else()
     else()
         message(WARNING "OpenMP not found! Please install libomp-dev (sudo apt-get install libomp-dev) or your system's OpenMP package.")
     endif()
+
+    # Find and enable TBB (concurrent containers for lock-free caches)
+    find_package(TBB)
+    if(TBB_FOUND)
+        message(STATUS "TBB found: enabling concurrent hash map support")
+    else()
+        message(WARNING "TBB not found! Please install libtbb-dev (sudo apt-get install libtbb-dev).")
+    endif()
 endif()
 
 if(DEV_MODE)
@@ -187,6 +195,12 @@ target_include_directories(rtwbs PUBLIC
 )
 target_link_libraries(rtwbs PUBLIC ${UDBM_LIBRARIES} ${UTAP_LIBRARIES})
 
+# Link TBB if available (concurrent containers for OpenMP caches)
+if(TBB_FOUND)
+    target_link_libraries(rtwbs PUBLIC TBB::tbb)
+    target_compile_definitions(rtwbs PUBLIC RTWBS_HAS_TBB=1)
+endif()
+
 # Function to create a UDBM example executable
 function(add_udbm_example EXAMPLE_NAME)
     add_executable(${EXAMPLE_NAME} example/${EXAMPLE_NAME}.cpp)
@@ -267,13 +281,18 @@ add_benchmark(run_all)
 add_benchmark(run_ASTRail)
 add_benchmark(run_FMICS2021)
 add_benchmark(run_synthetic)
+add_benchmark(run_zone_stats)
+add_benchmark(use_case)
+add_benchmark(run_use_case_paper)
 
 
 # Benchmarks depend on assets copy
 add_dependencies(run_all copy_assets_benchmarks)
 add_dependencies(run_ASTRail copy_assets_benchmarks)
 add_dependencies(run_FMICS2021 copy_assets_benchmarks)
-
+add_dependencies(run_zone_stats copy_assets_benchmarks)
+add_dependencies(use_case copy_assets_benchmarks)
+add_dependencies(run_use_case_paper copy_assets_benchmarks)
 
 
 message(STATUS "UDBM Library: ${UDBM_LIBRARY}")
@@ -289,7 +308,7 @@ add_custom_target(examples DEPENDS dbm_example weak_successors_example rtwbs_equ
 
 # Add a custom target to build all benchmarks
 add_custom_target(benchmarks 
-    DEPENDS run_all run_ASTRail run_FMICS2021
+    DEPENDS run_all run_ASTRail run_FMICS2021 run_zone_stats
 )
 
 # (already added above)

@@ -16,7 +16,7 @@ int main(){
         if(states.empty()){ std::cerr << "No states" << std::endl; return 1; }
         const ZoneState* init = states.front().get();
         rtwbs::ExposedChecker checker; 
-        auto &succ = checker.weak_successors(ta, init, "a!");
+        auto succ = checker.weak_successors(ta, init, "a!");
         std::cout << "Cached weak successors for action a!: " << succ.size() << " states\n";
         for(auto s: succ){ std::cout << "  loc " << s->location_id << "\n"; }
     } catch(const std::exception &e){ std::cerr << "Error: " << e.what() << "\n"; return 1; }
