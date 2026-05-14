@@ -1,0 +1,173 @@
+%\subsection{Prerequisites}\label{sec:prerequesite}
+%%\textcolor{red}{Can this be reduced ? Do we need ports? Here I would describe how contracts can be used to avoid exponential explosion.}
+%
+%
+%%
+
+We establish the concept of {time} within a domain denoted as \emph{Time}, where the instances of time possess a total order denoted by $\leq$. The general definitions presented hereforth remain unaffected whether time is considered discrete (\(\mathbb{N}^0\)) or continuous (\(\mathbb{R}_{\geq 0}\)). A segment of the time domain refers to a subset $T$ that is closed downward, meaning that if $t \in T$, then all elements $t'$ such that $t'\leq t$ also belong to $T$. %Mathematically, this can be expressed as $t \in T \Rightarrow \{ t' \in Time \mid t'< t \}\subseteq T $.
+
+%We represent reference models and execution-level models as \emph{Timed Transition Systems}, which is defined as follows.
+%We model each component as a \emph{Timed Transition System (TTS)}, which is defined as follows. 
+
+
+To capture interactions, we consider a set of system ports $P \subseteq \portDomain$, where each port is associated with a type that has its own domain of values. Ports serve as the observable interface of a system and its components, governing its interaction with the environment and allowing to distinguish between observable and internal behavior.  Ports are classified as being either {input} ($\portDomain_{in} \subseteq \mathcal{P}$ ) or {output} ($\portDomain_{out}\subseteq \mathcal{P}$) ports, depending on whether they receive data from or send data to the environment, respectively. 
+Each input port is equipped with a FIFO buffer. An incoming event is enqueued in the buffer upon arrival and the receiving component dequeues and processes it within its timing constraints. We assume that shared ports between components have compatible polarities (output-input), preserving the distinction between sent and received events. To prevent an unbounded accumulation of reception delays, we enforce an {alternating send/receive constraint}. This means a component must send an event before receiving the next one. Under this assumption, the occupancy of reception buffers is bounded by 1, as the next event cannot be received until the previous one has been sent. 
+
+%To prevent an unbounded accumulation of reception delays, we enforce an {alternating send/receive constraint}, meaning that an event must be sent before the next one can be received. This constraint ensures that the maximum delay for receiving an event is limited by the requirement to send the next event within the system's timing constraints. This assumption aligns naturally with \emph{hard real-time system properties}, as many real-world communication protocols implement \emph{watchdog mechanisms}, where transmitted messages must be acknowledged by the receiver within a bounded timeframe \cite{Dou02}.
+
+
+
+
+
+%To capture interactions, we consider a set of system \emph{ports} over a domain of ports $\portDomain$ denoted as $P \subseteq \portDomain$, where each port is associated with a type that has its own domain of values. Ports serve as the observable interface of a system and its components, governing its interaction with the environment and allowing to distinguish between observable and internal behavior. %The complete collection of values is denoted as $V$. We assume that all components within the system adhere to proper typing and focus on ports with a single flow, allowing us to treat ports and flows interchangeably.\\
+%Given a set of ports \unsure{Shouldnt it be $P' \subseteq P$}{$P \subseteq P$},%
+
+%A \emph{trace} $\sigma$ assigns a value from the port's type to each port at every point in time. %Formally, the set of all traces over $P$ is defined as $
+%\sigma: \{\{P \mapsto V \} \mapsto T \} %\enspace
+%$
+%Formally, a trace over a set of ports $P$ is a function $\sigma : T \rightarrow \mathrm{Val}(P)$, where $\mathrm{Val}(P)$ denotes the set of well-typed valuations assigning to each
+%port $p \in P$ a value in its associated domain.
+%In the context of discrete time domains, every function within this set is considered a trace. In continuous time domains, traces may be limited to functions that are continuous almost everywhere, allowing for discrete events at specific time points. Ports can be categorized as either \emph{discrete} ($\portDomain_D$), transmitting events or discrete values, or \emph{continuous} ($\portDomain_C$), transmitting real-valued data. Thus, we have $\portDomain = \portDomain_D  \uplus \portDomain_C$. To capture hybrid behavior that combines continuous progression and discrete interactions, we model traces that represent the progression of system states over time, incorporating both continuous changes and discrete events. This approach allows us to represent systems where continuous progressions can be interrupted by discrete actions.%, providing an accurate depiction of autonomous systems. 
+%
+% Ports can be further classified as \emph{input} ($\portDomain_{in} \subseteq \mathcal{P}$ ) and \emph{output} ($\portDomain_{out}\subseteq \mathcal{P}$) ports, depending on whether they receive data from or send data to the environment, respectively.
+%
+%%When two components interact, we assume shared actions to have compatible polarities (output-input), preserving the distinction between received and sent events. 
+%
+%
+%We model the semantics of a component $\comp$, denoted by $\sem{\comp}$, as a Timed Transition System (TTS) that captures all possible behaviors of the component over its interface ports.
+
+We associate each component $\comp$ with a Timed Transition System (TTS)
+that serves as its execution model:
+
+
+
+\begin{definition}[Timed Transition System]\label{def:tts}
+A \emph{Timed Transition System (TTS)} is a tuple
+$\mathcal{T} = (S, \Sigma_E, \Sigma_D, \rightarrow)$, where:
+\begin{itemize}
+    \item $S$ is a set of states%, where each state $s \in S$ is a tuple of the form \( s = (l, v) \), with  \( l \) a discrete location and \( v \) a valuation of clocks, mapping each clock to a real value.
+    \item $\Sigma_E$ is a set of \emph{event labels},
+    \item $\Sigma_D$ is a set of \emph{delay labels}, with $\delta \in \Sigma_D$ representing the elapse of $\delta \in Time$ time units. 
+    
+    
+    %δ∈ΣD​ represents the elapse of δ\delta δ time units."
+    \item $\rightarrow \subseteq S \times (\Sigma_E \cup \Sigma_D) \times S$
+    is the transition relation.
+\end{itemize}
+\end{definition}
+A sequence of events and delays induced by an execution of a TTS is called a trace. The semantics of $\comp$, denoted by $\sem{\comp}$, is defined as the set of all traces induced by its TTS. %Formally, an execution is a sequence of alternating delay and states, which induces a trace $\sigma$ by setting $\sigma(t)$ to the port valuation of the state reached after all delays up to time $t$ have elapsed and all event transitions up to that point have been executed.
+%Each execution of a TTS induces a trace by interpreting delay transitions as time elapseand event transitions as updates of the corresponding interface ports.
+
+%Given two TTS $T_1$ and $T_2$, their composition $T_1 \parallel T_2$ synchronizes on a designated set of shared actions with compatible polarities and allows time to elapse only when both TTSs can delay, as defined in \cite{ALUR19932}. 
+
+
+
+To formalize the expected behavior of components, we use temporal logic formulas, such as Timed Computation Tree Logic (TCTL) \cite{AD94}, to define sets of acceptable traces. The semantics of a formula $\phi$, denoted by $\sem{\phi}$, is the set of traces that satisfy $\phi$. A component $\comp$ satisfies a formula $\phi$, written $\comp \models \phi$, iff $\sem{\comp} \subseteq \sem{\phi}$. 
+
+Given two components $\comp$ and $\comp'$, we say that $\comp'$ {refines} $\comp$ if $\sem{\comp'} \subseteq \sem{\comp}$. This definition ensures that refinement may restrict observable behaviors but cannot introduce new ones. As a result, any property satisfied by $\comp$ remains valid for $\comp'$. Refinement therefore provides a sufficient condition for correctness preservation under system evolution.
+
+To ensure composability and modularity, we employ contract based design, as defined in \cite{contracts}. A contract $C = (A, G)$ is a pair, where $A$ and $G$ are sets of traces representing, respectively,
+the assumptions on the environment and the guarantees provided by the component. For guarantees expressing timing constraints on sent events, we assume that they are of the form of upper bounds (deadlines) on the transmission time of output events \cite{contract_based_digital_twin_2023}. This is a common pattern in real-time systems, where output events must be emitted within specified deadlines \cite{Dou02} and these bounds must be preserved under refinement.
+The semantics of a contract $C$, denoted by $\sem{C}$, is defined as the set of traces for which the assumptions imply the guarantees, formally \( \sem{C} \triangleq \{\, \sigma \mid \sigma \in A \implies \sigma \in G \,\} \). 
+%The semantics of a contract $C$, denoted by $\sem{C}$, is defined as the set of traces that either violate the assumptions or satisfy the guarantees:
+%\(
+%\sem{C}
+%\;\triangleq\;
+%\{\, \sigma \mid \sigma \notin A \;\lor\; \sigma \in G \,\}.
+%\)
+%Equivalently, a trace $\sigma$ satisfies the contract if whenever the assumptions hold, the guarantees hold as well, i.e., $A \Rightarrow G$.
+A component $\comp$ {satisfies} a contract $C$, written $\comp \models C$, if all its observable
+behaviors are allowed by the contract, i.e. $\sem{\comp} \subseteq \sem{C}$. A contract $C' = (A', G')$ refines another contract $C = (A, G)$, written $C' \refines C$, if $A \subseteq A'$ and $G' \subseteq G$. This ensures that any component satisfying $C'$ also satisfies $C$. 
+
+In our framework, contracts are defined over the interface ports of a component. A contract constrains only the externally observable input/output behavior, abstracting from internal execution structure, ensuring that refinement can be reasoned about solely in terms of observable behavior. 
+
+%In our framework, contracts are defined over the interface ports of a component or a system. Intuitively, a contract constrains only the externally observable input/output behavior of a component, abstracting from its internal execution structure. As a result, components do not interact directly through shared execution semantics. Instead, interaction is mediated through contracts over input/output ports, ensuring that composition and refinement can be reasoned about solely in terms of observable behavior. Note that we assumed the polarities of shared ports to be compatible (output-input), preserving the distinction between received and sent events.
+%
+%When two components $\comp_1$ and $\comp_2$ interact, their interaction is regulated
+%exclusively through a contract defined over their shared interface ports.
+%Let $P_{12} \subseteq \portDomain_{in} \uplus \portDomain_{out}$ denote the set of
+%shared input/output ports through which $\comp_1$ and $\comp_2$ interact. The interaction is established by a contract $C = (A,G)$ over $P_{12}$, where
+%the assumptions $A$ constrain the observable behavior produced by $\comp_2$
+%on the ports that are outputs of $\comp_2$ and, correspondingly, inputs of $\comp_1$,
+%and the guarantees $G$ define the behavior that $\comp_1$ commits to provide
+%on the ports that are outputs of $\comp_1$ and inputs of $\comp_2$,
+%whenever the assumptions are satisfied.
+
+
+%Note that we assume shared actions to have compatible polarities (output-input), preserving the distinction between received and sent events. 
+
+
+%In our framework, contracts are defined over the \emph{observable interface ports} of a component. Intuitively, a contract constrains only the externally observable behavior of a component, abstracting from its internal execution structure.
+
+%When two components $\comp_1$ and $\comp_2$ interact, their interaction is regulated
+%exclusively through a contract defined over their shared interface ports.
+%Let $P_{12} \subseteq \portDomain$ denote the set of ports through which $\comp_1$
+%and $\comp_2$ interact.
+%The interaction is established by a contract $C = (A,G)$ over $P_{12}$, where
+%the assumptions $A$ specify the expected observable behavior of $\comp_2$
+%on $P_{12}$ from the perspective of $\comp_1$, and the guarantees $G$ define
+%the behavior that $\comp_1$ commits to provide on these ports whenever the assumptions are satisfied. As a result, components do not interact directly through shared execution semantics.
+%Instead, interaction is mediated through contracts over ports, ensuring that
+%composition and refinement can be reasoned about solely in terms of observable behavior. 
+%
+
+
+
+We make use of \emph{Timed Automata (TA)} and \emph{Region Automata} \cite{ALUR19932, Bouyer2005AnIT} as a syntactic representation of the component models. A TA extends finite automata with real-valued clocks to capture quantitative timing constraints. Formally, a TA is a tuple
+\(
+TA = (L, \ell_0, C, \Sigma, E, \text{Inv}),
+\) 
+where:
+\begin{itemize}
+  \item $L$ is a finite set of locations with initial location $\ell_0 \in L$,
+  \item $C$ is a finite set of clocks,
+  \item $\Sigma = \Sigma_E \cup \Sigma_D$ is the action alphabet, partitioned into event-driven and delay-driven actions with $\Sigma_E \cap \Sigma_D = \emptyset$,
+  \item $E \subseteq L \times \mathcal{B}(C) \times \Sigma \times 2^C \times L$ is a finite set of edges, where $\mathcal{B}(C)$ denotes clock constraints,
+  \item $\text{Inv}: L \to \mathcal{B}(C)$ assigns invariants restricting the admissible time elapse in each location.
+\end{itemize}
+
+
+
+
+The semantics of a TA is given as a TTS as of Definition~\ref{def:tts}. A \emph{state} of the corresponding TTS is a pair $(\ell, v) \in L \times T^C$, where $\ell$ is the current location and $v$ a clock valuation. %A state is valid only if $v \models \text{Inv}(\ell)$. 
+Discrete transitions correspond to edges in $E$ with clock resets, while delay transitions correspond to uniform advancement of all clocks under the invariant of the current location.  
+
+%However, in systems with hard real-time and cyclic behaviors, these infinite paths can be represented finitely by identifying repeating patterns  \cite{Dou02}. 
+Verifying trace inclusion in timed systems is generally undecidable due to infinite execution paths leading to unbounded state spaces \cite{AD94}. To overcome this problem, we employ \emph{symbolic abstractions} based on zones to obtain a finite representation of the timed system \cite{ALUR19932, Bouyer2005AnIT}. A \emph{zone} is a convex set of clock valuations that satisfies the same set of constraints. A TA $A$ can thus be abstracted into a \emph{zone-based symbolic automaton} $\Gamma(A)$, whose states are pairs $(\ell, Z)$ with $\ell \in L$ and $Z$ a zone representing all valuations reachable at location $\ell$. Every concrete state $(\ell, v)$ belongs to exactly one symbolic state $(\ell, Z)$ with $v \in Z$. Transitions between zones are induced both by discrete edges and by the passage of time within each location. This symbolic construction, first introduced in \cite{ALUR19932} and extended in \cite{Bouyer2005AnIT}, yields a \emph{finite-state abstraction} of the TA that preserves all relevant properties. 
+
+
+
+
+%Depending on the abstraction level, a component $\comp$ may be represented
+%by different models, each interpreted over the same trace domain.
+%As established in Section~\ref{sec:architecture}, we distinguish between
+%\emph{reference models} ($\refMod$) and \emph{execution-level models} ($\exeMod$).
+%Both models describe the same component $\comp$ at different abstraction levels.
+%The reference model represents the component behavior assumed during
+%verification, while the execution-level model captures the concrete behavior
+%observed during system operation, including execution-level effects.
+
+%Depending on the abstraction level, a component $\comp$ may be represented
+%by different models, each inducing a semantics in the same trace domain. As already established in Section~\ref{sec:architecture}, we distinguish between \emph{reference models} (\refMod) and \emph{execution-level models} (\exeMod). Both models describe the same component $\comp$ but at different abstraction levels, leading to distinct semantics $\sem{\refMod} \subseteq \sem{\comp}$ and $\sem{\exeMod}\subseteq \sem{\comp}$. The reference model captures the idealized behavior assumed during verification, while the execution-level model reflects the actual behavior observed during system operation, including execution-level effects.
+%
+%
+%It provides the foundation for algorithmic verification and refinement checking in our framework.
+
+
+
+%As a modeling formalism, we utilize \emph{Timed Automata (TA)} \cite{AD94}, which are well-suited for representing real-time systems. A TA is a finite-state machine extended with real-valued clocks, enabling the specification of timing constraints on transitions and states. The semantics of a TA can be represented as a TTS, capturing both discrete transitions and time delays.
+
+%This formalism allows us to specify both the required and provided behaviors of components, supporting compositional reasoning and enabling us to verify that components meet their specifications.
+
+%With the fundamental semantics of system behavior established, we now define how system adaptations can be systematically verified. To ensure that modifications introduced by the DT maintain correctness, we introduce the concept of \emph{refinement}, which enables formal reasoning about valid system evolution.
+
+
+
+
+
+
+
+%This formalism allows us to specify both the required and provided behaviors of components, supporting compositional reasoning and enabling us to verify that components meet their specifications.
+
+%In our setting, the execution-level component of a view must be a refinement of the reference one, ensuring that runtime behavior does not violate previously verified assumptions.
+%We provide the formal definition of refinement below.

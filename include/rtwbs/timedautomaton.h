@@ -108,6 +108,7 @@ struct ZoneState {
     std::vector<raw_t> zone;  // DBM representing the zone
     cindex_t dimension;
     size_t hash_value;
+    int state_id = -1;  // index in TimedAutomaton::states_ (-1 if not yet assigned)
     
     ZoneState( int loc_id, const std::vector<raw_t>& zone_dbm, cindex_t dim) 
         :  location_id(loc_id), zone(zone_dbm), dimension(dim) {
@@ -172,6 +173,9 @@ private:
     std::vector<std::unique_ptr<ZoneState>> states_;
     std::unordered_map<ZoneState, int, ZoneStateHash> state_map_;
     std::vector<std::vector<int>> zone_transitions_;  // adjacency list: state_id -> list of successor state_ids
+    // Labeled zone transitions: state_id -> list of (observable_label, successor_state_id)
+    // Populated by explore_state/get_or_add_zone_state; used by weak_observable_successors_raw.
+    std::vector<std::vector<std::pair<std::string, int>>> labeled_zone_transitions_;
     std::queue<int> waiting_list_;
     bool constructed_;
 
@@ -250,6 +254,14 @@ public:
     const int get_num_zones() const { return states_.size(); }
     const int get_num_locations() const { return locations_.size(); }
     const int get_num_transitions() const { return transitions_.size(); }
+
+    /** Return the UPPAAL location name for a given numeric location ID.
+     *  Returns an empty string if the id is out of range. */
+    std::string get_location_name(int location_id) const {
+        if (location_id < 0 || static_cast<size_t>(location_id) >= locations_.size())
+            return {};
+        return locations_[location_id].name;
+    }
     const int get_num_transition_zg() const {
         int count = 0;
         for (const auto& vec : zone_transitions_) {
@@ -408,6 +420,14 @@ public:
      * Get zone state by ID (needed for RTWBS state correspondence)
      */
     const ZoneState* get_zone_state(size_t state_id) const;
+
+    /**
+     * Get the labeled zone-graph transitions out of a state.
+     * Returns a COPY of the list of (observable_label, successor_state_id) pairs.
+     * Returning by value is intentional: callers iterate while tau_closure_cached
+     * may call get_or_add_zone_state, which can reallocate labeled_zone_transitions_.
+     */
+    std::vector<std::pair<std::string, int>> get_zone_labeled_successors(int state_id) const;
     
     /**
      * Find existing zone state by location and zone (optimized hash lookup)

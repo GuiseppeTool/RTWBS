@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.6//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_6.dtd'>
+<nta>
+    <declaration>
+        // CS8 PT -- Lift Plus Cruise eVTOL Flight Control Computer
+        // Standards: ASTM F3269-21, FAA AC 21-7A, RTCA DO-365:2020,
+        //            SAE AS6968:2021, IEC 61508-3:2010 SIL-3
+        // Clocks:
+        //   t_climb   : climb/hover/descent phase duration
+        //   t_trans   : mode transition duration
+        //   t_cruise  : cruise phase duration
+        //   t_battery : total flight time (SOC depletion proxy)
+        //   t_fault   : fault/emergency response timer
+        clock t_climb, t_trans, t_cruise, t_battery, t_fault;
+        chan takeoff_initiated, transition_cruise_start, cruise_established,
+             transition_hover_start, hover_stable, descent_initiated,
+             landing_initiated, touchdown, battery_critical, emergency_descent,
+             rotor_fault, emergency_landing;
+    </declaration>
+    <template>
+        <name>LiftCruisePT</name>
+        <location id="GROUND" x="0" y="0">
+            <name x="-10" y="-34">GROUND</name>
+        </location>
+        <location id="VERTICAL_CLIMB" x="300" y="0">
+            <name x="260" y="-34">VERTICAL_CLIMB</name>
+            <label kind="invariant" x="260" y="17">t_climb &lt;= 60</label>
+        </location>
+        <location id="TRANSITION_TO_CRUISE" x="600" y="0">
+            <name x="560" y="-34">TRANSITION_TO_CRUISE</name>
+            <label kind="invariant" x="560" y="17">t_trans &lt;= 25</label>
+        </location>
+        <location id="CRUISE" x="900" y="0">
+            <name x="860" y="-34">CRUISE</name>
+        </location>
+        <location id="TRANSITION_TO_HOVER" x="900" y="200">
+            <name x="860" y="166">TRANSITION_TO_HOVER</name>
+            <label kind="invariant" x="860" y="217">t_trans &lt;= 25</label>
+        </location>
+        <location id="HOVER" x="600" y="200">
+            <name x="560" y="166">HOVER</name>
+        </location>
+        <location id="VERTICAL_DESCENT" x="300" y="200">
+            <name x="260" y="166">VERTICAL_DESCENT</name>
+            <label kind="invariant" x="260" y="217">t_climb &lt;= 60</label>
+        </location>
+        <location id="LANDING" x="0" y="200">
+            <name x="-10" y="166">LANDING</name>
+        </location>
+        <location id="BATTERY_CRITICAL" x="900" y="400">
+            <name x="860" y="366">BATTERY_CRITICAL</name>
+            <label kind="invariant" x="860" y="417">t_fault &lt;= 5</label>
+        </location>
+        <location id="ROTOR_FAULT" x="300" y="400">
+            <name x="260" y="366">ROTOR_FAULT</name>
+            <label kind="invariant" x="260" y="417">t_fault &lt;= 5</label>
+        </location>
+        <init ref="GROUND"/>
+        <transition>
+            <source ref="GROUND"/>
+            <target ref="VERTICAL_CLIMB"/>
+            <label kind="guard" x="100" y="-17">t_battery &lt;= 180</label>
+            <label kind="synchronisation" x="100" y="0">takeoff_initiated!</label>
+            <label kind="assignment" x="100" y="17">t_climb := 0, t_battery := 0</label>
+        </transition>
+        <transition>
+            <source ref="VERTICAL_CLIMB"/>
+            <target ref="TRANSITION_TO_CRUISE"/>
+            <label kind="guard" x="370" y="-17">t_climb &gt;= 15 &amp;&amp; t_climb &lt;= 60</label>
+            <label kind="synchronisation" x="370" y="0">transition_cruise_start!</label>
+            <label kind="assignment" x="370" y="17">t_trans := 0</label>
+        </transition>
+        <transition>
+            <source ref="TRANSITION_TO_CRUISE"/>
+            <target ref="CRUISE"/>
+            <label kind="guard" x="670" y="-17">t_trans &gt;= 10 &amp;&amp; t_trans &lt;= 25</label>
+            <label kind="synchronisation" x="670" y="0">cruise_established!</label>
+            <label kind="assignment" x="670" y="17">t_cruise := 0</label>
+        </transition>
+        <transition>
+            <source ref="CRUISE"/>
+            <target ref="TRANSITION_TO_HOVER"/>
+            <label kind="guard" x="920" y="100">t_cruise &gt;= 30</label>
+            <label kind="synchronisation" x="920" y="117">transition_hover_start!</label>
+            <label kind="assignment" x="920" y="134">t_trans := 0</label>
+        </transition>
+        <transition>
+            <source ref="TRANSITION_TO_HOVER"/>
+            <target ref="HOVER"/>
+            <label kind="guard" x="670" y="183">t_trans &gt;= 10 &amp;&amp; t_trans &lt;= 25</label>
+            <label kind="synchronisation" x="670" y="200">hover_stable!</label>
+            <label kind="assignment" x="670" y="217">t_climb := 0</label>
+        </transition>
+        <transition>
+            <source ref="HOVER"/>
+            <target ref="VERTICAL_DESCENT"/>
+            <label kind="guard" x="370" y="183">t_climb &gt;= 5</label>
+            <label kind="synchronisation" x="370" y="200">descent_initiated!</label>
+            <label kind="assignment" x="370" y="217">t_climb := 0</label>
+        </transition>
+        <transition>
+            <source ref="VERTICAL_DESCENT"/>
+            <target ref="LANDING"/>
+            <label kind="guard" x="100" y="183">t_climb &gt;= 5 &amp;&amp; t_climb &lt;= 60</label>
+            <label kind="synchronisation" x="100" y="200">landing_initiated!</label>
+            <label kind="assignment" x="100" y="217">t_climb := 0</label>
+        </transition>
+        <transition>
+            <source ref="LANDING"/>
+            <target ref="GROUND"/>
+            <label kind="guard" x="-100" y="100">t_climb &gt;= 3</label>
+            <label kind="synchronisation" x="-100" y="117">touchdown!</label>
+        </transition>
+        <!-- BATTERY_CRITICAL transitions from CRUISE, HOVER, TRANSITION_TO_CRUISE -->
+        <transition>
+            <source ref="CRUISE"/>
+            <target ref="BATTERY_CRITICAL"/>
+            <label kind="guard" x="950" y="200">t_battery &gt;= 180</label>
+            <label kind="synchronisation" x="950" y="217">battery_critical!</label>
+            <label kind="assignment" x="950" y="234">t_fault := 0</label>
+        </transition>
+        <transition>
+            <source ref="HOVER"/>
+            <target ref="BATTERY_CRITICAL"/>
+            <label kind="guard" x="750" y="300">t_battery &gt;= 180</label>
+            <label kind="synchronisation" x="750" y="317">battery_critical!</label>
+            <label kind="assignment" x="750" y="334">t_fault := 0</label>
+        </transition>
+        <transition>
+            <source ref="TRANSITION_TO_CRUISE"/>
+            <target ref="BATTERY_CRITICAL"/>
+            <label kind="guard" x="700" y="250">t_battery &gt;= 180</label>
+            <label kind="synchronisation" x="700" y="267">battery_critical!</label>
+            <label kind="assignment" x="700" y="284">t_fault := 0</label>
+        </transition>
+        <transition>
+            <source ref="BATTERY_CRITICAL"/>
+            <target ref="VERTICAL_DESCENT"/>
+            <label kind="guard" x="500" y="350">t_fault &lt;= 5</label>
+            <label kind="synchronisation" x="500" y="367">emergency_descent!</label>
+        </transition>
+        <!-- ROTOR_FAULT transitions from VERTICAL_CLIMB, TRANSITION_TO_CRUISE, HOVER -->
+        <transition>
+            <source ref="VERTICAL_CLIMB"/>
+            <target ref="ROTOR_FAULT"/>
+            <label kind="guard" x="280" y="250">t_fault &lt;= 2</label>
+            <label kind="synchronisation" x="280" y="267">rotor_fault!</label>
+            <label kind="assignment" x="280" y="284">t_fault := 0</label>
+        </transition>
+        <transition>
+            <source ref="TRANSITION_TO_CRUISE"/>
+            <target ref="ROTOR_FAULT"/>
+            <label kind="guard" x="430" y="300">t_fault &lt;= 2</label>
+            <label kind="synchronisation" x="430" y="317">rotor_fault!</label>
+            <label kind="assignment" x="430" y="334">t_fault := 0</label>
+        </transition>
+        <transition>
+            <source ref="HOVER"/>
+            <target ref="ROTOR_FAULT"/>
+            <label kind="guard" x="430" y="350">t_fault &lt;= 2</label>
+            <label kind="synchronisation" x="430" y="367">rotor_fault!</label>
+            <label kind="assignment" x="430" y="384">t_fault := 0</label>
+        </transition>
+        <transition>
+            <source ref="ROTOR_FAULT"/>
+            <target ref="LANDING"/>
+            <label kind="guard" x="100" y="350">t_fault &lt;= 5</label>
+            <label kind="synchronisation" x="100" y="367">emergency_landing!</label>
+        </transition>
+    </template>
+    <system>
+        LiftCruisePT = LiftCruisePT();
+        system LiftCruisePT;
+    </system>
+</nta>

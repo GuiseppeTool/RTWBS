@@ -1,0 +1,5 @@
+model_name,aligned,label_pairs_E,initial_pairs,final_pairs,smt_calls,fixpoint_iters,time_ms
+CS8_aligned,true,18,1,31,180,31,12.216
+CS8_wc_gap,true,16,1,1,180,3,11.990
+CS8_thresh_drift,true,14,1,18,180,20,12.250
+CS8_evo_v2,true,18,1,31,180,31,11.869

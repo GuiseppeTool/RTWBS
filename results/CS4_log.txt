@@ -1,0 +1,245 @@
+=== CS4: Aircraft Engine Controller (DO-178C / ARP4754A / FAA AC 33.28-3) ===
+Loading PT and DT models...
+  PT zones: 85  |  DT zones: 80
+
+[RUN 1] Semantic alignment (aligned pair)...
+
+=== Label Equivalence E ===
+  emergency_shutdown!  →  {protective_shutdown_command!, thermal_exceedance_event!}
+  overheat_detected!  →  {protective_shutdown_command!, thermal_exceedance_event!}
+  system_reset!  →  {protective_shutdown_command!, thermal_exceedance_event!}
+  engine_start!  →  {engine_spool_telemetry!}
+  [A-UNMATCHED] takeoff_thrust!  →  (no DT equivalent)
+  landing_thrust!  →  {landing_power_mode!}
+  relight_initiated!  →  {relight_command_telemetry!}
+  [A-UNMATCHED] idle_reached!  →  (no DT equivalent)
+  cruise_thrust!  →  {cruise_power_mode!}
+  flameout_detected!  →  {combustion_loss_event!}
+  descent_initiated!  →  {descent_power_mode!}
+  approach_thrust!  →  {approach_power_mode!}
+  climb_thrust!  →  {climb_power_mode!}
+  [A-UNMATCHED] ground_idle!  →  (no DT equivalent)
+  shutdown_normal!  →  {shutdown_telemetry!}
+  [B-UNMATCHED]              ←  idle_confirmation_event!  (no PT equivalent)
+  [B-UNMATCHED]              ←  takeoff_power_mode!  (no PT equivalent)
+  [B-UNMATCHED]              ←  ground_ops_mode!  (no PT equivalent)
+  Total: 15 PT labels, 15 matched pairs, 85 PT zones, 80 DT zones
+  BFS done: accepted=2  rejected=1
+Verdict: TRUE (semantically aligned)
+Semantic Alignment Result:
+  Aligned:                TRUE
+  Label pairs in E:       15
+  Initial state pairs:    1
+  Final relation size:    1
+  SMT calls total:        253
+  Fixpoint iterations:    3
+  Time:                   21.614 ms
+
+[RUN 2] Syntactic bisimulation baseline (same pair)...
+WTB: 85 PT zones, 80 DT zones, 0 PT labels, 0 matched pairs
+  BFS done: accepted=1  rejected=0
+Verdict: TRUE (syntactically bisimilar)
+Semantic Alignment Result:
+  Aligned:                TRUE
+  Label pairs in E:       0
+  Initial state pairs:    1
+  Final relation size:    1
+  SMT calls total:        0
+  Fixpoint iterations:    1
+  Time:                   0.007 ms
+[WARNING] RUN 2: expected syntactic FAILURE but got TRUE.
+
+[RUN 3A] EGT threshold drift (Variant A, 30C gap: 950->980)...
+
+=== Label Equivalence E ===
+  emergency_shutdown!  →  {protective_shutdown_command!, thermal_exceedance_event!}
+  overheat_detected!  →  {protective_shutdown_command!, thermal_exceedance_event!}
+  system_reset!  →  {protective_shutdown_command!, thermal_exceedance_event!}
+  engine_start!  →  {engine_spool_telemetry!}
+  [A-UNMATCHED] takeoff_thrust!  →  (no DT equivalent)
+  landing_thrust!  →  {landing_power_mode!}
+  relight_initiated!  →  {relight_command_telemetry!}
+  [A-UNMATCHED] idle_reached!  →  (no DT equivalent)
+  cruise_thrust!  →  {cruise_power_mode!}
+  flameout_detected!  →  {combustion_loss_event!}
+  descent_initiated!  →  {descent_power_mode!}
+  approach_thrust!  →  {approach_power_mode!}
+  climb_thrust!  →  {climb_power_mode!}
+  [A-UNMATCHED] ground_idle!  →  (no DT equivalent)
+  shutdown_normal!  →  {shutdown_telemetry!}
+  [B-UNMATCHED]              ←  idle_confirmation_event!  (no PT equivalent)
+  [B-UNMATCHED]              ←  takeoff_power_mode!  (no PT equivalent)
+  [B-UNMATCHED]              ←  ground_ops_mode!  (no PT equivalent)
+  Total: 15 PT labels, 15 matched pairs, 85 PT zones, 80 DT zones
+  BFS done: accepted=2  rejected=1
+Verdict: TRUE (drift not detected)
+Semantic Alignment Result:
+  Aligned:                TRUE
+  Label pairs in E:       15
+  Initial state pairs:    1
+  Final relation size:    1
+  SMT calls total:        253
+  Fixpoint iterations:    3
+  Time:                   21.287 ms
+[NOTE] Drift not bisimulation-critical in this zone structure.
+
+[RUN 3B] Missing flame-out event (Variant B — combustion_loss_event omitted)...
+
+=== Label Equivalence E ===
+  emergency_shutdown!  →  {thermal_exceedance_event!, protective_shutdown_command!}
+  overheat_detected!  →  {thermal_exceedance_event!, protective_shutdown_command!}
+  system_reset!  →  {thermal_exceedance_event!, protective_shutdown_command!}
+  engine_start!  →  {engine_spool_telemetry!}
+  [A-UNMATCHED] takeoff_thrust!  →  (no DT equivalent)
+  landing_thrust!  →  {landing_power_mode!}
+  relight_initiated!  →  {relight_command_telemetry!}
+  [A-UNMATCHED] idle_reached!  →  (no DT equivalent)
+  cruise_thrust!  →  {cruise_power_mode!}
+  [A-UNMATCHED] flameout_detected!  →  (no DT equivalent)
+  descent_initiated!  →  {descent_power_mode!}
+  approach_thrust!  →  {approach_power_mode!}
+  climb_thrust!  →  {climb_power_mode!}
+  [A-UNMATCHED] ground_idle!  →  (no DT equivalent)
+  shutdown_normal!  →  {shutdown_telemetry!}
+  [B-UNMATCHED]              ←  ground_ops_mode!  (no PT equivalent)
+  [B-UNMATCHED]              ←  takeoff_power_mode!  (no PT equivalent)
+  [B-UNMATCHED]              ←  idle_confirmation_event!  (no PT equivalent)
+  Total: 15 PT labels, 14 matched pairs, 85 PT zones, 80 DT zones
+  BFS done: accepted=2  rejected=1
+Verdict: TRUE (missing event not detected — unexpected)
+Semantic Alignment Result:
+  Aligned:                TRUE
+  Label pairs in E:       14
+  Initial state pairs:    1
+  Final relation size:    1
+  SMT calls total:        236
+  Fixpoint iterations:    3
+  Time:                   20.072 ms
+
+[RUN 4] Runtime monitor baseline...
+Monitor 'DO178C_EGTSafetyLimit': NOT DETECTED | traces: 1000 | steps to detection: 0 | overhead/step: 2.000 us
+Monitor 'DO178C_FlameoutN1': NOT DETECTED | traces: 1000 | steps to detection: 0 | overhead/step: 2.000 us
+Monitor 'DO178C_FuelFlowIdle': NOT DETECTED | traces: 1000 | steps to detection: 0 | overhead/step: 2.000 us
+Monitor 'DO178C_TakeoffEGT': NOT DETECTED | traces: 1000 | steps to detection: 0 | overhead/step: 2.000 us
+
+[RQ4] All 4 monitors use state-based domain predicates.
+      Unlike CS3 timing monitor, all CS4 monitors are expressible
+      in the DO-178C domain variable set (EGT, N1, fuel_flow).
+      Key difference: SemAlign additionally checks delay Condition IV
+      (cross-model timing gaps) at zero additional engineering cost.
+
+[RUN 5] Ontology evolution (RQ1, takeoff_egt_limit: 935 -> 925°C)...
+
+=== Label Equivalence E ===
+  emergency_shutdown!  →  {protective_shutdown_command!, thermal_exceedance_event!}
+  overheat_detected!  →  {protective_shutdown_command!, thermal_exceedance_event!}
+  system_reset!  →  {protective_shutdown_command!, thermal_exceedance_event!}
+  engine_start!  →  {engine_spool_telemetry!}
+  [A-UNMATCHED] takeoff_thrust!  →  (no DT equivalent)
+  landing_thrust!  →  {landing_power_mode!}
+  relight_initiated!  →  {relight_command_telemetry!}
+  [A-UNMATCHED] idle_reached!  →  (no DT equivalent)
+  cruise_thrust!  →  {cruise_power_mode!}
+  flameout_detected!  →  {combustion_loss_event!}
+  descent_initiated!  →  {descent_power_mode!}
+  approach_thrust!  →  {approach_power_mode!}
+  climb_thrust!  →  {climb_power_mode!}
+  [A-UNMATCHED] ground_idle!  →  (no DT equivalent)
+  shutdown_normal!  →  {shutdown_telemetry!}
+  [B-UNMATCHED]              ←  idle_confirmation_event!  (no PT equivalent)
+  [B-UNMATCHED]              ←  takeoff_power_mode!  (no PT equivalent)
+  [B-UNMATCHED]              ←  ground_ops_mode!  (no PT equivalent)
+  Total: 15 PT labels, 15 matched pairs, 85 PT zones, 80 DT zones
+  BFS done: accepted=2  rejected=1
+Verdict under domain_v2.ont: TRUE (alignment preserved — Theorem 1 holds)
+Semantic Alignment Result:
+  Aligned:                TRUE
+  Label pairs in E:       15
+  Initial state pairs:    1
+  Final relation size:    1
+  SMT calls total:        253
+  Fixpoint iterations:    3
+  Time:                   21.509 ms
+
+[RUN 6] Compositional RQ3 — Monolithic check (PT_full vs DT_full)...
+
+=== Label Equivalence E ===
+  emergency_shutdown!  →  {protective_shutdown_command!, thermal_exceedance_event!}
+  overheat_detected!  →  {protective_shutdown_command!, thermal_exceedance_event!}
+  system_reset!  →  {protective_shutdown_command!, thermal_exceedance_event!}
+  engine_start!  →  {engine_spool_telemetry!}
+  [A-UNMATCHED] takeoff_thrust!  →  (no DT equivalent)
+  landing_thrust!  →  {landing_power_mode!}
+  relight_initiated!  →  {relight_command_telemetry!}
+  [A-UNMATCHED] idle_reached!  →  (no DT equivalent)
+  cruise_thrust!  →  {cruise_power_mode!}
+  flameout_detected!  →  {combustion_loss_event!}
+  descent_initiated!  →  {descent_power_mode!}
+  approach_thrust!  →  {approach_power_mode!}
+  climb_thrust!  →  {climb_power_mode!}
+  [A-UNMATCHED] ground_idle!  →  (no DT equivalent)
+  shutdown_normal!  →  {shutdown_telemetry!}
+  [B-UNMATCHED]              ←  idle_confirmation_event!  (no PT equivalent)
+  [B-UNMATCHED]              ←  takeoff_power_mode!  (no PT equivalent)
+  [B-UNMATCHED]              ←  ground_ops_mode!  (no PT equivalent)
+  Total: 15 PT labels, 15 matched pairs, 85 PT zones, 80 DT zones
+  BFS done: accepted=2  rejected=1
+Monolithic verdict: TRUE | time: 21.427 ms
+
+[RUN 7] Compositional check — FMS and TMS subsystems...
+  FMS PT zones: 6  |  FMS DT zones: 6
+  TMS PT zones: 11  |  TMS DT zones: 39
+
+=== Label Equivalence E ===
+  engine_start!  →  {engine_spool_telemetry!}
+  [A-UNMATCHED] idle_reached!  →  (no DT equivalent)
+  [A-UNMATCHED] ground_idle!  →  (no DT equivalent)
+  shutdown_normal!  →  {shutdown_telemetry!}
+  emergency_shutdown!  →  {protective_shutdown_command!}
+  system_reset!  →  {protective_shutdown_command!}
+  [B-UNMATCHED]              ←  ground_ops_mode!  (no PT equivalent)
+  [B-UNMATCHED]              ←  idle_confirmation_event!  (no PT equivalent)
+  Total: 6 PT labels, 4 matched pairs, 6 PT zones, 6 DT zones
+  BFS done: accepted=2  rejected=1
+FMS verdict: TRUE | time: 4.314 ms
+
+=== Label Equivalence E ===
+  [A-UNMATCHED] takeoff_thrust!  →  (no DT equivalent)
+  landing_thrust!  →  {landing_power_mode!}
+  relight_initiated!  →  {relight_command_telemetry!}
+  climb_thrust!  →  {climb_power_mode!}
+  cruise_thrust!  →  {cruise_power_mode!}
+  flameout_detected!  →  {combustion_loss_event!}
+  descent_initiated!  →  {descent_power_mode!}
+  approach_thrust!  →  {approach_power_mode!}
+  overheat_detected!  →  {thermal_exceedance_event!}
+  [B-UNMATCHED]              ←  takeoff_power_mode!  (no PT equivalent)
+  Total: 9 PT labels, 8 matched pairs, 11 PT zones, 39 DT zones
+  BFS done: accepted=0  rejected=1
+TMS verdict: FALSE | time: 8.651 ms
+
+[RQ3] Compositional speedup summary:
+  Monolithic check time:        21.43 ms
+  Subsystem 1 check time:       4.31 ms
+  Subsystem 2 check time:       8.65 ms
+  Compositional total:          12.97 ms
+  Speedup factor:               1.65x
+  FMS aligned:          YES
+  TMS aligned:          NO
+  Monolithic aligned:   YES
+  Results consistent:   NO (compositional diverges!)
+  RQ3 data written to: results/CS4_rq3_compositional.csv
+
+[RQ4] Engineering cost summary:
+  SemAlign one-time cost (RUN 1):   21.61 ms
+  SemAlign total SMT calls:         253
+  Label-equiv pairs (|E|):          15
+  Initial relation size:            1
+  Final relation size:              1
+  Fixpoint iterations:              3
+  Monitor LOC estimate (4 monitors):130 LOC
+  Monitor overhead/step (M1):       2.00 us
+  NOTE: All CS4 monitors are state-based (EGT, N1, fuel_flow)
+        unlike CS3 where timing required cross-model clock sync.
+
+Results written to: results/CS4_results.csv

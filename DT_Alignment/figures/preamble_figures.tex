@@ -1,0 +1,122 @@
+
+\usepackage{tikz}
+\usepackage{amsmath,mathtools}
+
+\usepackage{pgfplots}
+\usepackage{amsmath,amsthm}
+\usepackage{subcaption} 
+\usepackage{xspace}
+\usepackage{threeparttable}  % For \begin{tablenotes}
+\usepackage{multirow}
+\usepackage{xcolor}
+% Math & symbols
+
+
+% Units like \SI{10}{m/s}
+\usepackage{siunitx}
+
+% Tables
+\usepackage{booktabs}
+
+% Figures
+\usepackage{graphicx}
+\usepackage{subcaption}   % for subfigures
+
+% Floats (for [H] in algorithm)
+\usepackage{float}
+
+
+\usepackage{algorithm}
+\usepackage{algpseudocode} % provides algorithmicx/algpseudocode
+
+% Lists (for custom labels S1, S2, …)
+\usepackage{enumitem}
+
+\usepackage{multirow}
+
+
+\usepackage[T1]{fontenc}
+\usepackage[tt=false,type1=true]{libertine} % match acmart’s Libertine options
+\usepackage[varqu]{zi4}                    % match acmart’s mono setup
+\usepackage[libertine]{newtxmath}          % match acmart math (incl. \mathcal)
+\def\mathdefault#1{#1}
+
+
+\AtBeginDocument{%
+  \providecommand\BibTeX{{%
+    Bib\TeX}}}
+
+
+\newcommand{\revisionColor}{black}
+
+\usetikzlibrary{intersections, patterns}
+\usepgfplotslibrary{groupplots}
+\pgfplotsset{compat=1.18}
+
+
+\usetikzlibrary{positioning}
+\usetikzlibrary{ arrows.meta}
+\usetikzlibrary{shapes.geometric}
+\usetikzlibrary{calc}
+\usetikzlibrary{arrows}
+\usetikzlibrary{shapes, arrows, positioning, fit, calc, backgrounds, chains,decorations.pathreplacing,hobby}
+\usetikzlibrary{mindmap,trees}
+\usetikzlibrary{automata,positioning}
+\usetikzlibrary{decorations.markings}
+
+
+
+\def\distanceXToDT{19}
+\def\distanceYToDT{0.4}
+\def\distanceL{0.9}
+\def\distance2L{2}
+\def\innersep{0.4}
+\def\squareHeight{0.8}
+\def\squareWidth{1.5}
+\def\BigSquareWidth{0.45\textwidth}
+
+\tikzset{% UML2 Activity Diagram Styles
+  process/.style    = {fill=white,draw, thin, rounded corners=0.8em, minimum height = 12em,
+    minimum width = 12em, align=center, inner sep=1em,node distance=4em, yshift=-0.5em},
+  object/.style    = {fill=white,draw,thick, rectangle, minimum height = 3em,
+    minimum width = 3em, align=center, inner sep=1em,node distance=4em},
+  pin/.style    = {fill=white,draw, thin, rectangle, minimum height = 0.6em,
+    minimum width = 0.6em, node distance=-1pt, inner sep=0},
+  small pin/.style    = {fill=white,draw, thin, rectangle, minimum height = 0.4em,
+    minimum width = 0.4em, node distance=-1pt, inner sep=0},
+  pin left triangle/.style = {pin,append after command={
+      \pgfextra{
+        \draw[fill=black] 
+          (\tikzlastnode.south east) -- (\tikzlastnode.north east) -- 
+          ([xshift=-0.4em]\tikzlastnode.east) -- cycle;
+      }
+    }
+  },
+  pin up triangle/.style = {
+    pin,
+    path picture={
+      \draw[fill=white, draw=black, thin]
+        ([xshift=-0.3em,yshift=-0.3em]path picture bounding box.center) --
+        ([xshift=0.3em,yshift=-0.3em]path picture bounding box.center) --
+        ([yshift=0.3em]path picture bounding box.center) -- cycle;
+    },
+  },
+  pin left triangle/.style = {
+    pin,
+    path picture={
+      \draw[fill=black, draw=black]
+        ([xshift=0.3em,yshift=-0.3em]path picture bounding box.center) --
+        ([xshift=0.3em,yshift=0.3em]path picture bounding box.center) --
+        ([xshift=-0.3em]path picture bounding box.center) -- cycle;
+    },
+  },
+  pin right triangle/.style = {
+    pin,
+    path picture={
+      \draw[fill=black, draw=black]
+        ([xshift=-0.3em,yshift=-0.3em]path picture bounding box.center) --
+        ([xshift=-0.3em,yshift=0.3em]path picture bounding box.center) --
+        ([xshift=0.3em]path picture bounding box.center) -- cycle;
+    },
+  },
+}

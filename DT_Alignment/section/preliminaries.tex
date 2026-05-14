@@ -1,0 +1,232 @@
+\section{Preliminaries}\label{sec:preliminaries}
+
+
+%\subsection{Preliminaries}
+%We establish the concept of {time} within a domain denoted as \emph{Time}, where the instances of time possess a total order denoted by $\leq$. The general definitions presented hereforth remain unaffected whether time is considered discrete (\(\mathbb{N}^0\)) or continuous (\(\mathbb{R}_{\geq 0}\)). A segment of the time domain refers to a subset $T$ that is closed downward, meaning that if $t \in T$, then all elements $t'$ such that $t'\leq t$ also belong to $T$. 
+
+
+The framework introduced in Section~\ref{sec:architecture} relies on formal models to capture PT and DT views, reason about their behavior, and establish alignment. We now introduce the formal foundations underlying these models: timed transition systems as the semantic domain, timed automata as their syntactic representation, and weak timed bisimulation as the behavioral equivalence relation on which alignment will be grounded.
+
+We model PT and DT views as \emph{Timed Transition Systems (TTS)}~\cite{ALUR1994183, Baier08}, the standard semantic model for real-time systems capturing both discrete event-driven behavior and the passage of time. A TTS is defined as follows.
+
+%\ {Timed Transition Systems (TTS)} is the standard semantic model for real-time systems 
+%\cite{ALUR1994183, Baier08} 
+%that captures both discrete event-driven behavior and the passage of time, allowing us to reason about the temporal aspects of system behavior. Formally, a TTS is defined as follows:
+%
+%In order to model a system and its components, we utilize the concept of timed transition systems (TTS). A TTS captures both the discrete transitions between states and t he passage of time, allowing us to reason about the temporal aspects of system behavior. Formally, a TTS is defined as follows:
+
+
+
+
+\begin{definition}%[Timed Transition System]
+  \label{def:tts}
+A {Timed Transition System} is a tuple
+$\mathcal{T} = (S, \discreteAlphabet, \delayAlphabet, \rightarrow)$, where:
+\begin{itemize}
+    \item $S$ is a set of states%, where each state $s \in S$ is a tuple of the form \( s = (l, v) \), with  \( l \) a discrete location and \( v \) a valuation of clocks, mapping each clock to a real value.
+    \item $\discreteAlphabet$ is a set of \emph{event labels},
+    \item $\delayAlphabet$ is a set of \emph{delay labels}, with $\delta$ representing the elapse of $\delta$ time units. 
+    
+    
+    %δ∈ΣD​ represents the elapse of δ\delta δ time units."
+    \item $\rightarrow \subseteq S \times (\discreteAlphabet \cup \delayAlphabet) \times S$
+    is the transition relation.
+\end{itemize}
+\end{definition}
+%A sequence of events and delays induced by an execution of a TTS is called a trace. The semantics of $\comp$, denoted by $\sem{\comp}$, is defined as the set of all traces induced by its TTS.
+
+
+
+
+
+
+
+
+
+We make use of \emph{Timed Automaton (TA)} \cite{ALUR19932, Bouyer2005AnIT} as syntactic representation of each model. A TA is defined as follows. %A TA extends finite automata with real-valued clocks to capture quantitative timing constraints. Formally, 
+
+\begin{definition}%[Timed Automaton]
+  \label{def:ta}
+    A Timed Automaton is a tuple
+\(
+TA = (L, \ell_0, C, \Sigma, E, \text{Inv}),
+\) 
+where:
+\begin{itemize}
+  \item $L$ is a finite set of locations with initial location $\ell_0 \in L$,
+  \item $C$ is a finite set of clocks,
+  \item $\Sigma = \discreteAlphabet \cup \delayAlphabet$ is the action alphabet, partitioned into event-driven and delay-driven actions with $\discreteAlphabet \cap \delayAlphabet = \emptyset$,
+  \item $E \subseteq L \times \mathcal{B}(C) \times \Sigma \times 2^C \times L$ is a finite set of edges, where $\mathcal{B}(C)$ denotes clock constraints,
+  \item $\text{Inv}: L \to \mathcal{B}(C)$ assigns invariants restricting the admissible time elapse in each location.
+\end{itemize}
+\end{definition}
+
+
+
+
+
+
+The semantics of a TA is given as a TTS as of Definition~\ref{def:tts}, defined as of \cite{ALUR19932, Bouyer2005AnIT}, and written as $\sem{TA}$. A \emph{state} of the corresponding TTS is a pair $(\ell, v) \in L \times \mathbb{R}_{\geq 0}^C$, where $\ell$ is the current location and $v$ a clock valuation. %A state is valid only if $v \models \text{Inv}(\ell)$. 
+Discrete transitions correspond to edges in $E$ with clock resets, while delay transitions correspond to uniform advancement of all clocks under the invariant of the current location.  
+
+To formalize the expected behavior of systems, we use Timed Computation Tree Logic (TCTL) properties \cite{ALUR1994183}. The semantics of a property $\phi$, denoted by $\sem{\phi}$, is the set of traces that satisfy $\phi$. A TA $TA$ satisfies a formula $\phi$, written $TA \models \phi$, iff $\sem{TA} \subseteq \sem{\phi}$. 
+A property $\varphi$ over an alphabet $X$ is built from labels in $X$ using boolean connectives ($\land$, $\lor$, $\neg$) and timed path quantifiers ($\mathbf{A}$, $\mathbf{E}$, $\mathbf{G}$, $\mathbf{F}$, $\mathbf{U}$); we refer to~\cite{ALUR1994183} for the full syntax. Given a function $\sigma : X \to Y$, we write $\sigma(\varphi)$ for the property obtained by replacing each label $a$ in $\varphi$ with $\sigma(a)$.
+%A contract $C = (A, G)$ is a pair, where $A$ and $G$ are sets of traces representing, respectively,
+%the assumptions on the environment and the guarantees provided by the component. The semantics of a contract $C$, denoted by $\sem{C}$, is defined as \( \sem{C} \triangleq \{\, \sigma \mid \sigma \in A \implies \sigma \in G \,\} \).A component $\comp$ {satisfies} a contract $C$, written $\comp \models C$, if $\sem{\comp} \subseteq \sem{C}$
+%
+
+%the set of traces for which the assumptions imply the guarantees, formally \( \sem{C} \triangleq \{\, \sigma \mid \sigma \in A \implies \sigma \in G \,\} \). A component $\comp$ {satisfies} a contract $C$, written $\comp \models C$, if $\sem{\comp} \subseteq \sem{C}$. %A contract $C' = (A', G')$ refines another contract $C = (A, G)$, written $C' \refines C$, if $A \subseteq A'$ and $G' \subseteq G$. This ensures that any component satisfying $C'$ also satisfies $C$. 
+
+%However, in systems with hard real-time and cyclic behaviors, these infinite paths can be represented finitely by identifying repeating patterns  \cite{Dou02}. 
+%Verifying trace inclusion in timed systems is generally undecidable due to infinite execution paths leading to unbounded state spaces \cite{ALUR1994183}. To overcome this problem, we employ \emph{symbolic abstractions} based on zones to obtain a finite representation of the timed system \cite{ALUR19932, Bouyer2005AnIT}. A \emph{zone} is a convex set of clock valuations that satisfies the same set of constraints. A TA $A$ can thus be abstracted into a \emph{zone-based symbolic automaton} $\Gamma(A)$, whose states are pairs $(\ell, Z)$ with $\ell \in L$ and $Z$ a zone representing all valuations reachable at location $\ell$. Every concrete state $(\ell, v)$ belongs to exactly one symbolic state $(\ell, Z)$ with $v \in Z$. Transitions between zones are induced both by discrete edges and by the passage of time within each location. This symbolic construction yields a \emph{finite-state abstraction} of the TA that preserves all relevant properties. 
+
+
+%A network $\mathcal{N} = \mathit{TA}_1 \parallel \mathit{TA}_2 \parallel \cdots \parallel \mathit{TA}_n$ is a parallel composition as of \cite{Uppaal} in which each $\mathit{TA}_i$ has local clocks $C_i$ (clock sets pairwise disjoint) and an action alphabet $\Sigma^{(i)}$. Actions in $\Sigma^{(i)} \setminus \bigcup_{j \ne i} \Sigma^{(j)}$ interleave freely, while actions shared between two or more components are {synchronizing} and must be taken simultaneously by all sharing components. Time advances globally and simultaneously across all components, subject to all location invariants. %We write $\mathit{Sync}(\mathit{TA}_i) = \Sigma^{(i)} \cap \bigcup_{j \ne i} \Sigma^{(j)}$ for the synchronization alphabet of $\mathit{TA}_i$ within $\mathcal{N}$. 
+%The TTS semantics of a network is defined analogously to that of a single TA, with discrete transitions respecting the handshake discipline and time advancing jointly.
+
+
+
+To reason about the behavioral relationship between two TTS, we 
+use weak timed simulation (WTS) and weak timed bisimulation (WTB). Intuitively, 
+a simulation captures the idea that one system can match every 
+observable move of another, while abstracting over internal 
+transitions. Bisimulation strengthens 
+this to a symmetric requirement: neither system can exhibit an 
+observable behaviour the other cannot match.
+
+Formally, internal actions are modeled as $\tau$-transitions, 
+which arise from projection of event labels outside the alphabet 
+of interest. We write $s \xRightarrow{\varepsilon} s'$ if $s'$ is 
+reachable from $s$ by any finite sequence of $\tau$-transitions 
+and delay transitions, and $s \xRightarrow{a} s'$ for $a \in 
+\Sigma_E \setminus \{\tau\}$ if there exist $s_1, s_2$ such that 
+$s \xRightarrow{\varepsilon} s_1 \xrightarrow{a} s_2 
+\xRightarrow{\varepsilon} s'$.
+
+\begin{definition}
+A relation $R \subseteq S_1 \times S_2$ is a WTS 
+from $\mathcal{T}_1$ to $\mathcal{T}_2$ on $X \subseteq 
+\Sigma_{E_1} \cap \Sigma_{E_2}$ iff $(s^1_0, s^2_0) \in R$ and for every $(s, t) \in R$:
+\begin{itemize}
+\item $\forall a \in X,s'$ s.t. $s \xRightarrow{a} s'$, 
+     $\exists t'$ with $t \xRightarrow{a} t'$ and 
+    $(s', t') \in R$;
+\item $\forall \delta \in \Sigma_D$ and $s'$ with $s 
+\xrightarrow{\delta} s'$,  $\exists t'$ reachable from 
+$t$ by $\xRightarrow{\varepsilon}$ with elapsed time $\delta$ 
+    such that $(s', t') \in R$.
+\end{itemize}
+We write $\mathcal{T}_1 \refines{} \mathcal{T}_2$ iff such a 
+relation exists.
+\end{definition}
+
+\begin{definition}
+A relation $R$ is a WTB on $X$ iff 
+both $R$ and $R^{-1}$ are WTSs on $X$. We write 
+$\mathcal{T}_1 \aligns{} \mathcal{T}_2$.
+\end{definition}
+
+As a standard result, if $\mathcal{T}_1 \aligns{} \mathcal{T}_2$ on alphabet $X$, then for every TCTL property $\varphi$ over $X$: $\mathcal{T}_1 \models \varphi \iff \mathcal{T}_2 \models \varphi$ \cite{Baier08}. If $\mathcal{T}_1 \refines{} \mathcal{T}_2$ on alphabet $X$, then for every safety property $\varphi$ over $X$: $\mathcal{T}_2 \models \varphi \Rightarrow \mathcal{T}_1 \models \varphi$ \cite{Baier08}.
+
+%
+%Given a TA $A$ and a set of event labels $X \subseteq \discreteAlphabet$, the \emph{projection of $A$ to $X$}, written $\projectionX A$, is the TA obtained from $A$ by relabeling every edge with action $a \in \discreteAlphabet \setminus X$ as $\tau$, a distinguished silent event. Locations, clocks, guards, resets, invariants, and delay labels are unchanged. Projection lifts to the TTS semantics as $\sem{\projectionX A} = \projectionX{\sem{A}}$, where on TTSs $\projectionSkeletonX$ relabels every non-$X$ event transition as $\tau$. Projection is monotone (if $X \subseteq Y$ then $\projectionX A$ hides at least as much as $\projection{Y} A$) and idempotent ($\projectionX A \circ \projection{Y} A = \projection{X \cap Y} A$). After any projection, in any resulting TTS, we write $s \xRightarrow{\varepsilon} s'$ iff $s'$ is reached from $s$ by any (possibly empty) sequence of $\tau$-transitions and delay transitions. For $a \in \discreteAlphabet \setminus \{\tau\}$, write $s \xRightarrow{a} s'$ iff there exist $s_1, s_2$ with $s \xRightarrow{\varepsilon} s_1 \xrightarrow{a} s_2 \xRightarrow{\varepsilon} s'$.
+%
+%
+%
+%Let $A_1, A_2$ be TAs and $X \subseteq \discreteAlphabet^{(1)} \cap \discreteAlphabet^{(2)}$. We define the following relations:
+%
+%\begin{definition}%[$X$-weak simulation; refinement relation $\refines{X}$]
+%\label{def:refinement}
+%A relation $R \subseteq S_1 \times S_2$ is an \emph{$X$-weak simulation from $A_1$ to $A_2$} iff $(s_0^1, s_0^2) \in R$ and for every $(s,t) \in R$:
+%\begin{itemize}
+%  \item $\forall a \in X$ and $s'$ with $s \xrightarrow{a} s'$ in $\projection{X}{\sem{A_1}}$,$\exists t'$ with $t \xRightarrow{a} t'$ in $\projection{X}{\sem{A_2}}$ and $(s',t') \in R$;
+%  \item  $\forall\delta \in \Sigma_D$ and $s'$ with $s \xrightarrow{\delta} s'$,  $\exists t'$ reached from $t$ by $\xRightarrow{\varepsilon}$ with elapsed time $\delta$, s. t. $(s',t') \in R$.
+%\end{itemize}
+%We write $A_1 \refines{X} A_2$ iff such a simulation exists.
+%\end{definition}
+%
+%\begin{definition}%[$X$-weak bisimulation; alignment relation $\aligns{X}$]
+%\label{def:alignment}
+%A relation $R$ is an \emph{$X$-weak bisimulation} iff both $R$ and $R^{-1}$ are $X$-weak simulations. Write $A_1 \aligns{X} A_2$.
+%\end{definition}
+%
+
+%The following properties hold by standard arguments and are used throughout:
+%\begin{itemize}
+  %\item {(Reflexivity)} $A \refines{} A$ and $A \aligns{} A$.
+  %\item {(Transitivity)} $\refines{}$ and $\aligns{}$ are transitive.
+  %\item {(Bisimulation implies simulation)} $A_1 \aligns{} A_2 \Rightarrow A_1 \refines{} A_2$ and $A_2 \refines{} A_1$.
+  %\item {(Projection monotonicity)} $X \subseteq Y \Rightarrow (A_1 \refines{Y} A_2 \Rightarrow A_1 \refines{} A_2)$; analogously for $\aligns{}$ and $\aligns{}$.
+  %\item {(TCTL preservation)} If $A_1 \aligns{} A_2$ on alphabet $X$, then for every TCTL propery $\varphi$ over $X$: $A_1 \models \varphi \iff A_2 \models \varphi$
+  %\item {(Safety preservation)} If $A_1 \refines{} A_2$ on alphabet $X$, then for every safety property $\varphi$ over $X$: $A_2 \models \varphi \Rightarrow A_1 \models \varphi$.
+%
+  %\item {(Precongruence for $\parallel$)} If $A_1 \refines{} A_1'$, $A_2 \refines{} A_2'$, and the synchronization alphabet of the composed network lies in $X$, then $A_1 \parallel A_2 \refines{} A_1' \parallel A_2'$; analogously for $\aligns{}$.
+%\end{itemize}
+%
+%
+%\begin{itemize}
+%  \item Remove the contracts etc, maybe, and add refinement in the form of simulation and bisimulation over projected alphabets. 
+%\end{itemize}
+%
+%
+%%Components are composed into systems via \emph{networks of timed automata} in the UPPAAL style \cite{Uppaal}. 
+%
+
+%We establish the concept of {time} within a domain denoted as \emph{Time}, where the instances of time possess a total order denoted by $\leq$. The general definitions presented hereforth remain unaffected whether time is considered discrete (\(\mathbb{N}^0\)) or continuous (\(\mathbb{R}_{\geq 0}\)). A segment of the time domain refers to a subset $T$ that is closed downward, meaning that if $t \in T$, then all elements $t'$ such that $t'\leq t$ also belong to $T$. 
+
+
+%In order to model a system or its components, we utilize the concept of timed transition systems (TTS), which are a widely adopted formalism for representing the behavior of real-time systems. A TTS captures both the discrete transitions between states and the passage of time, allowing us to reason about the temporal aspects of system behavior. Formally, a TTS is defined as follows:
+%
+%
+%
+%\begin{definition}[Timed Transition System]\label{def:tts}
+%A \emph{Timed Transition System (TTS)} is a tuple
+%$\mathcal{T} = (S, \Sigma_E, \Sigma_D, \rightarrow)$, where:
+%\begin{itemize}
+%    \item $S$ is a set of states%, where each state $s \in S$ is a tuple of the form \( s = (l, v) \), with  \( l \) a discrete location and \( v \) a valuation of clocks, mapping each clock to a real value.
+%    \item $\Sigma_E$ is a set of \emph{event labels},
+%    \item $\Sigma_D$ is a set of \emph{delay labels}, with $\delta \in \Sigma_D$ representing the elapse of $\delta \in Time$ time units. 
+%    
+%    
+%    %δ∈ΣD​ represents the elapse of δ\delta δ time units."
+%    \item $\rightarrow \subseteq S \times (\Sigma_E \cup \Sigma_D) \times S$
+%    is the transition relation.
+%\end{itemize}
+%\end{definition}
+%A sequence of events and delays induced by an execution of a TTS is called a trace. The semantics of $\comp$, denoted by $\sem{\comp}$, is defined as the set of all traces induced by its TTS.
+%
+%
+%
+%To formalize the expected behavior of components, we use temporal logic formulas, such as Timed Computation Tree Logic (TCTL) \cite{ALUR1994183}, to define sets of acceptable traces. The semantics of a formula $\phi$, denoted by $\sem{\phi}$, is the set of traces that satisfy $\phi$. A component $\comp$ satisfies a formula $\phi$, written $\comp \models \phi$, iff $\sem{\comp} \subseteq \sem{\phi}$. 
+%
+%
+%
+%
+%
+%We make use of \emph{Timed Automaton (TA)} and \emph{Region Automaton} \cite{ALUR19932, Bouyer2005AnIT} as a syntactic representation of the component models. A TA extends finite automata with real-valued clocks to capture quantitative timing constraints. Formally, 
+%
+%\begin{definition}[Timed Automaton]\label{def:ta}
+%    A Timed Automaton is a tuple
+%\(
+%TA = (L, \ell_0, C, \Sigma, E, \text{Inv}),
+%\) 
+%where:
+%\begin{itemize}
+%  \item $L$ is a finite set of locations with initial location $\ell_0 \in L$,
+%  \item $C$ is a finite set of clocks,
+%  \item $\Sigma = \Sigma_E \cup \Sigma_D$ is the action alphabet, partitioned into event-driven and delay-driven actions with $\Sigma_E \cap \Sigma_D = \emptyset$,
+%  \item $E \subseteq L \times \mathcal{B}(C) \times \Sigma \times 2^C \times L$ is a finite set of edges, where $\mathcal{B}(C)$ denotes clock constraints,
+%  \item $\text{Inv}: L \to \mathcal{B}(C)$ assigns invariants restricting the admissible time elapse in each location.
+%\end{itemize}
+%\end{definition}
+%
+%
+%
+%
+%
+%
+%The semantics of a TA is given as a TTS as of Definition~\ref{def:tts}. A \emph{state} of the corresponding TTS is a pair $(\ell, v) \in L \times T^C$, where $\ell$ is the current location and $v$ a clock valuation. %A state is valid only if $v \models \text{Inv}(\ell)$. 
+%Discrete transitions correspond to edges in $E$ with clock resets, while delay transitions correspond to uniform advancement of all clocks under the invariant of the current location.  
+%
+%%However, in systems with hard real-time and cyclic behaviors, these infinite paths can be represented finitely by identifying repeating patterns  \cite{Dou02}. 
+%Verifying trace inclusion in timed systems is generally undecidable due to infinite execution paths leading to unbounded state spaces \cite{ALUR1994183}. To overcome this problem, we employ \emph{symbolic abstractions} based on zones to obtain a finite representation of the timed system \cite{ALUR19932, Bouyer2005AnIT}. A \emph{zone} is a convex set of clock valuations that satisfies the same set of constraints. A TA $A$ can thus be abstracted into a \emph{zone-based symbolic automaton} $\Gamma(A)$, whose states are pairs $(\ell, Z)$ with $\ell \in L$ and $Z$ a zone representing all valuations reachable at location $\ell$. Every concrete state $(\ell, v)$ belongs to exactly one symbolic state $(\ell, Z)$ with $v \in Z$. Transitions between zones are induced both by discrete edges and by the passage of time within each location. This symbolic construction, first introduced in \cite{ALUR19932} and extended in \cite{Bouyer2005AnIT}, yields a \emph{finite-state abstraction} of the TA that preserves all relevant properties. 

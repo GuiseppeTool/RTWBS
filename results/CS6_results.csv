@@ -1,0 +1,5 @@
+model_name,aligned,label_pairs_E,initial_pairs,final_pairs,smt_calls,fixpoint_iters,time_ms
+CS6_aligned,false,35,1,0,208,5,10.111
+CS6_missing_warning,false,33,1,0,193,26,9.312
+CS6_thresh_drift,false,33,1,0,208,5,10.066
+CS6_evo_v2,false,35,1,0,208,5,9.918

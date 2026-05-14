@@ -1,0 +1,265 @@
+\section{Formalization of Domain Knowledge}
+\label{sec:formalization}
+
+%As engineers design a system, they operate with an understanding of the application domain. For example, it is known that payload and battery mass contribute to the total weight. We refer to this understanding as the domain knowledge and it is the body of knowledge that engineers have about the entities, relationships, and constraints in the application domain. 
+
+
+Engineers design systems against an understanding of the application domain, i.e., the entities, relationships, and constraints that govern its behavior. Ontologies are the standard tool for representing this knowledge in DT architectures, typically formalized as knowledge graphs~\cite{Gil2025, KARABULUT2024442, steinmetz2022methodology}. We generalize this notion to a first-order theory, which subsumes knowledge graphs while supporting richer engineering knowledge and automated reasoning via Satisfiability Modulo Theories (SMT) solvers~\cite{Barrett2018}.
+
+%Ontologies are a common tool for representing entities, relationships, and constraints of a domain. In the context of DTs, ontologies are often formalized in the form of knowledge graphs \cite{Gil2025, KARABULUT2024442, steinmetz2022methodology}. In our framework, we generalize this notion to a first-order theory, which is more expressive and can capture a wider range of domain knowledge than a knowledge graph. Moreover, first-order logic is a widely used and well-understood formalism that is expressive enough to capture rich engineering knowledge, yet structured enough to support automated reasoning via SMT solvers.
+
+\begin{definition}
+\label{def:ontology}
+An ontology is a tuple $\Ontology = (S, F, R, \Delta)$ where:
+\begin{itemize}
+  \item $S$ is a finite set of {value domains}, representing the types of entities 
+        in the domain;
+  \item $F$ is a finite set of {function symbols} with declared value domains 
+        signatures, representing measurable quantities and domain-specific 
+        computations;
+  \item $R$ is a finite set of {relation symbols} with declared value domains 
+        signatures, representing domain predicates;
+  \item $\Delta$ is a finite set of {axioms}, with $\Delta \subseteq \mathrm{F}(S, F, R)$, where $\mathrm{F}(S, F, R)$ is the set of all first-order sentences over the signature, expressing what the engineer knows to be true and invariant about the domain. 
+\end{itemize}
+\end{definition}
+
+The signature $(S, F, R)$ define the {vocabulary} of the domain. A model of $\Ontology$ is an instantiation of $(S,F,R)$ satisfying $\Delta$. We write $\mathcal{L}(\Ontology)$ for the set of all facts expressible by the vocabulary that are entailed by $\Delta$.
+
+%first-order sentences over the signature $(S, F, R)$ of $\Ontology$ — intuitively, all facts expressible in the domain vocabulary.
+
+%, while $\Delta \subseteq \mathrm{F}(S, F, R)$, where $\mathrm{F}(S, F, R)$ is the set of all first-order sentences over the signature, 
+
+%, while
+%$\Delta$ constrain how entities, quantities, and relations behave. 
+
+
+%Note that any knowledge graph is a form of a restricted ontology $\mathcal{O}' = (S, \emptyset, R_2, \Delta_{DL})$ where $R_2$ contains only binary relations and $\Delta_{DL}$ contains only Description Logic-expressible axioms, therefore any result established for $\Ontology$ applies to any knowledge graph under these restrictions.
+
+%Since $\mathcal{O}' $ is an instance of Definition~\ref{def:ontology} with $F = \emptyset$, any result established for $\mathcal{O}$ applies to any knowledge graph under these restrictions.
+
+
+\begin{example}%[Agricultural Drone Ontology]
+\label{ex:drone-ontology}
+Consider a drone used to spray pesticides over a field, powered by an onboard 
+battery. The engineering knowledge can be formalized as $K = (S, F, R, \Delta)$: 
+\begin{itemize}
+  \item $S = \{\mathit{Hectare}, \mathbb{R}, \mathbb{N}\}$, capturing units of 
+        land, real-valued energy, and natural-valued hectare indices.
+  \item $F = \{\mathit{consumption} : \mathit{Hectare} \to \mathbb{R},\ 
+        \mathit{num\_hectares} : \mathbb{N},\ \mathit{total\_consumption} : 
+        \mathbb{R},\ \mathit{battery\_capacity} : \mathbb{R}\}$, where 
+        $\mathit{consumption}(h)$ is the energy needed to cover hectare $h$, 
+        and the remaining symbols are constants.
+  \item $R = \{\mathit{covered} : \mathit{Hectare}\}$, where $\mathit{covered}(h)$ 
+        holds when hectare $h$ has been sprayed.
+  \item $\Delta$ contains the following axioms: $
+          \mathit{num\_hectares} = 10,$ $ 
+          \mathit{battery\_capacity} = 500,$ $
+          \forall h : \mathit{Hectare}.\ \mathit{consumption}(h) \geq 0,$ $\mathit{total\_consumption} = 
+          \textstyle\sum_{h\,:\,\mathit{covered}(h)} \mathit{consumption}(h).$
+\end{itemize}
+
+\end{example}
+
+%Constructing such ontologies from existing engineering artifacts is consistent with established practices in ontology and knowledge graph engineering. Several methodologies derive ontologies or knowledge graphs directly from domain standards, documentation, and system models, enabling the systematic construction of machine-interpretable domain knowledge \cite{noy2001ontology, stevens2000ontology, hogan2021knowledge}. These approaches show that the semantic structure represented by the ontology can be obtained from artifacts already present in engineering workflows.
+
+Several approaches exist for constructing ontologies in this form from system documentation, models, or domain standards, enabling the systematic construction of machine-interpretable domain knowledge \cite{noy2001ontology, stevens2000ontology,hogan2021knowledge}. Knowledge graphs themselves admit a natural logical interpretation in which entities correspond to individuals, relations to predicates, and triples to ground atoms. As a result, representing the ontology as a first-order theory builds directly on existing ontology engineering practices and artifacts, while enabling richer constraints and automated reasoning capabilities. 
+
+
+An ontology captures the structure of the application domain independently of any particular system. When in MBSE a formal model is established, engineers draw on this knowledge to choose labels that reflect actuator commands, threshold crossings, or compliance events. This abstraction is motivated by the need for tractable model checking, but this connection is rarely made explicit. The model retains the labels while discarding the reasoning behind them, leaving domain meaning in informal documentation rather than in any artifact the framework can reason about. We elevate this implicit connection to a first-class formal object through the interpretation function, mapping each label to a formula over the ontology that captures its intended domain meaning. This is not a new engineering step, as safety-critical practice already demands it. Tools like FRET~\cite{Giannakopoulou2021} and STIMULUS~\cite{catia_stimulus}, for instance, requires engineers to provide explicit variable bindings between requirements and system models. Our interpretation plays the same role, grounding observable behaviour in shared domain semantics rather than in system-specific variable names.
+
+
+%An ontology, essentially, captures the structure of the application domain independently of any particular system. As engineers design a system, they must ground its observable behaviour in it, deciding which states are meaningful, which quantities are observable, and how these relate to domain concepts. In MBSE practice, specifically, when models are constructed, engineers use labels to abstract away this meaning in favor of tractable model checking: any $e \in S \cup \discreteAlphabet$  is treated as a symbol, indifferent to whether it denotes an actuator command or a compliance event. The interpretation \Interpretation recovers this information as a first-class formal object, equipping the framework with the means to reason about whether two models refer to the same domain concepts.
+
+
+%When an engineer designs a system, they must ground its observable behaviour in it, i.e. provide an interpretation of the system model in terms of the ontology. For example, they must decide which states are meaningful and which quantities are observable, and how these relate to the ontology. To capture this connection, we define the interpretation as a mapping from the labels of the system model to first-order formulas over the signature of the ontology. 
+
+
+\begin{definition}
+\label{def:interpretation}
+Given a TTS $\mathcal{T} = (S, \discreteAlphabet, \delayAlphabet, \rightarrow)$ and an ontology $\Ontology $, an interpretation is a function $\Interpretation : S \cup \discreteAlphabet \mapsto \mathcal{L}(\Ontology)$ 
+%an interpretation over an ontology $\Ontology$ is a function $\Interpretation : S \cup \discreteAlphabet \;\to\; \mathrm{F}(S, F, R)$. 
+\end{definition}
+
+%In MBSE practice, engineers abstract the system's observable behaviour 
+%into discrete labels in favor of tractable model checking. Any $e \in S \cup\discreteAlphabet$ is a symbol and any verification algorithm treats it as such, indifferent to whether it denotes an 
+%actuator command, a threshold crossing, or a compliance event. 
+%This abstraction is deliberate as it is what makes formal 
+%verification scale, but it comes at a cost: the domain meaning 
+%that motivated the choice of labels is not represented in the model. 
+%%Nothing in the TTS prevents two engineers from assigning the same  label to physically distinct behaviours, or different labels to physically identical ones.
+%The interpretation $\Interpretation$ recovers this information, which is usual left in the documentation, as 
+%a first-class formal object. It does not change the TTS or its 
+%verification properties, but it equips the framework with the means 
+%to reason about whether two models are talking about the same things 
+%when they use the same labels. 
+
+
+\begin{example}
+\label{ex:drone-interpretation}
+Continuing Example~\ref{ex:drone-ontology}, 
+consider a TTS $\mathcal{T}$ with $\discreteAlphabet = 
+\{\mathit{enter\_zone},\, \mathit{exit\_zone},\, \mathit{shutoff},\, 
+\mathit{resume},\, \mathit{spray}\}$ modelling the drone's observable 
+behaviour. The engineer assigns the following interpretations:
+\begin{align*}
+\Interpretation(\mathit{spray}) &= 
+    \mathit{consumption}(\mathit{current\_hectare}) \leq 50 \\
+\Interpretation(\mathit{shutoff}) &= 
+    \mathit{total\_consumption} 
+    \leq \mathit{battery\_capacity}\\
+    &\wedge 
+    \mathit{covered}(\mathit{current\_hectare}) \\
+\Interpretation(\mathit{exit\_zone}) &= 
+    \mathit{covered}(\mathit{current\_hectare})
+\end{align*}
+The first captures that a \emph{spray} transition is fired only when 
+the energy needed for the current hectare remains within the per-hectare 
+budget. The second captures that \emph{shutoff} is meaningful only when 
+cumulative consumption has not exceeded battery capacity and the current 
+hectare has been fully covered. The third captures that 
+\emph{exit\_zone} is fired upon completion of coverage of the current 
+hectare.
+\end{example}
+
+For composite systems, each component carries its own interpretation over its local alphabet, with alphabets pairwise disjoint. We write $\SetInterpretation = \{\Interpretation_1, \ldots, \Interpretation_n\}$ 
+where $\mathrm{dom}(\Interpretation_i) \cap \mathrm{dom}(\Interpretation_j) 
+= \emptyset$ for all $i \neq j$. Accordingly, we can now define the domain knowledge simply as the pair $\DomainKnowledge = (\Ontology, \SetInterpretation)$.
+
+%When a system is composed of multiple components, each component 
+%carries its own interpretation function over its local event alphabet. 
+%We require these alphabets to be pairwise disjoint, ensuring each 
+%label has a unique interpretation. We model this as a set 
+%$\SetInterpretation = \{\Interpretation_1, \ldots, \Interpretation_n\}$ 
+%where $\mathrm{dom}(\Interpretation_i) \cap \mathrm{dom}(\Interpretation_j) 
+%= \emptyset$ for all $i \neq j$. Accordingly, we can now define the domain knowledge simply as the pair $\DomainKnowledge = (\Ontology, \SetInterpretation)$.
+%%which captures both the structure of the domain and how the system's observable behaviour relates to it.
+
+
+As development progresses, engineers refine domain knowledge by discovering tighter constraints or new relationships. For example, a datasheet may reveal a lower battery rating, or field measurements may show higher-than-expected consumption. We wish to formalize this intuition with the following definition, which captures the idea of one domain knowledge being more precise than another. 
+
+%Crucially, such refinements must not invalidate previously established results: an alignment proof or a verified property should remain valid after the ontology is updated, or the engineering cost of iterative development becomes prohibitive. We formalize this intuition as follows.
+
+%Importantly, domain knowledge evolves during system development as engineers discover new facts, refine existing ones, and identify previously unknown relationships. For example, a datasheet may reveal a tighter battery rating, field measurements may show higher-than-expected consumption, or a subsystem dependency may be uncovered. Each discovery intuitively makes the domain knowledge more precise, i.e., it refines it. We formalize this intuition as follows.
+
+
+%
+\begin{definition}
+      Let $\DomainKnowledge' = (\Ontology', \SetInterpretation')$ and $\DomainKnowledge = (\Ontology, \SetInterpretation)$. %$\DomainKnowledge' = (S_i, F_i, R_i, \Delta_i)$
+%.
+ We say $\DomainKnowledge'$ \emph{refines} 
+$\DomainKnowledge$, written $\DomainKnowledge' 
+\RefinesDomain \DomainKnowledge$, iff:
+\begin{enumerate}[label=\Roman*), ref=\Roman*]
+  \item \label{con1:vocab_extension}$(S', F', R') \supseteq (S, F, R), $ \hfill (vocabulary extension)
+  \item \label{con2:axioms_implication} $\Delta' \models \Delta$ \hfill (axiom strengthening)
+  %\item \label{con3:interpretation_tight}  $\Delta' \models \Interpretation'_i(a) \implies \Interpretation_i(a) \quad \forall \Interpretation_i \in \SetInterpretation,\ a \in \mathrm{dom}(\Interpretation_i)$ \hfill (interpretation tightening)
+\end{enumerate}
+%      
+\end{definition}
+
+Condition~\ref{con1:vocab_extension} allows the refined ontology to introduce new vocabulary, while Condition~\ref{con2:axioms_implication} requires its axioms to entail all prior ones. In this way, existing knowledge is never contradicted, only strengthened. %Condition~\ref{con3:interpretation_tight} ensures that event interpretations tighten monotonically: every context in which a refined interpretation permits an event must also be valid under the original.
+
+\begin{example}
+Continuing Example~\ref{ex:drone-ontology}, suppose that after field
+deployment the engineering team refines their domain model as new
+information about motor dynamics, battery limits, and energy
+consumption becomes available. The refined
+ontology $\Ontology'$ (i) extends the vocabulary with a type
+$\mathit{Motor}$ and function $\mathit{rpm} : \mathit{Motor} \to
+\mathbb{R}$ (Condition~\ref{con1:vocab_extension}), (ii) strengthens the
+axioms by updating $\mathit{battery\_capacity} = 450$ and adding
+$\forall h : \mathit{Hectare}.\ \mathit{consumption}(h) \leq 100$
+(Condition~\ref{con2:axioms_implication}).
+% and (iii) tightens the event
+%interpretation by replacing
+%$\Interpretation(\mathit{shutoff}) = \mathit{total\_consumption} \leq
+%500$ with $\Interpretation'(\mathit{shutoff}) =
+%\mathit{total\_consumption} \leq 450$
+%(Condition~\ref{con3:interpretation_tight}).
+\end{example}
+
+The following theorem establishes a desirable property of refinement, namely its conservativity: every model of $\Ontology'$ is also a model of $\Ontology$, and every admissible letter under $\DomainKnowledge'$ remains admissible under $\DomainKnowledge$. As a result, engineers can safely refine their domain knowledge without invalidating previously established results, making iterative development feasible.
+
+%In iterative development, engineers can incrementally refine their domain knowledge as they discover new facts and relationships. The following theorem establishes that refinement is a conservative relation: every model of $\Ontology'$ is also a model of $\Ontology$, and every admissible letter under $\DomainKnowledge'$ is admissible under $\DomainKnowledge$. Therefore, engineers can safely refine their domain knowledge without invalidating previously established results.
+
+\begin{theorem}
+\label{thm:conservative-refinement}
+If $\DomainKnowledge' \RefinesDomain \DomainKnowledge$, then:
+\begin{enumerate}[label=\Roman*), ref=\Roman*]
+    \item\label{con:1} every model of $\Ontology'$ is also a model of $\Ontology$,
+    \item\label{con:2} every admissible event under $\DomainKnowledge'$ is 
+    admissible under $\DomainKnowledge$,
+    %\item\label{con:3} for all $\Interpretation'_i \in \SetInterpretation'$ and 
+    %$a \in \mathrm{dom}(\Interpretation'_i)$, every context in which 
+    %$a$ fires under $\Interpretation'_i$ is also a valid firing context 
+    %under $\Interpretation_i$.
+\end{enumerate}
+\end{theorem}
+
+
+
+\begin{proof}
+Assume $\DomainKnowledge' \RefinesDomain \DomainKnowledge$.
+
+\noindent\textit{\eqref{con:1}} Let $\mathcal{M} \models \Delta'$. Since 
+$(S, F, R) \subseteq (S', F', R')$ by 
+condition~\ref{con1:vocab_extension}, the reduct 
+$\mathcal{M}|_{(S,F,R)}$ is a well-defined structure over the 
+signature of $\Ontology$. Since $\Delta' \models \Delta$ by 
+condition~\ref{con2:axioms_implication}, we have $\mathcal{M} 
+\models \Delta$, and $\mathcal{M}|_{(S,F,R)} \models 
+\Delta$. Hence $\mathcal{M}$ is a model of $\Ontology$.
+
+\noindent\textit{\eqref{con:2}} Let $a \in \mathrm{dom}(\Interpretation'_i)$ 
+for some $\Interpretation'_i \in \SetInterpretation'$ be admissible 
+under $\DomainKnowledge'$, i.e., there exists $\mathcal{M} \models 
+\Delta'$ such that $\mathcal{M} \models \Interpretation'_i(a)$. 
+By~\textit{\eqref{con:1}}, $\mathcal{M} \models \Delta$, so $a$ is admissible 
+under $\DomainKnowledge$.
+%\noindent\textit{\eqref{con:3}} Let $\mathcal{M} \models \Delta'$ be a 
+%context in which $a$ fires under $\Interpretation'_i$, i.e., 
+%$\mathcal{M} \models \Interpretation'_i(a)$. By 
+%condition~\ref{con3:interpretation_tight}, $\Delta' \models 
+%\Interpretation'_i(a) \implies \Interpretation_i(a)$, and therefore 
+%$\mathcal{M} \models \Interpretation_i(a)$. Hence $a$ fires under 
+%$\Interpretation_i$ in the same context.
+\end{proof}
+
+
+
+
+%
+%\begin{example}
+%Continuing Example~\ref{ex:drone-ontology}, suppose that after field deployment the engineering team refines their domain model in three ways: motor dynamics become relevant as the drone is upgraded, tighter battery testing reveals a safe operating limit of $450\,\text{Wh}$ rather than the initially assumed $500\,\text{Wh}$, and per-hectare consumption is found to never exceed $100$ units in practice. The refined ontology $\Ontology'$ extends the vocabulary with a type $\mathit{Motor}$ and function $\mathit{rpm} : \mathit{Motor} \to \mathbb{R}$ (Condition~\ref{con1:vocab_extension}), strengthens the axioms by updating $\mathit{battery\_capacity} = 450$ and adding $\forall h : \mathit{Hectare}.\ \mathit{consumption}(h) \leq 100$ (Condition~\ref{con2:axioms_implication}), and tightens the interpretation by updating $\Interpretation'(\mathit{shutoff}) = \mathit{total\_consumption} \leq 450$, which is strictly more restrictive than the original $\leq 500$ (Condition~\ref{con3:interpretation_tight}). 
+%%Every result established under $\Ontology$ remains valid under $\Ontology'$ by Theorem~\ref{thm:conservative-refinement}.
+%%By Theorem~\ref{thm:conservative-refinement}, every model of $\Ontology'$ is also a model of $\Ontology$, and every event admissible under $\DomainKnowledge'$ remains admissible under $\DomainKnowledge$.  The refined domain knowledge is strictly more informative without contradicting what was previously established.
+%\end{example}
+
+
+
+
+
+%
+%{Axiom strengthening} (Condition~\ref{con2:axioms_implication}) requires that 
+%everything $\Ontology_2$ knew to be true is still entailed by $\Ontology_1$. New knowledge, therefore, must be conservative, never contradicting prior understanding. $\Ontology_1$ may have entirely different axioms from $\Ontology_2$, but they must logically imply all of $\Ontology_2$'s consequences. 
+%
+%%{Interpretation tightening} (Condition~\ref{con3:interpretation_tight}) 
+%requires that whenever the refined interpretation says $p$ holds, so does the 
+%coarser one. Therefore, $\Interpretation_1(p)$ is a stronger condition than 
+%$\Interpretation_2(p)$ under the richer axiom set. For example, 
+%$\Interpretation_1(\mathit{battery\_ok}) = \mathit{total\_consumption} \leq 450$ 
+%refines $\Interpretation_2(\mathit{battery\_ok}) = \mathit{total\_consumption} 
+%\leq 500$ when the engineer updates the battery rating.
+%These two conditions ensure that $\Ontology_1$ is more informative than $\Ontology_2$ by ensuring 
+
+%
+%Together, these th\e conditions ensure that $\DomainKnowledge_1$ 
+%is genuinely more informative than $\DomainKnowledge_2$: it can 
+%reason about more concepts, its axioms are at least as strong, and its atomic 
+%propositions are at least as precisely defined. Refinement is 
+%\emph{conservative}: every model of $\Ontology_1$ is also a model of $\Ontology_2$, 
+%and every admissible letter under $\DomainKnowledge_1$ is admissible 
+%under $\DomainKnowledge_2$. Engineers 
+%can therefore incrementally refine their domain knowledge throughout the development 
+%lifecycle without ever invalidating previously established results.

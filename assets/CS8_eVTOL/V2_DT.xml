@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.6//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_6.dtd'>
+<nta>
+    <declaration>
+        // CS8 DT -- Lift Plus Cruise eVTOL Flight Envelope and Separation Monitor
+        // Standards: ASTM F3269-21, FAA AC 21-7A, RTCA DO-365:2020, EUROCAE ED-269:2020
+        // DT timing offset: +3 units (DO-365 telemetry latency budget)
+        //   Transition timing: PT [10,25] -&gt; DT [10,28]
+        //   Climb phase:       PT [15,60] -&gt; DT [15,63]
+        //   Cruise minimum:    PT &gt;= 30   -&gt; DT &gt;= 33
+        //   Emergency descent: PT &lt;= 5    -&gt; DT &lt;= 8
+        //   Fault response:    PT &lt;= 2    -&gt; DT &lt;= 5 (entry); PT &lt;= 5 -&gt; DT &lt;= 8 (exit)
+        //   Battery limit:     PT &gt;= 180  -&gt; DT &gt;= 183
+        // Clocks:
+        //   t_dt_trans  : transition timing (reset on each mode transition start)
+        //   t_dt_cruise : general flight time from takeoff (battery depletion proxy)
+        //   t_soc       : per-phase ops timer (climb, hover, descent durations)
+        //   t_wc        : fault/emergency response timer
+        clock t_dt_trans, t_dt_cruise, t_soc, t_wc;
+        chan vehicle_departure_event, propulsion_mode_change, cruise_mode_confirmed,
+             hover_mode_initiation, hover_confirmed_telemetry, descent_sequence_start,
+             final_approach_event, ground_contact_event, low_energy_alert,
+             forced_descent_command, propulsion_fault_event, emergency_landing_command;
+    </declaration>
+    <template>
+        <name>FlightEnvelopeDT</name>
+        <location id="DT_GROUND" x="0" y="0">
+            <name x="-10" y="-34">DT_GROUND</name>
+        </location>
+        <location id="DT_VERTICAL_OPS" x="300" y="0">
+            <name x="260" y="-34">DT_VERTICAL_OPS</name>
+            <label kind="invariant" x="260" y="17">t_soc &lt;= 63</label>
+        </location>
+        <location id="DT_TRANSITION_CRUISE" x="600" y="0">
+            <name x="560" y="-34">DT_TRANSITION_CRUISE</name>
+            <label kind="invariant" x="560" y="17">t_dt_trans &lt;= 28</label>
+        </location>
+        <location id="DT_CRUISE_OPS" x="900" y="0">
+            <name x="860" y="-34">DT_CRUISE_OPS</name>
+        </location>
+        <location id="DT_TRANSITION_HOVER" x="900" y="200">
+            <name x="860" y="166">DT_TRANSITION_HOVER</name>
+            <label kind="invariant" x="860" y="217">t_dt_trans &lt;= 28</label>
+        </location>
+        <location id="DT_HOVER_OPS" x="600" y="200">
+            <name x="560" y="166">DT_HOVER_OPS</name>
+        </location>
+        <location id="DT_DESCENT_OPS" x="300" y="200">
+            <name x="260" y="166">DT_DESCENT_OPS</name>
+            <label kind="invariant" x="260" y="217">t_soc &lt;= 63</label>
+        </location>
+        <location id="DT_LOW_ENERGY" x="900" y="400">
+            <name x="860" y="366">DT_LOW_ENERGY</name>
+            <label kind="invariant" x="860" y="417">t_wc &lt;= 8</label>
+        </location>
+        <location id="DT_FAULT_OPS" x="300" y="400">
+            <name x="260" y="366">DT_FAULT_OPS</name>
+            <label kind="invariant" x="260" y="417">t_wc &lt;= 8</label>
+        </location>
+        <init ref="DT_GROUND"/>
+        <transition>
+            <source ref="DT_GROUND"/>
+            <target ref="DT_VERTICAL_OPS"/>
+            <label kind="guard" x="100" y="-17">t_dt_cruise &lt;= 183</label>
+            <label kind="synchronisation" x="100" y="0">vehicle_departure_event!</label>
+            <label kind="assignment" x="100" y="17">t_soc := 0, t_dt_cruise := 0, t_dt_trans := 0</label>
+        </transition>
+        <transition>
+            <source ref="DT_VERTICAL_OPS"/>
+            <target ref="DT_TRANSITION_CRUISE"/>
+            <label kind="guard" x="370" y="-17">t_soc &gt;= 15 &amp;&amp; t_soc &lt;= 63</label>
+            <label kind="synchronisation" x="370" y="0">propulsion_mode_change!</label>
+            <label kind="assignment" x="370" y="17">t_dt_trans := 0</label>
+        </transition>
+        <transition>
+            <source ref="DT_TRANSITION_CRUISE"/>
+            <target ref="DT_CRUISE_OPS"/>
+            <label kind="guard" x="670" y="-17">t_dt_trans &gt;= 10 &amp;&amp; t_dt_trans &lt;= 28</label>
+            <label kind="synchronisation" x="670" y="0">cruise_mode_confirmed!</label>
+            <label kind="assignment" x="670" y="17">t_dt_trans := 0, t_soc := 0</label>
+        </transition>
+        <transition>
+            <source ref="DT_CRUISE_OPS"/>
+            <target ref="DT_TRANSITION_HOVER"/>
+            <label kind="guard" x="920" y="100">t_dt_cruise &gt;= 33</label>
+            <label kind="synchronisation" x="920" y="117">hover_mode_initiation!</label>
+            <label kind="assignment" x="920" y="134">t_dt_trans := 0, t_soc := 0</label>
+        </transition>
+        <transition>
+            <source ref="DT_TRANSITION_HOVER"/>
+            <target ref="DT_HOVER_OPS"/>
+            <label kind="guard" x="670" y="183">t_dt_trans &gt;= 10 &amp;&amp; t_dt_trans &lt;= 28</label>
+            <label kind="synchronisation" x="670" y="200">hover_confirmed_telemetry!</label>
+            <label kind="assignment" x="670" y="217">t_soc := 0, t_dt_trans := 0</label>
+        </transition>
+        <transition>
+            <source ref="DT_HOVER_OPS"/>
+            <target ref="DT_DESCENT_OPS"/>
+            <label kind="guard" x="370" y="183">t_soc &gt;= 8</label>
+            <label kind="synchronisation" x="370" y="200">descent_sequence_start!</label>
+            <label kind="assignment" x="370" y="217">t_soc := 0</label>
+        </transition>
+        <!-- Self-loop: final_approach_event! (PT: landing_initiated!) within DT_DESCENT_OPS -->
+        <transition>
+            <source ref="DT_DESCENT_OPS"/>
+            <target ref="DT_DESCENT_OPS"/>
+            <label kind="guard" x="200" y="250">t_soc &gt;= 8 &amp;&amp; t_soc &lt;= 63</label>
+            <label kind="synchronisation" x="200" y="267">final_approach_event!</label>
+        </transition>
+        <transition>
+            <source ref="DT_DESCENT_OPS"/>
+            <target ref="DT_GROUND"/>
+            <label kind="guard" x="-100" y="100">t_soc &gt;= 6</label>
+            <label kind="synchronisation" x="-100" y="117">ground_contact_event!</label>
+        </transition>
+        <!-- LOW ENERGY: from DT_CRUISE_OPS, DT_HOVER_OPS, DT_TRANSITION_CRUISE -->
+        <transition>
+            <source ref="DT_CRUISE_OPS"/>
+            <target ref="DT_LOW_ENERGY"/>
+            <label kind="guard" x="950" y="200">t_dt_cruise &gt;= 183</label>
+            <label kind="synchronisation" x="950" y="217">low_energy_alert!</label>
+            <label kind="assignment" x="950" y="234">t_wc := 0</label>
+        </transition>
+        <transition>
+            <source ref="DT_HOVER_OPS"/>
+            <target ref="DT_LOW_ENERGY"/>
+            <label kind="guard" x="750" y="300">t_dt_cruise &gt;= 183</label>
+            <label kind="synchronisation" x="750" y="317">low_energy_alert!</label>
+            <label kind="assignment" x="750" y="334">t_wc := 0</label>
+        </transition>
+        <transition>
+            <source ref="DT_TRANSITION_CRUISE"/>
+            <target ref="DT_LOW_ENERGY"/>
+            <label kind="guard" x="700" y="250">t_dt_cruise &gt;= 183</label>
+            <label kind="synchronisation" x="700" y="267">low_energy_alert!</label>
+            <label kind="assignment" x="700" y="284">t_wc := 0</label>
+        </transition>
+        <transition>
+            <source ref="DT_LOW_ENERGY"/>
+            <target ref="DT_DESCENT_OPS"/>
+            <label kind="guard" x="500" y="350">t_wc &lt;= 8</label>
+            <label kind="synchronisation" x="500" y="367">forced_descent_command!</label>
+        </transition>
+        <!-- FAULT OPS: from DT_VERTICAL_OPS, DT_TRANSITION_CRUISE, DT_HOVER_OPS -->
+        <transition>
+            <source ref="DT_VERTICAL_OPS"/>
+            <target ref="DT_FAULT_OPS"/>
+            <label kind="guard" x="280" y="250">t_wc &lt;= 5</label>
+            <label kind="synchronisation" x="280" y="267">propulsion_fault_event!</label>
+            <label kind="assignment" x="280" y="284">t_wc := 0</label>
+        </transition>
+        <transition>
+            <source ref="DT_TRANSITION_CRUISE"/>
+            <target ref="DT_FAULT_OPS"/>
+            <label kind="guard" x="430" y="300">t_wc &lt;= 5</label>
+            <label kind="synchronisation" x="430" y="317">propulsion_fault_event!</label>
+            <label kind="assignment" x="430" y="334">t_wc := 0</label>
+        </transition>
+        <transition>
+            <source ref="DT_HOVER_OPS"/>
+            <target ref="DT_FAULT_OPS"/>
+            <label kind="guard" x="430" y="350">t_wc &lt;= 5</label>
+            <label kind="synchronisation" x="430" y="367">propulsion_fault_event!</label>
+            <label kind="assignment" x="430" y="384">t_wc := 0</label>
+        </transition>
+        <transition>
+            <source ref="DT_FAULT_OPS"/>
+            <target ref="DT_DESCENT_OPS"/>
+            <label kind="guard" x="100" y="350">t_wc &lt;= 8</label>
+            <label kind="synchronisation" x="100" y="367">emergency_landing_command!</label>
+        </transition>
+    </template>
+    <system>
+        FlightEnvelopeDT = FlightEnvelopeDT();
+        system FlightEnvelopeDT;
+    </system>
+</nta>

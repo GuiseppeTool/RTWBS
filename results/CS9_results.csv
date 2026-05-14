@@ -1,0 +1,4 @@
+model_name,aligned,label_pairs_E,initial_pairs,final_pairs,smt_calls,fixpoint_iters,time_ms
+CS9_aligned,true,13,1,305697,154,305697,4622.823
+CS9_thresh_drift,false,9,1,0,154,1,11.498
+CS9_evo_v2,true,13,1,305697,154,305697,5060.157

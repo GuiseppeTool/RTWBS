@@ -1,0 +1,657 @@
+\section{Semantic Alignment between PT and DT}\label{sec:formal_model}
+
+%The framework introduced in Section~\ref{sec:architecture} aims to establish semantic alignment between the PT and DT at design time and maintain it across evolution and design iterations. %
+
+
+As already established in Section~\ref{sec:architecture}, we aim at establishing semantic alignment at the view level, represented as TAs (cf. Section~\ref{sec:preliminaries}). Since the two twins serve different purposes and may be authored and maintained by different stakeholders, their views typically include behavior that are specific to each twin and do not need to be reflected in the other, e.g. internal physical events on the PT side, logging or external API calls on the DT side. Semantic alignment, therefore, amounts to establish that the PT and DT are semantically coherent only on the behaviors relevant to monitoring and decision-making. In other words, semantic alignment shall guarantee that the PT and DT exhibit matching behavior for all aspects relevant to the aforementioned tasks, while preserving a consistent semantic interpretation of such behavior. 
+
+To formalize these guarantees, we extend WTB (cf. Section~\ref{sec:preliminaries}) by requiring that matched states and transitions carry semantically equivalent interpretations under the shared domain knowledge $\DomainKnowledge = (\Ontology, \SetInterpretation)$ (cf. Section~\ref{sec:formalization}). This assumption is consistent with established DT practice~\cite{Gil2025,KARABULUT2024442} and with interoperability frameworks for Industry~4.0 ecosystems based on the Asset Administration Shell (AAS), which employ shared semantic models and ontologies to enable integration and capability discovery among independently developed twins~\cite{grangel2023aasinterop,GrangelGonzalez2016,Arm2021AAS}. Similar principles underpin federated data-space initiatives such as Gaia-X~\cite{Gaiax2020}.
+%his assumption is consistent with established DT practice~\cite{Gil2025,KARABULUT2024442} and with federated settings such as Gaia-X, where a shared ontology is already a compliance requirement. Semantic alignment is then defined as follows.
+
+%That is, the PT and DT must exhibit equivalent behavior for all aspects relevant to the aforementioned tasks, while preserving a consistent semantic interpretation of such behavior under a shared domain knowledge.
+
+
+
+%Since the two twins serve different purposes and may be
+%authored by different stakeholders, each typically possesses behavior
+%invisible to the other, e.g. internal physical events on the PT
+%side, logging or external API calls on the DT side. 
+%
+
+
+
+
+
+
+%Semantic alignment requires that the PT and DT remain coherent on the behaviors relevant to monitoring and decision-making.
+
+%Semantic aligment requires that the PT and DT remain coherent
+%
+%%Semantic alignment requires that the PT and DT share their
+%observable behavior {and} assign equivalent meaning to that
+%behavior. Since the two twins serve different purposes and may be
+%authored by different stakeholders, each typically exhibits behavior
+%invisible to the other, i.e., internal physical events on the PT
+%side, logging or external API calls on the DT side. 
+%
+%
+%We therefore
+%base alignment on weak timed bisimulation, which abstracts over
+%$\tau$-transitions, and extend the standard notion by requiring
+%matched states and transitions to carry semantically equivalent
+%interpretations. To assign semantic meaning to the PT and DT, we
+%assume a given domain knowledge $\DomainKnowledge$ consisting of an
+%ontology $\Ontology$ and a set of interpretations $\SetInterpretation
+%= \{\IPT, \IDT\}$ mapping PT and DT states and events to formulas
+%over $\Ontology$. The presence of an ontology is consistent with
+%established practice in DT
+%applications~\cite{KARABULUT2024442, Gil2025} and with the
+%compliance requirements of federated data spaces such as Gaia-X,
+%where each participant must expose a machine-readable description
+%of the concepts and events it produces and consumes. The
+%interpretations, as discussed in Section~\ref{sec:formalization}, are
+%typically maintained informally as part of standard MBSE practice;
+%our framework treats them as first-class formal artifacts so that
+%alignment between the views can be reasoned about with the same
+%rigor as the views themselves.
+%This yields semantic consistency at both the data level, through states, and the
+%behavioral level, through events, formalized as follows
+%
+%we rely on the domain knowledge $\DomainKnowledge$, which includes an ontology $\Ontology$ and a set of interpretations $\SetInterpretation = \{\IPT, \IDT\}$ mapping PT and DT states and events to formulas over $\Ontology$.  
+
+
+
+
+
+
+
+%As standard in DT-based applications\cite{KARABULUT2024442, Gil2025} and as required in federated data spaces such as Gaia-X, we assume that the domain of interest is represented by an ontology $\Ontology$ as per Definition~\ref{def:ontology}. 
+
+
+
+
+
+%In order for the PT and DT to be semantically aligned, not only they must share the same observable behavior, but they must also assign the same meaning to that behavior under $\Ontology$. However, PT and DT shall be designed for different purposes and may be owned by different stakeholders, so they may include events and observations invisible to the other. For example, the PT may include internal events related to the physical processes of the system which are not observable by the DT. Similarly, the DT may include events related to its monitor and predictive capabilities, such as logging or external API-calls, which do not need to be reflected in the PT. We therefore base alignment on weak timed bisimulation, which abstracts over internal $\tau$-transitions and allows to consider only the observable behavior which is relevant for alignment. However, we extend the standard notion by requiring that matched states and transitions carry equivalent interpretations under $\Ontology$, establishing semantic consistency between the twins at both the data level, via states, and the behavioral level, via events.We formalize this notion as follows.
+\begin{definition}
+\label{def:semantic_alignment}
+Let $\VPT = (\statePT, \descreteEventsPT, \delayEventsPT, 
+\transitionPT)$ and $\VDT = (\stateDT, \descreteEventsDT, 
+\delayEventsDT, \transitionDT)$ be TTS representations of the 
+PT and DT views, respectively, and let $A = \mathrm{dom}(\IPT) 
+\subseteq \descreteEventsPT$ and $B = \mathrm{dom}(\IDT) 
+\subseteq \descreteEventsDT$ be the ontologically relevant 
+sub-alphabets of the PT and DT, respectively. We say $\VPT$ 
+and $\VDT$ are semantically aligned under $\DomainKnowledge = 
+(\Ontology, \{\IPT, \IDT\})$, written as $\VPT \relation \VDT$, 
+if there exists a relation $\relation \subseteq \statePT \times 
+\stateDT$ such that $(s^{\VPT}_0, s^{\VDT}_0) \in \relation$ 
+and for every $(p, d) \in \relation$:
+\begin{enumerate}[label=\Roman*), ref=\Roman*]
+\item \label{con:data} $\Delta \models \IPT(p) 
+\leftrightarrow \IDT(d)$ \hfill (state consistency)
+\item \label{con:pt-dt} $\forall a \in A,\ p'$ 
+with $p \xRightarrow{a} p'$, $\exists a' \in B,\ 
+d' : d \xRightarrow{a'} d' \wedge (p', d') \in \relation \wedge \,
+\Delta \models \IPT(a) \leftrightarrow 
+\IDT(a')$ \hfill (PT-to-DT)
+\item \label{con:dt-pt} $\forall a' \in B,\ d'$ 
+with $d \xRightarrow{a'} d'$, $\exists a \in A,\ 
+p' : p \xRightarrow{a} p' \wedge (p', d') \in \relation \wedge \,
+\Delta \models \IPT(a) \leftrightarrow 
+\IDT(a')$ \hfill (DT-to-PT)
+\item \label{con:delay} $\forall \delta \in \Sigma_D,\ p'$ with 
+$p \xrightarrow{\delta} p'$, $\exists d'$ reachable from $d$ by 
+$\xRightarrow{\varepsilon}$ with elapsed time $\delta$ such that 
+$(p', d') \in \relation$, and symmetrically \hfill (delay consistency)
+\end{enumerate}
+\end{definition}
+
+Condition~\ref{con:data} ensures that matched states carry
+equivalent domain-level meaning under $\Ontology$: the PT and DT
+agree on the facts of the world at every corresponding point in
+their execution. Conditions~\ref{con:pt-dt} and~\ref{con:dt-pt}
+extend the standard bisimulation clauses by requiring ontologically
+equivalent labels to match, rather than syntactically identical
+ones: a PT transition on $a \in A$ must be matched by a DT
+transition on some $a' \in B$ with $\Delta \models \IPT(a)
+\leftrightarrow \IDT(a')$, and vice versa. Labels outside $A$ and
+$B$ are treated as $\tau$-transitions, internal and invisible to
+the alignment, while Condition~\ref{con:delay} ensures timing is
+preserved across matched pairs. Standard syntactic bisimulation
+arises as the special case $a = a'$ and $\IPT(a) = \IDT(a)$.
+
+Definition~\ref{def:semantic_alignment}, makes \VPT and \VDT effectively equivalent in terms of their observable behavior and semantic interpretation under $\DomainKnowledge$. This makes the two views semantically indistinguishable and interchangeable for domain reasoning. Much of the DT literature assumes a high-fidelity correspondence between PT and DT, often described as continuous mirroring or bidirectional synchronization of state and behavior \cite{Kritzinger2018,Grieves2017Boschert2016,Tao2019}. Such assumptions conceptually align with bisimulation-like behavioral correspondence. However, in cases where full correspondance is not required, Defintion~\ref{def:semantic_alignment} can be relaxed to a simulation relation, e.g. by neglecting Condition~\ref{con:dt-pt}. In this case, we write $\VPT \refines{\DomainKnowledge} \VDT$. 
+\begin{algorithm}[t]
+\caption{Semantic Alignment Check}\label{alg:semantic-alignment}
+\DontPrintSemicolon
+\SetKwFunction{Fail}{fail}
+\KwIn{$\VPT$, $\VDT$, $\DomainKnowledge = (\Ontology, \{\IPT, \IDT\})$}
+\KwOut{\texttt{True} iff $\VPT \relation \VDT$}
+$E \gets \{(a, a') \in A \times B \mid \Delta \models \IPT(a) \leftrightarrow \IDT(a')\}$%\tcp*{label equiv.}
+
+$\relation \gets \{(p, d) \in \statePT \times \stateDT \mid \Delta \models \IPT(p) \leftrightarrow \IDT(d)\}$%\tcp*{Cond.~\ref{con:data}}
+
+\Repeat{$\relation$ stabilises}{
+  $\relation' \gets \relation$\;
+  \ForEach{$(p, d) \in \relation$}{
+    \ForEach(\tcp*[f]{Cond.~\ref{con:pt-dt}}){$a \in A,\ p \xRightarrow{a} p'$}{
+      \lIf{$\nexists\, (a', d'){:}\, (a,a') \in E,\, d \xRightarrow{a'} d',\, (p',d') \in \relation$}{$\relation' \gets \relation' \setminus \{(p,d)\}$}
+    }
+    \ForEach(\tcp*[f]{Cond.~\ref{con:dt-pt}}){$a' \in B,\ d \xRightarrow{a'} d'$}{
+      \lIf{$\nexists\, (a, p'){:}\, (a,a') \in E,\, p \xRightarrow{a} p',\, (p',d') \in \relation$}{$\relation' \gets \relation' \setminus \{(p,d)\}$}
+    }
+    \ForEach(\tcp*[f]{Cond.~\ref{con:delay}, PT}){$\delta,\ p \xrightarrow{\delta} p'$}{
+      \lIf{$\nexists\, d'{:}\, d \xRightarrow{\varepsilon} d'$ with elapsed $\delta$, $(p',d') \in \relation$}{$\relation' \gets \relation' \setminus \{(p,d)\}$}
+    }
+    \ForEach(\tcp*[f]{Cond.~\ref{con:delay}, DT}){$\delta,\ d \xrightarrow{\delta} d'$}{
+      \lIf{$\nexists\, p'{:}\, p \xRightarrow{\varepsilon} p'$ with elapsed $\delta$, $(p',d') \in \relation$}{$\relation' \gets \relation' \setminus \{(p,d)\}$}
+    }
+  }
+  $\relation \gets \relation'$\;
+}
+\Return{\texttt{True} iff $(s^{\VPT}_0, s^{\VDT}_0) \in \relation$}, else \texttt{False}\;
+\end{algorithm}
+
+The syntactic representation of views as TAs makes Definition~\ref{def:semantic_alignment} directly amenable to fixpoint computation, given in Algorithm~\ref{alg:semantic-alignment}. The algorithm follows the standard greatest fixpoint characterization of bisimulation~\cite{Baier08}, adapted to the timed setting via zone-graph exploration~\cite{ALUR19932, Bouyer2005AnIT}, with two extensions that operationalize Definition~\ref{def:semantic_alignment} directly. First, the label equivalence relation $E$ is precomputed once via SMT entailment checks over $\DomainKnowledge$ (line 1), amortizing the SMT cost across all subsequent state-pair iterations. The loop then uses $E$ in place of syntactic label equality, requiring at most $|A| \cdot |B|$ solver calls in total. Second, the relation $\relation$ is seeded with all state pairs satisfying state consistency (line 2) rather than the full Cartesian product, which prunes the search space. The loop then iteratively removes pairs that violate any of Conditions~\ref{con:pt-dt}--\ref{con:delay}, until stabilisation. Termination is guaranteed by the finiteness of the zone abstraction of any TA~\cite{ALUR19932, Bouyer2005AnIT}. Since the relation can only shrink, stabilisation is reached in at most $|\statePT| \cdot |\stateDT|$ iterations. The algorithm yields the largest relation satisfying Definition~\ref{def:semantic_alignment}, and returns \texttt{True} iff the initial state pair $(s^{\VPT}_0, s^{\VDT}_0)$ belongs to it.
+
+
+
+
+%the zone graph has finitely many states, so the relation $\relation$ can only shrink, and stabilisation is reached in at most $|\statePT| \cdot |\stateDT|$ iterations. The algorithm yields the largest relation satisfying Definition~\ref{def:semantic_alignment}, and returns \texttt{True} iff the initial state pair $(s^{\VPT}_0, s^{\VDT}_0)$ belongs to it.
+%
+%Definition~\ref{def:semantic_alignment} admits a direct
+%fixpoint computation at the syntactical level
+%(Algorithm~\ref{alg:semantic-alignment}). The label equivalence
+%relation $E$ depends only on $\Phi$ and is precomputed via SMT
+%entailment checks, leaving the fixpoint loop with $|A| \cdot |B|$
+%solver calls amortized across all state-pair iterations. The
+%relation $\relation$ is initialized to the state pairs satisfying
+%Condition~\ref{con:data} and refined by removing those that fail
+%any of Conditions~\ref{con:pt-dt}--\ref{con:delay}, with label
+%matching consulting $E$ in place of syntactic equality. The
+%procedure terminates whenever the underlying state space is finite,
+%which holds for the region or zone abstraction of any
+%TA~\cite{ALUR1994183, Bouyer2005AnIT}, and yields the largest
+%alignment relation contained in the initial state-consistency
+%relation.
+
+
+
+
+\section{Correctness Guarantees and Practical Implications of Semantic Alignment}\label{sec:guarantees}
+
+
+Semantic alignment, as defined in Definition~\ref{def:semantic_alignment}, is the fundamental correctness criterion of our framework, as it captures the intended semantic relationship between the PT and DT views. In this section we establish two key properties that are guaranteed by semantic alignment, i.e. data and behavioral consistency, as well as their practical implications for the design and maintenance of twins. 
+
+
+%\subsection{Semantic Consistency of Observed Data}
+
+
+The first key property guaranteed by semantic alignment is in the form of semantic consistency of observed data between the PT and DT. More specifically, it guarantees that any domain fact derivable from the PT's state at any point in the execution is equivalently derivable from the matching DT state, and vice versa. We formalize it in the following theorem.  
+
+
+%This translates to sensor readings, threshold and physical quantities being interpreted identically both twins. This is a strong form of data consistency, as the agreement is not on raw data values, which the PT and DT may encode differently, nor on the labels used by either model, which need not coincide in federated settings; it is on the semantic content of the state of the world through $\DomainKnowledge$.
+
+
+%We first show that semantic alignment guarantees data consistency between the PT and DT, in the sense that they agree on the same facts of the world at every point in their execution. We formalize this notion with the following theorem.
+\begin{theorem}
+\label{thm:data-consistency}
+Let $\VPT\relation\VDT$ under 
+$\DomainKnowledge = (\Ontology, \{\IPT, 
+\IDT\})$. Then for every $(p, d) \in \relation$ and every
+$f \in \mathcal{L}(\Ontology)$: $\exists \mathcal{M} \models \Delta : \mathcal{M} \models 
+\IPT(p) \wedge f \iff 
+\exists \mathcal{M} \models \Delta : \mathcal{M} \models 
+\IDT(d) \wedge f$
+\end{theorem}
+\begin{proof}
+By Definition~\ref{def:semantic_alignment}, condition~\ref{con:data}, 
+for every $(p, d) \in \relation$ we have $\Delta \models 
+\IPT(p) \leftrightarrow \IDT(d)$. 
+Therefore for any model $\mathcal{M} \models \Delta$, 
+$\mathcal{M} \models \IPT(p)$ iff 
+$\mathcal{M} \models \IDT(d)$. Hence for 
+any $f \in \mathcal{L}(\Ontology)$, the existence of a model 
+witnessing $\IPT(p) \wedge f$ is 
+equivalent to the existence of a model witnessing 
+$\IDT(d) \wedge f$.
+\end{proof}
+
+
+Theorem~\ref{thm:data-consistency} establishes that this agreement holds at design time, across all reachable matched states, without recourse to observed operational traces. This translates to sensor readings, thresholds, and physical quantities being interpreted identically by both twins, a strong form of data consistency, as the agreement is not on raw data values, which the PT and DT may encode differently, nor on the labels used by either model, which need not coincide in federated settings, but on the semantic content of the state of the world under \DomainKnowledge.
+
+%We note that this does not establish runtime synchronisation between PT and DT states; rather, it establishes that whenever states are matched under the alignment relation, their domain-level meaning is identical.
+
+
+%Theorem~\ref{thm:data-consistency} establishes that at every matched pair of states $p$ and $d$, every domain-level fact established by the PT under 
+%$\Delta$ is equivalently established by the DT, and vice versa. In other words, the PT and DT agree on the semantic content of 
+%the state of the world through $\DomainKnowledge$ at every 
+%matched point of execution. This is a strong form of data consistency, as the agreement is not on raw data values, which the PT and DT may 
+%encode differently, nor on the labels used by either model, which 
+%need not coincide in federated settings; it is on the semantic under $\DomainKnowledge$. 
+%No first-order property over the ontology signature can distinguish 
+%$p$ from $d$, so any domain-level query against the DT yields the 
+%same answer as the corresponding query against the PT. Moreover, this 
+%guarantee holds across all reachable matched states and all formulas 
+%in $\mathcal{L}(\Ontology)$, and is established at 
+%design time on the views themselves, without recourse to observed 
+%operational traces.
+
+
+%This represents data consistency because the two views, despite being distinct software artifacts maintained over distinct internal representations, commit to the same domain-level semantics at every matched point of execution.
+
+
+%Theorem~\ref{thm:data-consistency} establishes that at every matched pair of states, the two views admit the same set of consistent domain-level facts under $\Delta$.No first-order property over the ontology signature can distinguish them, so any domain-level query against the DT yields the same answeras the corresponding query against the PT. This is a strong form of data consistency, 
+
+
+%This holds across all
+%reachable matched states and all formulas in $\mathcal{L}(\Ontology)$, and is
+%established at design time rather than checked against observed
+%traces, as is typical of runtime monitoring approaches. This represents data consistency because the two views, despite being distinct software artifacts maintained over distinct internal representations, commit to the same domain-level semantics at every matched point of execution. Semantically, every fact about the world that the PT establishes at $p$, which is expressible as a first-order formula under $\Delta$, is equivalently established by the DT at $d$, and vice versa. The agreement is not on raw data values, which the PT and DT may encode differently, nor on the labels used by either model, which
+%need not coincide in federated settings; it is on the domain-level facts that those values
+%and labels denote under $\DomainKnowledge$. In this sense, $p$ and $d$ are
+%indistinguishable as representations of the system's state in the
+%domain, which is the precise content of data consistency between PT
+%and DT.
+
+\begin{example}
+    Consider again the drone of Example~\ref{ex:drone-ontology}.
+    Suppose the PT reaches a state $p$ after
+spraying three hectares, and that
+$\IPT(p) = (\mathit{total\_consumption} = 150)$.
+By Definition~\ref{def:semantic_alignment}, the matched DT state
+$d$ satisfies
+$\Delta \models \IPT(p) \leftrightarrow
+\IDT(d)$, so any model of $\Delta$ in which the
+PT has consumed $150$ units also has the DT in a state where the
+same is true, and vice versa. From this, every domain-level fact
+derivable under $\Delta$, like for example, that
+$\mathit{battery\_capacity} - \mathit{total\_consumption} = 350$,
+or that the drone has sufficient charge to cover the remaining seven
+hectares, holds at $p$ if and only if it holds at $d$. %The two views are therefore interchangeable for any reasoning carried out at the domain level, across all reachable matched states and all formulas in $\mathcal{L}(\Ontology)$.
+\end{example}
+
+
+
+The second property guaranteed by semantic alignment is behavioral consistency: any requirement verified on the PT automatically holds on the DT, and vice versa. Formally, we establish this by showing that the PT and DT satisfy the same TCTL properties over their ontologically relevant alphabets. Definition~\ref{def:semantic_alignment} allows properties to be transferred between views whose labels differ, as long as they are semantically equivalent under \DomainKnowledge. This makes behavioral consistency establishable between independently developed twins that share no common label vocabulary, which is precisely the setting of federated architectures.
+
+
+To transfer properties between the PT and DT views, we need a way to identify which PT and DT labels carry the same domain-level meaning under the shared ontology. We call two labels $a \in \mathrm{dom}(\IPT)$ and $b \in \mathrm{dom}(\IDT)$ equivalent under $\Delta$, written $a \equiv_\Delta b$, if $\Delta \models \IPT(a) \leftrightarrow \IDT(b)$. This groups labels into equivalence classes and we write $[\ell]$ for the class of $\ell$.
+
+
+\begin{definition} \label{def:tau} Let $\VPT\relation\VDT$. The {induced label translation} is the partial function $\LabelMapping : A/{\equiv_\Delta} \rightharpoonup B/{\equiv_\Delta}$ defined by $\LabelMapping([a]) = [a'] \iff \Delta \models \IPT(a) \leftrightarrow \IDT(a')$. 
+\end{definition}
+
+Intuitively, $\LabelMapping$ is the dictionary that bridges the two independently developed vocabularies: it maps each PT label to the DT label that means the same thing under $\DomainKnowledge$. It follows from Definition~\ref{def:semantic_alignment} that $\LabelMapping$ is well-defined and covers all labels reachable under the alignment relation.
+
+
+%
+%\begin{lemma}
+%\label{lem:labelMapping-well-defined}
+%The function $\LabelMapping$ is well-defined: whenever
+%$\LabelMapping([a]) = [a']$ and $\LabelMapping([a]) = [a'']$, we have $[a'] = [a'']$.
+%\end{lemma}
+%
+%\begin{proof}
+%Suppose $\Delta \models \IPT(a) \leftrightarrow \IDT(a')$ and
+%$\Delta \models \IPT(a) \leftrightarrow \IDT(a'')$. By
+%transitivity of $\leftrightarrow$ under $\Delta$-entailment, $\Delta
+%\models \IDT(a') \leftrightarrow \IDT(a'')$, so
+%$a' \equiv_\Delta a''$ and $[a'] = [a'']$.
+%\end{proof}
+%
+%\begin{lemma}
+%\label{lem:labelMapping-coverage}
+%For every $a \in A$ that labels a transition $p \xRightarrow{a} p'$
+%with $(p, p')$ reachable in some matched run from
+%$(s_0^{\VPT}, s_0^{\VDT})$ in $\relation$, we have
+%$[a] \in \mathrm{dom}(\LabelMapping)$.
+%\end{lemma}
+%
+%\begin{proof}
+%Let $(p, d) \in \relation$ be the matched pair containing
+%$p$. By Condition~\ref{con:pt-dt} of Definition~\ref{def:semantic_alignment}, there exists $a' \in B$ and
+%$d'$ with $d \xRightarrow{a'} d'$, $(p', d') \in {\stackrel{K}{\sim}}$,
+%and $\Delta \models \IPT(a) \leftrightarrow \IDT(a')$. Hence
+%$\LabelMapping([a]) = [a']$.
+%\end{proof}
+
+
+%We extend $\LabelMapping$ to TCTL formulas pointwise: for $\varphi$ over $A$
+%whose label occurrences all lie in $\mathrm{dom}(\LabelMapping)$, $\LabelMapping(\varphi)$
+%is obtained by replacing each label $a$ with any representative of
+%$\LabelMapping([a])$. By Lemma~\ref{lem:labelMapping-well-defined} and standard
+%$\equiv_\Delta$-invariance of TCTL satisfaction (since
+%$\equiv_\Delta$-equivalent labels witness the same ontological
+%formula), the choice of representative does not affect satisfaction.
+%
+%We can now show that semantic alignment guarantees behavioral consistency between the PT and DT views, in the sense that they satisfy the same TCTL formulas over their ontologically relevant alphabets modulo $\LabelMapping$.
+
+%We extend \LabelMapping to TCTL formulas simply by substituting each label in the property with its ontologically equivalent counterpart. Theorem~\ref{thm:property-transfer} then establishes that any TCTL property verified on the PT automatically holds on the DT under the translated labels, and vice versa. 
+
+Applying
+\LabelMapping as a substitution to a TCTL property $\varphi$ yields $\LabelMapping(\varphi)$, i.e.  the same property expressed in the DT vocabulary. Theorem~\ref{thm:property-transfer} uses this to show that any property verified on the PT holds on the DT under $\LabelMapping(\varphi)$, and vice versa.
+
+% let $A = \mathrm{dom}(\IPT)$, $B = \mathrm{dom}(\IDT)$, and
+\begin{theorem}
+\label{thm:property-transfer}
+Let $\VPT \relation \VDT$ and let $\LabelMapping$ be the induced label translation. Then for every TCTL formula $\varphi$ over $\mathrm{dom}(\IPT)$:
+$\VPT \models \varphi \iff \sem{\VDT} \models \LabelMapping(\varphi)$
+and symmetrically, for every $\psi$ over $\mathrm{dom}(\IDT)$:
+$\VDT \models \psi \iff \sem{\VPT}\models \LabelMapping^{-1}(\psi)$
+\end{theorem}
+
+\begin{proof}
+We show the forward direction; the reverse is symmetric. By
+Definition~\ref{def:semantic_alignment}, $\relation$ is a WTB between $\VPT$ and $\VDT$ on the sub-alphabets $\mathrm{dom}(\IPT)$ and
+$\mathrm{dom}(\IDT)$ modulo the relabeling induced by $\LabelMapping$. Let $\sigma_\LabelMapping(\VDT)$
+denote $\VDT$ with each $a' \in \mathrm{dom}(\IDT)$ renamed to a fixed representative
+of $\LabelMapping^{-1}([a'])$ when defined. Then $\VPT$ and $\sigma_\LabelMapping(\VDT)$
+are weak timed bisimilar in the syntactic sense over
+$\mathrm{dom}(\LabelMapping)$, and TCTL preservation under weak timed
+bisimulation yields
+$\llbracket \VPT \rrbracket \models \varphi \iff
+\llbracket \sigma_\LabelMapping(\VDT) \rrbracket \models \varphi$. Unfolding
+$\sigma_\LabelMapping$ gives the claim.
+\end{proof}
+
+
+
+%Theorem~\ref{thm:property-transfer} captures behavioral alignment
+%between the PT and DT views: the temporal requirements satisfied by
+%one view are exactly the requirements satisfied by the other, modulo
+%the meaning-preserving relabeling $\LabelMapping$ certified by $\DomainKnowledge$. The behavioral agreement is established at design time on the
+%ontological events that the PT and DT share under $\DomainKnowledge$, rather than on the raw transition labels, which need not coincide in federated settings. Whenever a PT requirement references an event class, the DT satisfies the corresponding requirement over the same event class under any syntactic encoding, and vice versa. 
+%
+
+\begin{example}
+Consider again the drone of Example~\ref{ex:drone-ontology}. Suppose the PT engineer has verified the safety property
+$\varphi = \mathbf{AG}(\mathit{spray} \rightarrow \mathbf{AF}\,\mathit{shutoff})$
+on $\VPT$. The DT models the same physical events under different
+labels and domain predicates. In the DT view, the spray condition is
+expressed in terms of the remaining energy budget, i.e., $ \IDT(\mathit{apply}) =
+    \mathit{battery\_capacity} -
+    \mathit{total\_consumption} - \mathit{consumption}(\mathit{current\_hectare}) \geq
+    \mathit{battery\_capacity} - 50.$
+%\begin{align*}
+%    &\IDT(\mathit{apply}) =
+%    \mathit{battery\_capacity} -
+%    \mathit{total\_consumption} -\\
+%    &\mathit{consumption}(\mathit{current\_hectare}) \geq
+%    \mathit{battery\_capacity} - 50.
+%\end{align*}
+
+Similarly, the shutoff condition is expressed through residual energy and coverage, i.e.  $\IDT(\mathit{power\_down}) = \mathit{battery\_capacity} - \mathit{total\_consumption} \geq 0
+    \,\wedge\, \mathit{covered}(\mathit{current\_hectare}).$
+%\begin{align*}
+%  &\IDT(\mathit{power\_down}) =
+%    \mathit{battery\_capacity} -\\
+%    &\mathit{total\_consumption} \geq 0
+%    \,\wedge\, \mathit{covered}(\mathit{current\_hectare}).
+%\end{align*}
+%
+Although syntactically different from $\IPT(\mathit{spray})$ and
+$\IPT(\mathit{shutoff})$, these predicates are equivalent under
+$\Delta$. The arithmetic axioms over $\mathbb{R}$ together with
+$\mathit{battery\_capacity} = 500$ and the non-negativity of
+$\mathit{consumption}$ entail $ \Delta \models
+  \IPT(\mathit{spray}) \leftrightarrow \IDT(\mathit{apply})$ and $  \Delta \models
+  \IPT(\mathit{shutoff}) \leftrightarrow \IDT(\mathit{power\_down}).$
+%\begin{align*}
+%  \Delta \models
+%  \IPT(\mathit{spray}) \leftrightarrow \IDT(\mathit{apply})
+%\quad\text{and}\quad\\
+%  \Delta \models
+%  \IPT(\mathit{shutoff}) \leftrightarrow \IDT(\mathit{power\_down}).
+%\end{align*}
+By Definition~\ref{def:tau}, the induced label translation maps
+$\LabelMapping([\mathit{spray}]) = [\mathit{apply}]$ and
+$\LabelMapping([\mathit{shutoff}]) = [\mathit{power\_down}]$.
+Theorem~\ref{thm:property-transfer} therefore yields that $\VDT$
+satisfies $\LabelMapping(\varphi) =
+\mathbf{AG}(\mathit{apply} \rightarrow \mathbf{AF}\,\mathit{power\_down})$.
+\end{example}
+
+As additional domain knowledge becomes available during system development or deployment, the ontology can be updated to reflect it. A key advantage of our framework is that the design-time guarantees of semantic alignment is not invalidated by refinements of the ontology, as we establish in the following theorem. 
+
+
+
+\begin{theorem}
+\label{thm:alignment-refinement}
+Let \DomainKnowledge'and \DomainKnowledge be two domain knowledge instances such that $\DomainKnowledge'\RefinesDomain\DomainKnowledge$,  if $\VPT\relation\VDT$ then $\VPT\relationPrime\VDT$. 
+\end{theorem}
+
+\begin{proof}
+Semantic alignment requires that for every event $e$,
+$\Delta \models \IPT(e) \leftrightarrow \IDT(e).$
+Since $\Delta' \models \Delta$, it follows that $\Delta' \models  \IPT(e) \leftrightarrow \IDT(e).$ Therefore the alignment condition continues to hold under $\Ontology'$.
+\end{proof}
+
+Consequently, ontology refinements that conservatively extend domain knowledge do not invalidate previously established alignment results or property-transfer guarantees. 
+
+%
+%\begin{example}
+%    Consider again the drone of Example~\ref{ex:drone-ontology}, and
+%suppose the PT engineer has verified the safety property
+%$\varphi = \mathbf{AG}(\mathit{spray} \rightarrow
+%\mathbf{AF}\,\mathit{shutoff})$ on $\VPT$. The DT, authored by a
+%different team focused on energy management, models the same physical
+%events under distinct labels and from a different modeling
+%perspective. Where the PT engineer expressed the spray condition as a
+%per-hectare consumption bound, the DT engineer writes it in terms of
+%the energy budget remaining after the operation:
+%\begin{align*}
+%    &\IDT(\mathit{apply}) =
+%    \mathit{battery\_capacity} -
+%    \mathit{total\_consumption} -\\
+%    &\mathit{consumption}(\mathit{current\_hectare}) \geq
+%    \mathit{battery\_capacity} - 50.
+%\end{align*}
+%
+%Similarly, where the PT engineer expressed shutoff as a conjunction of
+%budget compliance and coverage completion, the DT engineer encodes the
+%same condition through the residual energy and the coverage predicate:
+%\begin{align*}
+%  &\IDT(\mathit{power\_down}) =
+%    \mathit{battery\_capacity} -\\
+%    &\mathit{total\_consumption} \geq 0
+%    \,\wedge\, \mathit{covered}(\mathit{current\_hectare}).
+%\end{align*}
+%These formulations differ syntactically from
+%$\IPT(\mathit{spray})$ and $\IPT(\mathit{shutoff})$, but they are
+%equivalent under $\Delta$: the arithmetic axioms over $\mathbb{R}$
+%together with the constants $\mathit{battery\_capacity} = 500$ and
+%the non-negativity axiom for $\mathit{consumption}$ entail
+%$\Delta \models
+%  \IPT(\mathit{spray}) \leftrightarrow \IDT(\mathit{apply})$ and 
+%$\Delta \models
+%  \IPT(\mathit{shutoff}) \leftrightarrow \IDT(\mathit{power\_down}).$
+%By Definition~\ref{def:tau}, the induced label translation thus maps
+%$\LabelMapping([\mathit{spray}]) = [\mathit{apply}]$ and
+%$\LabelMapping([\mathit{shutoff}]) = [\mathit{power\_down}]$, and
+%Theorem~\ref{thm:property-transfer} yields that $\VDT$ satisfies
+%$\LabelMapping(\varphi) = \mathbf{AG}(\mathit{apply} \rightarrow
+%\mathbf{AF}\,\mathit{power\_down})$. The PT engineer's verification
+%discharges the corresponding requirement on the DT despite the two
+%views sharing neither labels nor the syntactic form of their domain
+%predicates; the ontology bridges the two modeling perspectives by
+%certifying their equivalence.
+%\end{example}
+%
+%
+%The design-time guarantees of Theorems~\ref{thm:data-consistency} and~\ref{thm:property-transfer} have direct implications for runtime monitoring, which is the predominant mechanism used to assess PT/DT consistency in existing frameworks~\cite{10.1145/3652620.3688267, moon2023consistency, kamburjan2022twinningbyconstruction, Gil2025}. Monitors observe finite PT execustions and check whether selected data-level facts or behavioral properties hold over the observed traces. Theorem~\ref{thm:subsumption} establishes that, within the fragment of properties expressible over the ontologically relevant alphabets, the verdicts produced by such monitors are entailed by design-time verification on either view, making them redundant with respect to the guarantees already established by semantic alignment at design time. 
+
+%
+%The design-time guarantees of Theorems~\ref{thm:data-consistency} and~\ref{thm:property-transfer} have direct implications for runtime monitoring, which is the predominant mechanism used to assess PT/DT consistency in existing frameworks~\cite{10.1145/3652620.3688267, moon2023consistency, kamburjan2022twinningbyconstruction, Gil2025}. Runtime monitors observe finite prefixes of PT executions and check whether selected data-level facts or behavioral properties hold over the observed traces. Since semantic alignment establishes correctness of these properties over all executions of the PT view, every finite runtime observation must correspond to a prefix of an execution already covered by the design-time verification. The following theorem formalizes this observation.
+%
+%\begin{theorem}
+%\label{thm:subsumption}
+%
+%Fix $\DomainKnowledge$, and let 
+%$\sigma$ be any finite prefix of an execution of $\VPT$. 
+%For every $f \in \mathcal{L}(\Ontology)$ and every TCTL property 
+%$\varphi$ over $\mathrm{dom}(\LabelMapping)$:
+%\begin{enumerate}
+%\item the domain facts satisfied at the last state of $\sigma$, and
+%\item the satisfaction of $\varphi$ along any execution extending $\sigma$
+%\end{enumerate}
+%
+%are determined by $\VPT \relation \VDT$ 
+%\end{theorem}
+%
+%\begin{proof}
+%Assume \VPT \relation \VDT. 
+%Since every finite prefix $\sigma$ extends to an execution of $\VPT$,
+%the satisfaction of $f$ and $\varphi$ follows directly from Theorem~\ref{thm:data-consistency} and Theorem~\ref{thm:property-transfer} .
+%\end{proof}
+%
+
+
+%
+%
+%Theorem~\ref{thm:subsumption} establishes that, within the fragment
+%of properties expressible over $(S, F, R)$ and $\mathrm{dom}(\LabelMapping)$, the runtime
+%verdicts produced by data and behavioral monitors are entailed by
+%design-time verification on either view. That is, if the PT and DT
+%are semantically aligned, then any monitor-based consistency check
+%on properties over the ontologically relevant alphabets is redundant
+%with design-time verification on either view. This makes alignment
+%itself, rather than the verdicts derivable from it, the object that
+%existing approaches~\cite{10.1145/3652620.3688267, lehner2021aml4dt, kamburjan2022twinningbyconstruction, Gil2025} approximate
+%at runtime: their monitors and consistency checks observe the PT to
+%build evidence that the DT remains a faithful representation, a
+%condition our framework establishes by construction at design time. Runtime monitoring retains a complementary role outside this
+%fragment, in particular for detecting alignment failure due to
+%sensor drift, physical degradation, or deployment-time deviation
+%between the PT and~$\VPT$.
+
+
+
+%Runtime monitors typically observe PT executions and check whether selected data-level facts or behavioral properties hold over the observed traces. This is
+
+%Within the fragment of properties covered by our framework, however, the correctness of such properties can be established entirely at design time through semantic alignment of the PT and DT views. We formalize this observation in the following theorem.
+
+%
+%\begin{theorem}
+%\label{thm:subsumption}
+%Let $\VPT\relation\VDT$ under $\DomainKnowledge$.
+%For every $f \in \mathcal{L}(\Ontology)$ and every
+%TCTL property $\varphi$ over $\mathrm{dom}(\LabelMapping)$, the
+%satisfaction of $f$ at any reachable state of $\VPT$ and the
+%satisfaction of $\varphi$ by $\VPT$ are determined by design-time
+%verification, independently of any runtime observation of the PT.
+%\end{theorem}
+%
+%\begin{proof}
+%Direct consequence of Theorems~\ref{thm:data-consistency} 
+%and~\ref{thm:property-transfer}: matched states agree on every 
+%$f \in \mathcal{L}(\Ontology)$, and 
+%$\VPT \models \varphi \iff \VDT \models \LabelMapping(\varphi)$ 
+%for every TCTL $\varphi$ over $\mathrm{dom}(\LabelMapping)$. %Both verdicts are decidable on the views without recourse to runtime observation.
+%\end{proof}
+%
+
+%The view-level guarantees of Theorems~\ref{thm:data-consistency},\ref{thm:property-transfer}, and~\ref{thm:subsumption} extend to the deployed system under MBSE.
+ As established in Section~\ref{sec:architecture}, any implementation of the PT and DT must refine their respective views, which is standard practice in MBSE-based design. One the one hand, the implemented DT software must refine the DT view in a way that realizes the specified DT behavior, which is achievable by construction since the DT is software under the engineer's control, formally $D \bisimulation \VDT$. On the other hand, the deployed physical system can not be expected to reproduce the exact behavior of the PT view, as the view necessarily abstracts from the full complexity of the underlying physical system. Instead, it is typically required only to refine its model by avoiding behaviors that the model forbids, formally $P \refines \VPT$. Under these conditions, we can show that the the implemented and deployed system inherits the semantic consistency guarantees of the views for all domain facts and safety properties. 
+ 
+%(i) the deployed physical system must refine its views in a way that exhibits only behaviors admitted by the PT view ($P \refines{} \VPT$): (ii) the deployed DT software must realize the specified DT behavior ($D \bisimulation \VDT$), which is achievable by construction since the DT is software under the engineer's control. Under these conditions, which reflect standard MBSE development assumptions, the implemented and deployed system inherits the semantic consistency guarantees of the views, for all data-level facts and safety properties.
+
+
+
+\begin{theorem}
+\label{cor:deployed-subsumption}
+Under the framework, the deployed PT and DT inherit the data-consistency and safety property guarantees established by the semantic alignment of their views
+\end{theorem}
+ 
+\begin{proof}
+By conditions (i) and (ii) and
+Definition~\ref{def:semantic_alignment}, we obtain the refinement chain $P \refines{} \VPT \relation \VDT \bisimulation D$
+Theorem~\ref{thm:data-consistency} and
+Theorem~\ref{thm:property-transfer} establish the corresponding
+guarantees for the views. Data facts are preserved pointwise through
+the chain, while safety TCTL properties are preserved under
+simulation from $\VPT$ to $P$. The claim follows.
+\end{proof}
+
+Note that Theorem~\ref{cor:deployed-subsumption} also hold for $\VPT \refines{\Ontology} \VDT$. 
+
+Theorem~\ref{cor:deployed-subsumption} has significant practical implications for the verification of deployed systems. First, it establishes universal data consistency for all reachable states and for all facts expressible in the ontology: any domain-level fact that holds for the deployed PT at any point in its execution also holds for the deployed DT, and vice versa. Second, it guarantees behavioral consistency for all safety properties expressible over the ontologically relevant alphabets, since simulation preserves safety~\cite{Baier08}. These guarantees establish the DT as a sound representation of the deployed PT.
+%Theorem~\ref{cor:deployed-subsumption} has significant practical implications for the verification of deployed systems. Firstly, it establishes that data consistency is universal over reachable states and over the facts expressible in the ontology for the deployed systems. That is, any domain-level fact that holds for the deployed PT at any point in its execution is guaranteed to hold for the deployed DT, and vice versa. Secondly, it establishes that behavioral consistency is guaranteed for all safety properties expressible over the ontologically relevant alphabets, as simulation preserves safety properties but not liveness ones\cite{Baier08}. 
+
+
+ Firstly, any safety property verified on the DT is guaranteed to hold for the deployed PT, and any ontology-expressible fact derived from the DT is guaranteed to hold for the PT. This has direct implications for runtime monitoring, which is the predominant mechanism currently used to assess PT/DT~\cite{10.1145/3652620.3688267, moon2023consistency, kamburjan2022twinningbyconstruction, Gil2025}. Runtime monitors observe finite prefixes of PT executions and check whether selected data-level or behavioral properties hold over the observed traces. Theorem~\ref{cor:deployed-subsumption} shows that, for properties expressible over the ontologically relevant alphabets, these verdicts are already guaranteed by design-time alignment verification.
+
+%Moreover, this guarantee can be established at the level of views and is therefore inherited by the deployed system.
+
+%These guarantees establish the DT as a sound representation of the deployed PT. Firstly, any safety property verified on the DT is guaranteed to hold for the deployed PT. Similarly, any fact about the deployed PT that is expressible in the ontology and derivable from the DT is guaranteed to hold for the deployed PT. This has direct implications for runtime monitoring, which is the predominant mechanism used to assess PT/DT consistency in existing frameworks~\cite{10.1145/3652620.3688267, moon2023consistency, kamburjan2022twinningbyconstruction, Gil2025}. Runtime monitors observe finite prefixes of PT executions and check whether selected data-level facts or behavioral properties hold over the observed traces. Theorem~\ref{cor:deployed-subsumption} establishes that these verdictes are already guaranteed by design-time alignment verification for all properties expressible over the ontologically relevant alphabets. Moreover, this guarantee can be established directly at the level of views and it is inherited by the deployed system.
+
+
+The theorem also enables predictive use of the DT. Any prediction made by the DT about the future behavior of the PT is guaranteed to respect all safety properties established at the model level, and any domain-level prediction is guaranteed to remain consistent with the deployed PT. The DT can therefore serve as a sound predictor of the PT's future behavior within with respect to the ontologically relevant alphabets. In practice, this enables safe what-if analysis, predictive decision support, and operational planning, as engineers can explore alternative future behaviors without risking violations of verified safety constraints.
+
+%Secondly, any prediction made by the DT about the future behavior of the PT is guaranteed to respect all safety properties established at the model level. Moreover, any domain-level prediction made by the DT is guaranteed to be consistent with the deployed PT. This allows the DT to serve as a sound predictor of the PT's future behavior within the limits of the ontologically relevant alphabets. These guarantees enable the DT to support safe what-if analysis, predictive decision making, and operational planning. Because all predictions respect the safety properties verified at the model level, engineers can use the DT to explore future system behaviors and evaluate alternative operational strategies without risking violations of the verified safety constraints.
+
+More broadly, Theorem~\ref{cor:deployed-subsumption} has implications for the cost and scalability of twin design and maintenance. Establishing semantic alignment at design time is a one-off effort that yields guarantees that hold universally for the deployed system and for all ontology-expressible properties. Furthermore, it relies only on artifacts that are already available in typical DT and MBSE workflows, namely system models~\cite{INCOSE2023} and domain ontologies~\cite{Boje2024DTSemantics,elhajj2026semantic,10.1145/3652620.3688261,GrangelGonzalez2016,Bader2019SemanticAAS,Arm2021AAS,farias2024dtag}, and does not require additional engineering effort beyond current practice. Compared to runtime monitoring, for instance, engineers do not need to construct and maintain dedicated artifacts, such as runtime monitors throughout design and deployment cycles, which is a cost that can be significant given that each monitor typically covers only a limited set of properties.
+Because alignment is established at the level of views, any implementation or deployment refinement that respects these views inherits the same guarantees without additional verification effort. This supports scalable iterative development, as new implementations and deployments automatically inherit the guarantees established by the views. It also facilitates interoperability: independently developed twins that refine the same view inherit alignment by construction. In federated settings, stakeholders need only share the relevant abstract views, without exposing implementation details. These shared views therefore act as semantic contracts that enable interoperability while preserving implementation independence.
+
+
+
+
+%More broadly, Theorem~\ref{cor:deployed-subsumption} has direct implications for the cost and scalability of twin design and maintenance. Establishing semantic alignment at design time is a one-off effort that yields guarantees that hold universally for the deployed system and for all properties expressible in the ontology, without requiring runtime observation. Consequently, engineers do not need to construct and maintain dedicated runtime monitors throughout design and deployment cycles—a cost that can be significant, particularly given that each monitor typically covers only a limited set of properties.
+%Furthermore, since alignment is established at the level of views, any implementation or deployment refinement that respects these views inherits the same guarantees without additional verification effort. This makes the framework scalable to iterative design and deployment cycles, as new implementations and deployments naturally inherit the guarantees established by the views without requiring re-verification. It also facilitates interoperability: independently developed twins that refine the same view inherit alignment by construction.
+%In federated settings, this enables loosely coupled collaboration between stakeholders. Developers of physical systems and DTs only need to agree on and share the relevant abstract views, without exposing implementation details of their respective systems. The shared views therefore act as semantic contracts that enable interoperability while preserving implementation independence.
+
+%Additionally, it further facilitates interoperability and federation across organizational boundaries. 
+
+
+%In federated settings, independently developed twins can be aligned by construction through the shared ontology, 
+
+%This greatly improves t
+%
+%
+%This avoids the need to build and maintain runtime monitors over design and deployment cycles, as well as 
+%
+%
+%, for the fragment of properties expressible over the ontologically relevant alphabets, the verdicts produced by such monitors are already guaranteed by design-time alignment verification. Moreover, this guarantee can be established directly at the level of views.
+%
+%on either view, making them redundant with respect to the guarantees already established by semantic alignment at design time.
+%
+%
+%Since semantic alignment establishes correctness of these properties over all executions of the PT, every finite runtime observation must correspond to a prefix of an execution already covered by the design-time verification. 
+
+
+
+
+
+
+%, as semantic alignment at the view level is the only verification effort required to establish data and behavioral consistency between the deployed PT and DT. Furthermore, data consistency is universal over reachable states and over the facts expressible in the ontology. Behvaioral consistency, however, is guaranteed for all safety properties expressible over the ontologically relevant alphabets, as simulation preserves safety properties but not liveness ones\cite{Baier08}. Any PT view necessarily abstracts from the full complexity of the underlying physical system. As a result, the deployed physical system is typically required only to refine its model by avoiding behaviors that the model forbids, rather than reproducing the model’s behavior exactly. Under this standard MBSE assumption, preservation of safety properties provides the appropriate correctness guarantee: the deployed system cannot violate any property established at the model level, even though additional behaviors beyond those represented in the model may occur. AS a consequence, the DT is a 
+
+%
+%
+%
+%This consistency is
+%{universal} over reachable states and over the FOL fragment of
+%the ontology, and {compositional} with respect to the iterative
+%co-evolution of $\VPT$, $\VDT$, and $\DomainKnowledge$ through
+%Theorem~\ref{thm:conservative-refinement}: refinements of the domain
+%knowledge or of either view do not invalidate previously established
+%alignment results, so verification effort accumulates rather than
+%restarts across design cycles. The cost of obtaining these guarantees
+%is itself low, as informal interpretations of model labels and states
+%are routinely produced during MBSE-based design, and ontologies are
+%already a common artifact in DT
+%applications~\cite{KARABULUT2024442, Gil2025} and a compliance
+%requirement in federated data spaces such as Gaia-X. Beyond cost
+%parity with current practice, the framework delivers two guarantees
+%that runtime monitoring fundamentally cannot: completeness over the
+%aligned property fragment, since monitor verdicts are bounded by what
+%has been observed and which properties have been instrumented, and
+%compositional federation, since independently developed twins
+%exposing ontology-conformant interfaces are aligned by construction
+%across organizational boundaries. The framework thus delivers PT/DT
+%semantic consistency by construction at no engineering cost beyond
+%current practice, with formal guarantees runtime approaches cannot
+%match.
+
+
+
+

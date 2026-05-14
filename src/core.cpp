@@ -223,25 +223,17 @@ std::vector<const ZoneState*> RTWBSChecker::weak_observable_successors_raw(const
     auto pre = tau_closure_cached(ta, start);
     for(auto z: pre){ 
         if (is_cancelled()) break;
-        auto outs = ta.get_outgoing_transitions(z->location_id); 
-        for(auto tr: outs){ 
-            if (is_cancelled()) break;
-            if(tr->action != action) continue; 
-            auto zInv = ta.apply_invariants(z->zone, z->location_id);
-            if(zInv.empty()) continue;
-            auto zUp = ta.time_elapse(zInv);
-            if(zUp.empty()) continue;
-            auto ready = ta.apply_invariants(zUp, z->location_id);
-            if(ready.empty()) continue;
-            auto post = ta.apply_transition(ready, *tr);
-            if(post.empty()) continue; 
-            post = ta.apply_invariants(post, tr->to_location); 
-            if(post.empty()) continue; 
-            // Lazily register the successor zone state (on-the-fly safe).
-            const ZoneState* mid = const_cast<TimedAutomaton&>(ta).get_or_add_zone_state(tr->to_location, post); 
-            if(!mid) continue; 
-            auto postTau = tau_closure_cached(ta, mid); 
-            result.insert(result.end(), postTau.begin(), postTau.end()); 
+        // Use the pre-computed labeled zone-graph transitions (returned by value
+        // to avoid invalidation when tau_closure_cached → get_or_add_zone_state
+        // potentially reallocates labeled_zone_transitions_).
+        const int sid = z->state_id;
+        const auto lsuccs = ta.get_zone_labeled_successors(sid);
+        for (const auto& [label, succ_id] : lsuccs) {
+            if (label != action) continue;
+            const ZoneState* succ = ta.get_zone_state(static_cast<size_t>(succ_id));
+            if (!succ) continue;
+            auto postTau = tau_closure_cached(ta, succ);
+            result.insert(result.end(), postTau.begin(), postTau.end());
         }
     }
     std::unordered_set<const ZoneState*> uniq(result.begin(), result.end()); 
@@ -428,7 +420,7 @@ bool timing_ok(const TimedAutomaton& refined, const ZoneState* rz, const Transit
 
 
 std::vector<const ZoneState*> RTWBSChecker::weak_observable_successors_cached(const TimedAutomaton& ta, const ZoneState* start, const std::string& action){
-    WeakKey k{start->location_id, action};
+    WeakKey k{start, action};
 #ifdef RTWBS_HAS_TBB
     // TBB concurrent_hash_map: fine-grained per-bucket locking
     {

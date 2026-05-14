@@ -275,20 +275,18 @@ private:
             return a;
         }
 
-    // Key for weak successor cache (zone state + action label)
+    // Key for weak successor cache (zone state pointer + action label)
+    // Must use the actual ZoneState pointer (not location_id) to distinguish
+    // states from different automata (PT vs DT) that share the same location_id.
     struct WeakKey {
-        //const ZoneState* z;
-        int zone_id;
+        const ZoneState* z;
         std::string action;
-        bool operator==(const WeakKey& o) const noexcept { return zone_id==o.zone_id && action==o.action; }
+        bool operator==(const WeakKey& o) const noexcept { return z==o.z && action==o.action; }
     };
     struct WeakKeyHash {
-        //size_t operator()(const WeakKey& k) const noexcept {
-        //    return std::hash<size_t>{}(k.zone_id) ^ (std::hash<std::string>{}(k.action) << 1);
-        //}
         size_t operator()(const WeakKey& k) const noexcept {
-        size_t h1 = std::hash<int>{}(k.zone_id);
-        size_t h2 = std::hash<std::string>{}(k.action);
+            size_t h1 = std::hash<const ZoneState*>{}(k.z);
+            size_t h2 = std::hash<std::string>{}(k.action);
             return h1 ^ h2 + 0x9e3779b9 + (h1 << 6) + (h1 >> 2);
         }
     };
@@ -305,7 +303,7 @@ private:
     };
     struct WeakKeyHashCompare {
         size_t hash(const WeakKey& k) const {
-            size_t h1 = std::hash<int>{}(k.zone_id);
+            size_t h1 = std::hash<const ZoneState*>{}(k.z);
             size_t h2 = std::hash<std::string>{}(k.action);
             return h1 ^ h2 + 0x9e3779b9 + (h1 << 6) + (h1 >> 2);
         }

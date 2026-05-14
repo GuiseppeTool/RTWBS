@@ -1,0 +1,345 @@
+
+# Prompt CS10 — Autonomous Pesticide Spraying Drone (Author-Constructed)
+
+## Prerequisites
+
+Prompts 0–CS9 must be fully implemented. This case study **must be
+consistent with Examples 1–4 in the paper** (doc/). Read these examples
+extremely carefully before starting. The models must reproduce the paper's
+analytical results exactly — this is the validation case study.
+
+---
+
+## Background and Domain
+
+Extends the motivating drone example from the paper into a full case study.
+The ontology in `domain.ont` must exactly match Definition 5 / Example 1.
+The interpretations must exactly match Examples 2 and 4.
+
+Governing standards:
+- **EPPO PP 1/213(3) (2012)** — Efficacy Evaluation of Plant Protection
+  Products: Precision Spraying.
+  - Maximum application rate per hectare: 50 active substance units
+  - Minimum coverage uniformity: 85% of target area within ±15% of
+    mean dose
+  - Buffer zone requirement: no spray within 5m of water bodies
+- **EU Regulation 2009/128/EC** — Sustainable Use of Pesticides:
+  - Article 8: Inspection requirements for spraying equipment
+  - Article 12: Measures to protect the aquatic environment
+  - Annex II: Specific measures for aerial application — mandatory
+    GPS-based zone control, direct link to our TA location model
+- **EASA Regulation (EU) 2019/947** — Rules and Procedures for UAS:
+  - UAS.OPEN.040: Operational limitations for category "Open" UAS
+  - Maximum flight time per battery charge: manufacturer specified
+    (modelled as battery_capacity = 500 constraint from Example 1)
+- **ISO 16119-4:2014** — Agricultural and Forestry Machinery:
+  Environmental Requirements for Sprayers — Part 4: Fixed Boom Sprayers.
+  Adapted for drone sprayers:
+  - Maximum droplet drift beyond target: related to buffer zone axiom
+  - Application rate accuracy: ±5% of prescribed rate
+- **ICAO Annex 2 (2005)** — Rules of the Air: UAS operating rules,
+  particularly visual line of sight requirements and flight time limits.
+
+The **PT view** must exactly match the TA described in Example 2 of the
+paper, with events `spray`, `shutoff`, `exit_zone` and their exact
+interpretations as given in Example 2.
+
+The **DT view** must use labels `apply` and `power_down` with the
+exact interpretations given in Example 4.
+
+Z3 must confirm:
+- `Δ |= I_PT(spray) ↔ I_DT(apply)` — exactly as proven in Section VII
+- `Δ |= I_PT(shutoff) ↔ I_DT(power_down)` — exactly as proven in Section VII
+
+---
+
+## STEP 1 — UPPAAL Models
+
+### File: `assets/CS10_Drone/V1_PT.xml`
+
+Template name: `SprayingDronePT`
+
+**Clocks:** `t_flight`, `t_spray`, `t_battery`, `t_zone`
+
+**Locations (8 total):**
+```
+GROUNDED          — drone at base, battery fully charged
+NAVIGATING        — in-flight, heading to next spray zone
+ENTERING_ZONE     — approaching spray zone boundary
+SPRAYING          — active spray, covering current hectare
+EXITING_ZONE      — spray complete, leaving zone
+RETURNING         — mission complete or battery low, returning to base
+RECHARGING        — at base, battery recharging
+FAULT             — system fault (spray nozzle, GPS, battery)
+```
+
+**Transitions (consistent with Example 2 guard conditions):**
+
+```
+GROUNDED -> NAVIGATING
+  trigger: takeoff!
+  guard:   t_battery <= 0    [fresh battery]
+  reset:   t_flight := 0, t_battery := 0
+
+NAVIGATING -> ENTERING_ZONE
+  trigger: enter_zone!
+  guard:   t_flight >= 2 && t_flight <= 30
+  invariant: t_flight <= 30, reset: t_zone := 0
+
+ENTERING_ZONE -> SPRAYING
+  trigger: spray!
+  guard:   t_zone >= 1
+           [Example 2: consumption(current_hectare) <= 50]
+  reset:   t_spray := 0
+
+SPRAYING -> EXITING_ZONE
+  trigger: exit_zone!
+  guard:   t_spray >= 5 && t_spray <= 20
+           [Example 2: covered(current_hectare)]
+           [ISO 16119-4: minimum spray time for coverage uniformity]
+  invariant: t_spray <= 20, reset: t_zone := 0
+
+EXITING_ZONE -> NAVIGATING
+  trigger: tau
+  guard:   t_zone >= 1, reset: t_flight := 0
+
+EXITING_ZONE -> RETURNING
+  trigger: return_base!
+  guard:   t_battery >= 450
+           [EASA 2019/947: return when approaching battery limit]
+
+NAVIGATING -> RETURNING
+  trigger: shutoff!
+  guard:   t_battery >= 450
+           [Example 2: total_consumption <= battery_capacity AND covered]
+  reset:   t_flight := 0
+
+RETURNING -> RECHARGING
+  trigger: land!
+  guard:   t_flight >= 2, reset: t_battery := 0
+
+RECHARGING -> GROUNDED
+  trigger: recharge_complete!
+  guard:   t_battery >= 60
+  invariant: t_battery <= 120
+
+ANY -> FAULT
+  trigger: fault_detected!
+  guard:   t_battery <= 3
+  (from SPRAYING, NAVIGATING)
+
+FAULT -> RETURNING
+  trigger: fault_return!
+  guard:   (no guard)
+```
+
+### File: `assets/CS10_Drone/V2_DT.xml`
+
+Template name: `EnergyBudgetDT`
+
+**Labels: exactly as specified in Example 4 of the paper:**
+```
+PT label     DT label
+spray!    --> apply!
+shutoff!  --> power_down!
+exit_zone!--> coverage_confirmed!
+enter_zone!-> zone_entry_logged!
+takeoff!  --> mission_start_logged!
+land!     --> base_return_logged!
+```
+
+**Clocks:** `t_dt_budget`, `t_dt_coverage`, `t_dt_flight`
+
+**Locations (7 total):**
+```
+EM_GROUNDED, EM_TRANSIT, EM_ZONE_ENTRY, EM_APPLYING,
+EM_ZONE_EXIT, EM_RETURNING, EM_RECHARGING
+```
+
+---
+
+## STEP 2 — Ontology
+
+### File: `assets/CS10_Drone/domain.ont`
+
+**MUST EXACTLY MATCH Example 1 of the paper.** Plus EPPO/EU extensions:
+
+```
+; Ontology: Autonomous Pesticide Spraying Drone
+; Standards: EPPO PP 1/213(3):2012, EU Regulation 2009/128/EC,
+;            EASA Reg.(EU) 2019/947, ISO 16119-4:2014, ICAO Annex 2:2005
+; Fragment: QF_LRA
+;
+; IMPORTANT: Sorts, functions, relations, and base axioms in this file
+; MUST be consistent with Definition 5 / Example 1 of the paper.
+
+; === SORTS === (exactly as in Example 1)
+sort Hectare      ; unit of land area — discrete field zones
+sort Real         ; real-valued energy consumption
+sort Nat          ; natural-valued indices
+
+; === FUNCTIONS === (exactly as in Example 1)
+fun consumption      : Hectare -> Real  ; energy to cover hectare h
+fun num_hectares     : Nat              ; total hectares in mission
+fun total_consumption: Real             ; cumulative energy used
+fun battery_capacity : Real             ; total battery energy available
+
+; === RELATIONS === (exactly as in Example 1)
+rel covered          : Hectare          ; holds when hectare h has been sprayed
+
+; === AXIOMS === (exactly as in Example 1)
+axiom num_h         : num_hectares = 10
+axiom bat_cap       : battery_capacity = 500
+axiom nn_consumption: consumption(1) >= 0
+; For all other hectares — Z3 will treat consumption as uninterpreted
+; over Hectare sort; axioms below bound the range:
+axiom cons_upper    : consumption(1) <= 50
+axiom cons_upper_2  : consumption(2) <= 50
+axiom cons_upper_3  : consumption(3) <= 50
+axiom cons_upper_4  : consumption(4) <= 50
+axiom cons_upper_5  : consumption(5) <= 50
+; (EPPO PP 1/213(3): max 50 units per hectare)
+axiom total_nn      : total_consumption >= 0
+axiom total_upper   : total_consumption <= battery_capacity
+
+; === EXTENDED AXIOMS (EPPO / EU 2009/128/EC) ===
+; Per-hectare application rate limit (EPPO PP 1/213(3) Section 4.2)
+fun max_per_hectare_dose : Real
+axiom max_dose_val  : max_per_hectare_dose = 50
+
+; EU 2009/128/EC Article 12 buffer zone (modelled as minimum flight boundary)
+fun buffer_zone_width : Real
+axiom buffer_val    : buffer_zone_width = 5
+
+; ISO 16119-4 coverage uniformity: minimum spray per hectare
+fun min_coverage_per_hectare : Real
+axiom min_coverage  : min_coverage_per_hectare = 40
+
+; Battery safety margin (EASA 2019/947 reserve requirement)
+fun battery_reserve : Real
+axiom bat_reserve   : battery_reserve = 50
+
+; ICAO Annex 2: maximum flight time per sortie (time units)
+fun max_flight_time : Real
+axiom max_flight    : max_flight_time = 300
+```
+
+---
+
+## STEP 3 — Interpretations
+
+### File: `assets/CS10_Drone/pt.interp`
+
+**MUST EXACTLY MATCH Example 2 of the paper:**
+
+```
+; PT Interpretation: SprayingDronePT
+; Exactly as specified in Example 2 of the paper.
+
+; --- Location interpretations ---
+GROUNDED       : (= total_consumption 0)
+NAVIGATING     : (and (>= total_consumption 0) (<= total_consumption battery_capacity))
+ENTERING_ZONE  : (and (>= total_consumption 0) (<= total_consumption battery_capacity - battery_reserve))
+SPRAYING       : (and (<= consumption(1) max_per_hectare_dose) (<= total_consumption battery_capacity))
+EXITING_ZONE   : (covered 1)
+RETURNING      : (<= total_consumption battery_capacity)
+RECHARGING     : (= total_consumption 0)
+FAULT          : (>= total_consumption 0)
+
+; --- Event interpretations (EXACTLY as in Example 2) ---
+spray!         : (<= consumption(1) 50)
+shutoff!       : (and (<= total_consumption battery_capacity) (covered 1))
+exit_zone!     : (covered 1)
+enter_zone!    : (<= total_consumption battery_capacity - battery_reserve)
+takeoff!       : (= total_consumption 0)
+return_base!   : (<= total_consumption battery_capacity)
+land!          : (<= total_consumption battery_capacity)
+recharge_complete! : (= total_consumption 0)
+fault_detected!: (>= total_consumption 0)
+fault_return!  : (>= total_consumption 0)
+```
+
+### File: `assets/CS10_Drone/dt.interp`
+
+**MUST EXACTLY MATCH Example 4 of the paper:**
+
+```
+; DT Interpretation: EnergyBudgetDT
+; Exactly as specified in Example 4 of the paper.
+
+; --- Location interpretations ---
+EM_GROUNDED    : (= total_consumption 0)
+EM_TRANSIT     : (<= total_consumption battery_capacity)
+EM_ZONE_ENTRY  : (<= total_consumption battery_capacity - battery_reserve)
+EM_APPLYING    : (>= (- (- battery_capacity total_consumption) consumption(1)) (- battery_capacity 50))
+EM_ZONE_EXIT   : (covered 1)
+EM_RETURNING   : (<= total_consumption battery_capacity)
+EM_RECHARGING  : (= total_consumption 0)
+
+; --- Event interpretations (EXACTLY as in Example 4) ---
+; Z3 MUST confirm: Δ |= I_PT(spray!) ↔ I_DT(apply!)
+apply!         : (>= (- (- battery_capacity total_consumption) consumption(1)) (- battery_capacity 50))
+; Z3 MUST confirm: Δ |= I_PT(shutoff!) ↔ I_DT(power_down!)
+power_down!    : (and (>= (- battery_capacity total_consumption) 0) (covered 1))
+coverage_confirmed!   : (covered 1)
+zone_entry_logged!    : (<= total_consumption battery_capacity - battery_reserve)
+mission_start_logged! : (= total_consumption 0)
+base_return_logged!   : (<= total_consumption battery_capacity)
+```
+
+---
+
+## STEP 4 — Misalignment Variants
+
+### Variant A — Consumption Limit Drift
+`dt_thresh_drift.interp`: Change `apply!` to fire at
+`consumption(1) > 60` instead of `<= 50`. This violates the EPPO
+application rate limit and means the DT permits spray applications
+that exceed the EU 2009/128 regulatory threshold.
+Z3 must confirm NOT ENTAILED for:
+`Δ |= I_PT(spray!) ↔ (consumption(1) > 60)`
+
+### Variant B — Ontology Evolution (RQ1)
+
+`domain_v2.ont`: Apply Definition 7 exactly as described in the paper:
+- **Condition I:** Add `sort Motor`, `fun rpm : Motor -> Real`
+- **Condition II:** Tighten `battery_capacity` from 500 to 450
+  (models battery degradation after 200 cycles — exactly the example
+  discussed in Section IV of the paper)
+- **Condition III:** Update `shutoff!` to
+  `(and (<= total_consumption 450) (covered 1))`
+
+The benchmark runner must verify:
+1. `domain_v2.ont |= domain.ont` (Theorem 1 Condition II)
+2. Alignment preserved under `domain_v2.ont`
+3. A context in which `total_consumption = 460` was valid under
+   `domain.ont` is correctly rejected under `domain_v2.ont`
+
+---
+
+## STEP 5 — Benchmark Runner
+
+### File: `benchmark/run_CS10.cpp`
+
+Follow the structure of `benchmark/run_CS1.cpp`. This runner must
+additionally include an explicit validation section that prints:
+
+```
+=== Paper Example Validation ===
+Checking: Δ |= I_PT(spray!) ↔ I_DT(apply!)     ... [ENTAILED / NOT ENTAILED]
+Checking: Δ |= I_PT(shutoff!) ↔ I_DT(power_down!) ... [ENTAILED / NOT ENTAILED]
+Expected: both ENTAILED (per Section VII of paper)
+[PASS / FAIL]
+```
+
+If either check returns NOT ENTAILED, the implementation has a bug —
+either in the ontology, interpretation, or SMT checker. This is the
+ground truth validation for the entire SemAlign tool.
+
+The syntactic bisimulation baseline (Run 2) must also print:
+```
+Syntactic bisimulation on (spray! vs apply!): NOT ALIGNED
+[This is CORRECT — labels differ. Semantic alignment is needed.]
+```
+
+This makes the RQ2 point visually explicit in the output.

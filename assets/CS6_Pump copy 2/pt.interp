@@ -1,0 +1,21 @@
+; Interpretation: GPCA Infusion Pump -- PT (Pump Firmware Engineer perspective)
+; Ontology: domain.ont
+; Standard: IEC 60601-1:2005+AMD1, FDA Infusion Pump Guidance 2010
+
+; === LOCATION INTERPRETATIONS ===
+IDLE              : (= dose_delivered 0)
+PRIMING           : (= dose_delivered 0)
+INFUSING          : (and (> primary_rate 0) (<= dose_delivered (+ prescribed_dose dose_tolerance)))
+BOLUS_DELIVERY    : (and (> bolus_volume 0) (<= bolus_volume max_bolus_volume))
+PAUSED            : (<= dose_delivered (+ prescribed_dose dose_tolerance))
+KVO_MODE          : (and (= primary_rate kvo_rate) (<= dose_delivered (+ prescribed_dose dose_tolerance)))
+ALARM_OCCLUSION   : (> line_pressure occlusion_threshold)
+ALARM_OVERDOSE    : (> dose_delivered (+ prescribed_dose dose_tolerance))
+
+; === EVENT INTERPRETATIONS ===
+infusion_start!     : (and (> primary_rate 0) (<= primary_rate max_primary_rate))
+pause_infusion!     : (and (<= dose_delivered (+ prescribed_dose dose_tolerance)) (= ev_type_id ev_id_pause))
+resume_infusion!    : (and (<= dose_delivered (+ prescribed_dose dose_tolerance)) (= ev_type_id ev_id_resume))
+overdose_alarm!     : (and (> dose_delivered (+ prescribed_dose dose_tolerance)) (= ev_type_id ev_id_alarm_start))
+alarm_acknowledged! : (and (> dose_delivered (+ prescribed_dose dose_tolerance)) (= ev_type_id ev_id_alarm_ack))
+infusion_complete!  : (>= dose_delivered prescribed_dose)

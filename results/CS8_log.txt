@@ -1,0 +1,160 @@
+=== CS8: Lift Plus Cruise eVTOL ===
+    (ASTM F3269-21 / FAA AC 21-7A / RTCA DO-365:2020 / SAE AS6968:2021)
+    PT: LiftCruisePT  (avionics / propulsion control, IEC 61508-3 SIL-3)
+    DT: FlightEnvelopeDT (ground flight envelope + airspace monitor)
+Loading PT and DT models...
+  PT zones: 31  |  DT zones: 73
+
+[RUN 1] Semantic alignment (aligned pair)...
+
+=== Label Equivalence E ===
+  takeoff_initiated!  →  {vehicle_departure_event!}
+  transition_hover_start!  →  {propulsion_mode_change!, hover_mode_initiation!}
+  transition_cruise_start!  →  {propulsion_mode_change!, hover_mode_initiation!}
+  emergency_descent!  →  {low_energy_alert!, forced_descent_command!}
+  cruise_established!  →  {cruise_mode_confirmed!}
+  touchdown!  →  {ground_contact_event!}
+  hover_stable!  →  {hover_confirmed_telemetry!}
+  descent_initiated!  →  {descent_sequence_start!}
+  battery_critical!  →  {low_energy_alert!, forced_descent_command!}
+  landing_initiated!  →  {final_approach_event!}
+  rotor_fault!  →  {propulsion_fault_event!, emergency_landing_command!}
+  emergency_landing!  →  {propulsion_fault_event!, emergency_landing_command!}
+  (all labels matched)
+  Total: 12 PT labels, 18 matched pairs, 31 PT zones, 73 DT zones
+  BFS done: accepted=31  rejected=0
+Verdict: TRUE (semantically aligned)
+Semantic Alignment Result:
+  Aligned:                TRUE
+  Label pairs in E:       18
+  Initial state pairs:    1
+  Final relation size:    31
+  SMT calls total:        180
+  Fixpoint iterations:    31
+  Time:                   12.216 ms
+
+[RUN 2] Syntactic bisimulation baseline (same pair)...
+WTB: 31 PT zones, 73 DT zones, 0 PT labels, 0 matched pairs
+  BFS done: accepted=1  rejected=0
+Verdict: TRUE (syntactically bisimilar)
+Semantic Alignment Result:
+  Aligned:                TRUE
+  Label pairs in E:       0
+  Initial state pairs:    1
+  Final relation size:    1
+  SMT calls total:        0
+  Fixpoint iterations:    1
+  Time:                   0.008 ms
+[WARNING] RUN 2: expected syntactic FAILURE but got TRUE.
+
+[RUN 3] Misalignment Variant A: well-clear precondition gap...
+        DT adds tau_mod >= 35s precondition absent from PT
+        (ASTM F3269-21 Sec.6.3 separation assurance asymmetry)
+
+=== Label Equivalence E ===
+  takeoff_initiated!  →  {vehicle_departure_event!}
+  transition_hover_start!  →  {hover_mode_initiation!}
+  transition_cruise_start!  →  {hover_mode_initiation!}
+  emergency_descent!  →  {low_energy_alert!, forced_descent_command!}
+  cruise_established!  →  {cruise_mode_confirmed!}
+  touchdown!  →  {ground_contact_event!}
+  hover_stable!  →  {hover_confirmed_telemetry!}
+  descent_initiated!  →  {descent_sequence_start!}
+  battery_critical!  →  {low_energy_alert!, forced_descent_command!}
+  landing_initiated!  →  {final_approach_event!}
+  rotor_fault!  →  {propulsion_fault_event!, emergency_landing_command!}
+  emergency_landing!  →  {propulsion_fault_event!, emergency_landing_command!}
+  [B-UNMATCHED]              ←  propulsion_mode_change!  (no PT equivalent)
+  Total: 12 PT labels, 16 matched pairs, 31 PT zones, 73 DT zones
+  BFS done: accepted=2  rejected=1
+Verdict: TRUE (unexpected -- DT should have stricter precondition)
+Semantic Alignment Result:
+  Aligned:                TRUE
+  Label pairs in E:       16
+  Initial state pairs:    1
+  Final relation size:    1
+  SMT calls total:        180
+  Fixpoint iterations:    3
+  Time:                   11.990 ms
+[WARNING] RUN 3: expected NOT ALIGNED but got ALIGNED.
+
+[RUN 4] Misalignment Variant B: SOC threshold drift...
+        PT threshold: battery_soc < 20% (SAE AS6968 min_soc_operation)
+        DT threshold: battery_soc < 25% (5pp drift -- false alarms in [20,25))
+
+=== Label Equivalence E ===
+  takeoff_initiated!  →  {vehicle_departure_event!}
+  transition_hover_start!  →  {propulsion_mode_change!, hover_mode_initiation!}
+  transition_cruise_start!  →  {propulsion_mode_change!, hover_mode_initiation!}
+  [A-UNMATCHED] emergency_descent!  →  (no DT equivalent)
+  cruise_established!  →  {cruise_mode_confirmed!}
+  touchdown!  →  {ground_contact_event!}
+  hover_stable!  →  {hover_confirmed_telemetry!}
+  descent_initiated!  →  {descent_sequence_start!}
+  [A-UNMATCHED] battery_critical!  →  (no DT equivalent)
+  landing_initiated!  →  {final_approach_event!}
+  rotor_fault!  →  {propulsion_fault_event!, emergency_landing_command!}
+  emergency_landing!  →  {propulsion_fault_event!, emergency_landing_command!}
+  [B-UNMATCHED]              ←  forced_descent_command!  (no PT equivalent)
+  [B-UNMATCHED]              ←  low_energy_alert!  (no PT equivalent)
+  Total: 12 PT labels, 14 matched pairs, 31 PT zones, 73 DT zones
+  BFS done: accepted=19  rejected=1
+Verdict: TRUE (drift not bisimulation-critical)
+Semantic Alignment Result:
+  Aligned:                TRUE
+  Label pairs in E:       14
+  Initial state pairs:    1
+  Final relation size:    18
+  SMT calls total:        180
+  Fixpoint iterations:    20
+  Time:                   12.250 ms
+[WARNING] RUN 4: expected NOT ALIGNED but got ALIGNED.
+
+[RUN 5] Ontology evolution (RQ1, min_soc_operation: 20 -> 22%)...
+        Condition I:  NOx sort + nox_emission_rate (SAE ARP5765A)
+        Condition II: min_soc_operation tightened (SAE AS6968 revised)
+
+=== Label Equivalence E ===
+  takeoff_initiated!  →  {vehicle_departure_event!}
+  transition_hover_start!  →  {propulsion_mode_change!, hover_mode_initiation!}
+  transition_cruise_start!  →  {propulsion_mode_change!, hover_mode_initiation!}
+  emergency_descent!  →  {low_energy_alert!, forced_descent_command!}
+  cruise_established!  →  {cruise_mode_confirmed!}
+  touchdown!  →  {ground_contact_event!}
+  hover_stable!  →  {hover_confirmed_telemetry!}
+  descent_initiated!  →  {descent_sequence_start!}
+  battery_critical!  →  {low_energy_alert!, forced_descent_command!}
+  landing_initiated!  →  {final_approach_event!}
+  rotor_fault!  →  {propulsion_fault_event!, emergency_landing_command!}
+  emergency_landing!  →  {propulsion_fault_event!, emergency_landing_command!}
+  (all labels matched)
+  Total: 12 PT labels, 18 matched pairs, 31 PT zones, 73 DT zones
+  BFS done: accepted=31  rejected=0
+Verdict under domain_v2.ont: TRUE (alignment preserved -- Theorem 1 holds)
+Semantic Alignment Result:
+  Aligned:                TRUE
+  Label pairs in E:       18
+  Initial state pairs:    1
+  Final relation size:    31
+  SMT calls total:        180
+  Fixpoint iterations:    31
+  Time:                   11.869 ms
+
+[RQ2] CS8 Misalignment detection summary:
+Variant                                      SemAlign            Note
+-----------------------------------------------------------------------------------------------
+RUN 1: Aligned pair                          ALIGNED             12 label-equiv pairs via ASTM F3269-21 ontology
+RUN 2: Syntactic bisimulation                ALIGNED             zero shared labels (avionics vs airspace vocab)
+RUN 3: Well-clear precondition gap           ALIGNED             ASTM F3269-21 Sec.6.3 asymmetric contract
+RUN 4: SOC threshold drift (+5pp)            ALIGNED             SAE AS6968 5pp excess margin false alarms
+RUN 5: Ontology evolution (Thm 1)            ALIGNED             min_soc_operation 20->22% + NOx sort
+
+[RQ4] Engineering cost summary:
+  SemAlign one-time cost (RUN 1):       12.216 ms
+  Total SMT calls:                      180
+  Label-equiv pairs |E|:                18
+  Fixpoint iterations:                  31
+  PT zone count:                        31
+  DT zone count:                        73
+
+Results written to: results/CS8_results.csv

@@ -1,0 +1,173 @@
+=== CS6: GPCA Infusion Pump ===
+    (IEC 60601-1:2005+AMD1 / FDA Guidance 2010 / ASTM F2761-09 ICE)
+    Benchmark: Jiang et al. GPCA model (FDA infusion pump evaluation)
+Loading PT and DT models...
+  PT zones: 14653807  |  DT zones: 1545
+
+[RUN 1] Semantic alignment (aligned pair)...
+
+=== Label Equivalence E ===
+  prime_start!  →  {ice_device_connect!}
+  infusion_start!  →  {ice_therapy_start!}
+  bolus_request!  →  {ice_bolus_request!}
+  resume_infusion!  →  {ice_therapy_pause!, ice_bolus_confirmed!, ice_therapy_resume!, ice_kvo_mode_event!, ice_kvo_resume!}
+  occlusion_alarm!  →  {ice_alarm_occlusion!}
+  bolus_complete!  →  {ice_therapy_pause!, ice_bolus_confirmed!, ice_therapy_resume!, ice_kvo_mode_event!, ice_kvo_resume!}
+  kvo_start!  →  {ice_therapy_pause!, ice_bolus_confirmed!, ice_therapy_resume!, ice_kvo_mode_event!, ice_kvo_resume!}
+  pause_infusion!  →  {ice_therapy_pause!, ice_bolus_confirmed!, ice_therapy_resume!, ice_kvo_mode_event!, ice_kvo_resume!}
+  resume_from_kvo!  →  {ice_therapy_pause!, ice_bolus_confirmed!, ice_therapy_resume!, ice_kvo_mode_event!, ice_kvo_resume!}
+  occlusion_cleared!  →  {ice_alarm_cleared!}
+  overdose_alarm!  →  {ice_alarm_ack!, ice_safety_limit_breach!}
+  alarm_acknowledged!  →  {ice_alarm_ack!, ice_safety_limit_breach!}
+  infusion_complete!  →  {ice_therapy_complete!}
+  (all labels matched)
+  Total: 13 PT labels, 35 matched pairs, 14653807 PT zones, 1545 DT zones
+  BFS done: accepted=2  rejected=3
+Verdict: FALSE (NOT aligned)
+Semantic Alignment Result:
+  Aligned:                FALSE
+  Label pairs in E:       35
+  Initial state pairs:    1
+  Final relation size:    0
+  SMT calls total:        208
+  Fixpoint iterations:    5
+  Time:                   10.111 ms
+  Counterexample labels:  PT='?'  DT='ice_safety_limit_breach!'
+[WARNING] RUN 1: expected ALIGNED but got NOT ALIGNED.
+
+[RUN 2] Syntactic bisimulation baseline (same pair)...
+WTB: 14653807 PT zones, 1545 DT zones, 13 PT labels, 0 matched pairs
+  BFS done: accepted=0  rejected=1
+Verdict: FALSE (ICE/firmware vocabulary gap — expected for RQ4)
+Semantic Alignment Result:
+  Aligned:                FALSE
+  Label pairs in E:       0
+  Initial state pairs:    1
+  Final relation size:    0
+  SMT calls total:        0
+  Fixpoint iterations:    1
+  Time:                   0.029 ms
+  Counterexample labels:  PT='prime_start!'  DT='<A-unmatched>'
+[RQ4] ASTM F2761 ICE vs firmware vocabulary gap confirmed.
+      Syntactic bisimulation fails with zero matching label strings.
+      Semantic alignment (RUN 1) resolves via IEC 60601-1 ontology.
+
+[RUN 3] Misalignment Variant A: missing overdose safety event...
+
+=== Label Equivalence E ===
+  prime_start!  →  {ice_device_connect!}
+  infusion_start!  →  {ice_therapy_start!}
+  bolus_request!  →  {ice_bolus_request!}
+  resume_infusion!  →  {ice_therapy_pause!, ice_bolus_confirmed!, ice_therapy_resume!, ice_kvo_mode_event!, ice_kvo_resume!}
+  occlusion_alarm!  →  {ice_alarm_occlusion!}
+  bolus_complete!  →  {ice_therapy_pause!, ice_bolus_confirmed!, ice_therapy_resume!, ice_kvo_mode_event!, ice_kvo_resume!}
+  kvo_start!  →  {ice_therapy_pause!, ice_bolus_confirmed!, ice_therapy_resume!, ice_kvo_mode_event!, ice_kvo_resume!}
+  pause_infusion!  →  {ice_therapy_pause!, ice_bolus_confirmed!, ice_therapy_resume!, ice_kvo_mode_event!, ice_kvo_resume!}
+  resume_from_kvo!  →  {ice_therapy_pause!, ice_bolus_confirmed!, ice_therapy_resume!, ice_kvo_mode_event!, ice_kvo_resume!}
+  occlusion_cleared!  →  {ice_alarm_cleared!}
+  overdose_alarm!  →  {ice_alarm_ack!}
+  alarm_acknowledged!  →  {ice_alarm_ack!}
+  infusion_complete!  →  {ice_therapy_complete!}
+  (all labels matched)
+  Total: 13 PT labels, 33 matched pairs, 14653807 PT zones, 1545 DT zones
+  BFS done: accepted=10  rejected=16
+Verdict: FALSE (NOT aligned — missing overdose event detected)
+Semantic Alignment Result:
+  Aligned:                FALSE
+  Label pairs in E:       33
+  Initial state pairs:    1
+  Final relation size:    0
+  SMT calls total:        193
+  Fixpoint iterations:    26
+  Time:                   9.312 ms
+  Counterexample labels:  PT='?'  DT='ice_alarm_occlusion!'
+[RQ2] Missing event gap correctly detected.
+      overdose_alarm! in PT has no DT semantic counterpart.
+      IEC 62443-3-3 SR 2.12 (non-repudiation) coverage gap confirmed.
+
+[RUN 4] Misalignment Variant B: dose tolerance threshold drift...
+        PT threshold: dose > 105 ml (prescribed 100 + tolerance 5)
+        DT threshold: dose > 110 ml (5 ml drift -- 10% excess)
+
+=== Label Equivalence E ===
+  prime_start!  →  {ice_device_connect!}
+  infusion_start!  →  {ice_therapy_start!}
+  bolus_request!  →  {ice_bolus_request!}
+  resume_infusion!  →  {ice_therapy_pause!, ice_bolus_confirmed!, ice_therapy_resume!, ice_kvo_mode_event!, ice_kvo_resume!}
+  occlusion_alarm!  →  {ice_alarm_occlusion!}
+  bolus_complete!  →  {ice_therapy_pause!, ice_bolus_confirmed!, ice_therapy_resume!, ice_kvo_mode_event!, ice_kvo_resume!}
+  kvo_start!  →  {ice_therapy_pause!, ice_bolus_confirmed!, ice_therapy_resume!, ice_kvo_mode_event!, ice_kvo_resume!}
+  pause_infusion!  →  {ice_therapy_pause!, ice_bolus_confirmed!, ice_therapy_resume!, ice_kvo_mode_event!, ice_kvo_resume!}
+  resume_from_kvo!  →  {ice_therapy_pause!, ice_bolus_confirmed!, ice_therapy_resume!, ice_kvo_mode_event!, ice_kvo_resume!}
+  occlusion_cleared!  →  {ice_alarm_cleared!}
+  overdose_alarm!  →  {ice_alarm_ack!}
+  alarm_acknowledged!  →  {ice_alarm_ack!}
+  infusion_complete!  →  {ice_therapy_complete!}
+  [B-UNMATCHED]              ←  ice_safety_limit_breach!  (no PT equivalent)
+  Total: 13 PT labels, 33 matched pairs, 14653807 PT zones, 1545 DT zones
+  BFS done: accepted=2  rejected=3
+Verdict: FALSE (NOT aligned — threshold drift detected)
+Semantic Alignment Result:
+  Aligned:                FALSE
+  Label pairs in E:       33
+  Initial state pairs:    1
+  Final relation size:    0
+  SMT calls total:        208
+  Fixpoint iterations:    5
+  Time:                   10.066 ms
+  Counterexample labels:  PT='<B-unmatched>'  DT='ice_safety_limit_breach!'
+[RQ2] Threshold drift correctly detected.
+      Gap fraction: 5.0% of prescribed dose.
+      Clinical risk: opioid PCA overdose in [105, 110) ml window.
+
+[RUN 5] Ontology evolution (RQ1, dose_tolerance: 5 -> 3 ml)...
+        Condition I:  drug_concentration sort (IEC 60601-2-24:2012)
+        Condition II: dose_tolerance tightened (FDA 2023 high-alert)
+
+=== Label Equivalence E ===
+  prime_start!  →  {ice_device_connect!}
+  infusion_start!  →  {ice_therapy_start!}
+  bolus_request!  →  {ice_bolus_request!}
+  resume_infusion!  →  {ice_therapy_pause!, ice_bolus_confirmed!, ice_therapy_resume!, ice_kvo_mode_event!, ice_kvo_resume!}
+  occlusion_alarm!  →  {ice_alarm_occlusion!}
+  bolus_complete!  →  {ice_therapy_pause!, ice_bolus_confirmed!, ice_therapy_resume!, ice_kvo_mode_event!, ice_kvo_resume!}
+  kvo_start!  →  {ice_therapy_pause!, ice_bolus_confirmed!, ice_therapy_resume!, ice_kvo_mode_event!, ice_kvo_resume!}
+  pause_infusion!  →  {ice_therapy_pause!, ice_bolus_confirmed!, ice_therapy_resume!, ice_kvo_mode_event!, ice_kvo_resume!}
+  resume_from_kvo!  →  {ice_therapy_pause!, ice_bolus_confirmed!, ice_therapy_resume!, ice_kvo_mode_event!, ice_kvo_resume!}
+  occlusion_cleared!  →  {ice_alarm_cleared!}
+  overdose_alarm!  →  {ice_alarm_ack!, ice_safety_limit_breach!}
+  alarm_acknowledged!  →  {ice_alarm_ack!, ice_safety_limit_breach!}
+  infusion_complete!  →  {ice_therapy_complete!}
+  (all labels matched)
+  Total: 13 PT labels, 35 matched pairs, 14653807 PT zones, 1545 DT zones
+  BFS done: accepted=2  rejected=3
+Verdict under domain_v2.ont: FALSE (alignment broken by ontology evolution)
+Semantic Alignment Result:
+  Aligned:                FALSE
+  Label pairs in E:       35
+  Initial state pairs:    1
+  Final relation size:    0
+  SMT calls total:        208
+  Fixpoint iterations:    5
+  Time:                   9.918 ms
+  Counterexample labels:  PT='?'  DT='ice_safety_limit_breach!'
+[WARNING] RUN 5: ontology evolution broke alignment.
+
+[RQ2] CS6 Misalignment detection summary:
+Variant                                 SemAlign            Note
+------------------------------------------------------------------------------------------
+RUN 1: Aligned pair                     NOT ALIGNED         13 label-equiv pairs via ontology
+RUN 2: Syntactic bisimulation           NOT ALIGNED         zero shared labels (ICE vs firmware)
+RUN 3: Missing overdose event           NOT ALIGNED         IEC 62443-3-3 SR 2.12/3.3 gap
+RUN 4: Dose tolerance drift (+5 ml)     NOT ALIGNED         5% excess opioid dose risk
+RUN 5: Ontology evolution (Thm 1)       NOT ALIGNED         dose_tolerance 5->3 ml + Concentration sort
+
+[RQ4] Engineering cost summary:
+  SemAlign one-time cost (RUN 1):       10.111 ms
+  Total SMT calls:                      208
+  Label-equiv pairs |E|:                35
+  Fixpoint iterations:                  5
+  PT zone count:                        14653807
+  DT zone count:                        1545
+
+Results written to: results/CS6_results.csv

@@ -1,0 +1,8 @@
+model_name,aligned,label_pairs_E,initial_pairs,final_pairs,smt_calls,fixpoint_iters,time_ms
+CS4_aligned,true,15,1,1,253,3,21.614
+CS4_egt_drift,true,15,1,1,253,3,21.287
+CS4_missing_flameout,true,14,1,1,236,3,20.072
+CS4_evo_v2,true,15,1,1,253,3,21.509
+CS4_monolithic,true,15,1,1,253,3,21.427
+CS4_FMS,true,4,1,1,46,3,4.314
+CS4_TMS,false,8,1,0,108,1,8.651

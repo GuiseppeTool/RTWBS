@@ -1,0 +1,71 @@
+; Ontology: Lift Plus Cruise eVTOL Vehicle (v2)
+; Changes from domain.ont:
+;   Condition I:  Add sort NOx (g/kWh) per SAE ARP5765A eVTOL environmental standard.
+;                 Add fun nox_emission_rate : NOx.
+;                 Axiom: nox_emission_rate <= 10 g/kWh (SAE ARP5765A threshold).
+;   Condition II: Tighten min_soc_operation from 20 to 22 percent
+;                 (SAE AS6968 revised recommendation for battery cycle life management).
+; Theorem 1: alignment preserved because pt_v2.interp and dt_v2.interp reference
+;            min_soc_operation symbolically throughout.
+; Fragment: QF_LRA
+
+; === SORTS ===
+sort Altitude  ; feet -- pressure altitude
+sort Speed     ; knots -- airspeed
+sort Distance  ; feet -- horizontal/vertical separation
+sort Energy    ; percent -- battery state of charge (SOC)
+sort Current   ; Amperes -- motor current draw
+sort TauMod    ; seconds -- ASTM F3269-21 modified tau metric
+sort NOx       ; g/kWh -- NOx emissions rate (NEW: SAE ARP5765A eVTOL environmental)
+
+; === FUNCTIONS ===
+fun altitude             : Altitude
+fun airspeed             : Speed
+fun vertical_speed       : Speed
+fun horizontal_sep       : Distance
+fun vertical_sep         : Distance
+fun tau_mod              : TauMod
+fun well_clear_h         : Distance
+fun well_clear_v         : Distance
+fun tau_mod_threshold    : TauMod
+fun battery_soc          : Energy
+fun min_soc_landing      : Energy
+fun min_soc_operation    : Energy
+fun lift_motor_current   : Current
+fun cruise_motor_current : Current
+fun max_motor_current    : Current
+fun transition_time      : TauMod
+fun max_transition_time  : TauMod
+; Condition I: NEW
+fun nox_emission_rate    : NOx    ; NOx emission rate (g/kWh) -- SAE ARP5765A
+
+; === RELATIONS ===
+rel well_clear             :
+rel battery_safe           :
+rel transition_complete_rel:
+rel motor_current_safe     :
+
+; === AXIOMS ===
+axiom wc_h_val        : (= well_clear_h 4000)
+axiom wc_v_val        : (= well_clear_v 450)
+axiom tau_mod_thresh  : (= tau_mod_threshold 35)
+axiom min_soc_land    : (= min_soc_landing 10)
+; Condition II: tightened from 20 to 22 percent (SAE AS6968 revised)
+axiom min_soc_ops     : (= min_soc_operation 22)
+axiom max_current_val : (= max_motor_current 200)
+axiom max_trans_time  : (= max_transition_time 25)
+axiom nn_altitude     : (>= altitude 0)
+axiom nn_airspeed     : (>= airspeed 0)
+axiom nn_h_sep        : (>= horizontal_sep 0)
+axiom nn_v_sep        : (>= vertical_sep 0)
+axiom nn_tau          : (>= tau_mod 0)
+axiom soc_lower       : (>= battery_soc 0)
+axiom soc_upper       : (<= battery_soc 100)
+axiom nn_current_lift   : (>= lift_motor_current 0)
+axiom nn_current_cruise : (>= cruise_motor_current 0)
+axiom current_lift_bound: (<= lift_motor_current (+ max_motor_current 20))
+axiom soc_ops_ordering  : (> min_soc_operation min_soc_landing)
+axiom soc_ops_val       : (= min_soc_operation 22)
+; Condition I: NOx emission constraints (SAE ARP5765A)
+axiom nn_nox          : (>= nox_emission_rate 0)
+axiom max_nox         : (<= nox_emission_rate 10)

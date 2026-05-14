@@ -1,0 +1,123 @@
+
+
+
+
+\def\distanceXToDT{19}
+\def\distanceYToDT{0.4}
+\def\distanceL{0.9}
+\def\distance2L{2}
+\def\innersep{0.4}
+\def\squareHeight{0.5}
+\def\squareWidth{1.5}
+\def\BigSquareWidth{0.45\textwidth}
+
+\def\viewFont{\footnotesize}
+
+\tikzset{% UML2 Activity Diagram Styles
+  pin/.style    = {fill=white,draw, thin, rectangle, minimum height = 0.4em,
+    minimum width = 0.4em, node distance=-1pt, inner sep=0},
+  pin left triangle/.style = {pin,append after command={
+      \pgfextra{
+        \draw[fill=black] 
+          (\tikzlastnode.south east) -- (\tikzlastnode.north east) -- 
+          ([xshift=-0.4em]\tikzlastnode.east) -- cycle;
+      }
+    }
+  },
+  pin up triangle/.style = {
+    pin,
+    path picture={
+      \draw[fill=white, draw=black, thin]
+        ([xshift=-0.3em,yshift=-0.3em]path picture bounding box.center) --
+        ([xshift=0.3em,yshift=-0.3em]path picture bounding box.center) --
+        ([yshift=0.3em]path picture bounding box.center) -- cycle;
+    },
+  },
+  pin left triangle/.style = {
+    pin,
+    path picture={
+      \draw[fill=black, draw=black]
+        ([xshift=0.3em,yshift=-0.3em]path picture bounding box.center) --
+        ([xshift=0.3em,yshift=0.3em]path picture bounding box.center) --
+        ([xshift=-0.3em]path picture bounding box.center) -- cycle;
+    },
+  },
+  pin right triangle/.style = {
+    pin,
+    path picture={
+      \draw[fill=black, draw=black]
+        ([xshift=-0.3em,yshift=-0.3em]path picture bounding box.center) --
+        ([xshift=-0.3em,yshift=0.3em]path picture bounding box.center) --
+        ([xshift=0.3em]path picture bounding box.center) -- cycle;
+    },
+  },
+  view/.style    = {draw, rectangle, dashed,  minimum width=\squareWidth cm, minimum height=\squareHeight cm },
+}
+\begin{figure}[t] 
+  \caption{Relation between views} \label{fig:Tailoring:PTView2DTView} 
+\centering 
+      \begin{tikzpicture}[node distance=3cm, font = \small, >=Stealth]
+      
+
+      \node[draw, rectangle,
+       minimum height=0.9cm,
+      align=center] (Deployed) at (0,0)
+      {Deployed\\Implementation};
+
+      
+    
+      
+      % System Views
+      \node[view, above= 1.3 cm of Deployed, xshift=0.85cm] (PTS) {\viewFont Safety};
+     \node[view, below = 0.1 cm of PTS] (PTO) {\viewFont Other};
+     \node[view, left = 0.2 cm of PTS] (PTF) {\viewFont Functional};
+
+     \node[view,below = 0.1 cm of PTF] (PTR) {\viewFont Real-Time};
+      \node[draw,rectangle, minimum width=3.6cm,minimum height=2cm,fit={(PTF)(PTS)(PTR)(PTO)},yshift=8pt,  label={[anchor=north west, xshift=2pt, yshift=-2pt]north west:System Views}] (PTV) {};
+
+
+        \node[draw, rectangle,
+       minimum height=0.9cm,
+      align=center, right = 2cm of Deployed] (Proposed)
+      {Proposed\\Implementation};
+
+    % Virtual  Views
+      \node[view, above= 1.3 cm of Proposed, xshift = 0.85cm] (DTS) {\viewFont Safety};
+     \node[view, below = 0.1 cm of DTS] (DTO) {\viewFont Other};
+     \node[view, left = 0.2 cm of DTS] (DTF) {\viewFont Functional};
+
+     \node[view,below = 0.1 cm of DTF] (DTR) {\viewFont Real-Time};
+
+      \node[draw,rectangle, minimum width=3.6cm, minimum height=2cm,fit={(DTF)(DTS)(DTR)(DTO)},yshift=8pt,  label={[anchor=north west, xshift=2pt, yshift=-2pt]north west:Virtual  Views}] (DTV) {};
+
+
+
+      \node [pin ,left=of DTV, xshift=0.2em, yshift= -0.285cm](plDTV){};
+      \node [pin ,right=of PTV, xshift=-0.2em, yshift= -0.285cm](prPTV){};
+      \draw[->,thick] (plDTV) -- (prPTV);
+
+      \node [pin ,below=of PTV, yshift=0.2em](pbPTV){};
+      \node [pin ,above=of Deployed, yshift=-0.2em](puDeployed){};
+
+      \draw[->,thick] (puDeployed)--(pbPTV) ;
+
+      \node [pin ,below=of DTV, yshift=0.2em](pbDTV){};
+      \node [pin ,above=of Proposed, yshift=-0.2em](puProposed){};
+      \draw[->,thick]  (puProposed) -- (pbDTV);
+
+      
+      \node [pin ,left=of Proposed, xshift=0.2em](plProposed){};
+      
+      \node [pin ,right=of Deployed, xshift=-0.2em](prDeployed){};
+      \draw[->,thick] (plProposed) -- (prDeployed);
+
+
+      \node at ([yshift=2.8cm]$ (Proposed.north)!0.5!(Deployed.north)$) (Legend) {
+  \begin{tabular}{rl}
+    \tikz{\draw[->, thick] (0,0) -- (0.5,0);} & \footnotesize Refinement Relation 
+  \end{tabular}
+};
+%      \draw[->,thick] ([xshift=0.3cm,yshift = 0.2cm]OCM.east) -- ([xshift=0.3cm,yshift=1.3cm]OCM.east);
+\end{tikzpicture}
+    
+\end{figure}

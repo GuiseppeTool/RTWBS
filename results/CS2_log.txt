@@ -1,0 +1,134 @@
+=== CS2: Overhead Travelling Crane (IEC 60204-1 / EN 13001) ===
+Loading PT and DT models...
+  PT zones: 587842  |  DT zones: 39152
+
+[RUN 1] Semantic alignment (aligned pair)...
+
+=== Label Equivalence E ===
+  hoist_up!  →  {hoist_command!}
+  hoist_down!  →  {hoist_command!}
+  hoist_complete!  →  {cycle_logged!}
+  overload_detected!  →  {load_exceedance_event!}
+  travel_start!  →  {bridge_motion_start!}
+  travel_complete!  →  {bridge_motion_end!}
+  load_released!  →  {load_setdown_event!}
+  maintenance_complete!  →  {inspection_start!, inspection_complete!}
+  emergency_stop!  →  {protective_stop_command!}
+  reset_crane!  →  {inspection_start!, inspection_complete!}
+  maintenance_start!  →  {inspection_start!, inspection_complete!}
+  thermal_rest_start!  →  {duty_cycle_rest_start!}
+  thermal_rest_complete!  →  {duty_cycle_rest_end!}
+  (all labels matched)
+  Total: 13 PT labels, 16 matched pairs, 587842 PT zones, 39152 DT zones
+  BFS done: accepted=541260  rejected=0
+Verdict: TRUE (semantically aligned)
+Semantic Alignment Result:
+  Aligned:                TRUE
+  Label pairs in E:       16
+  Initial state pairs:    1
+  Final relation size:    541260
+  SMT calls total:        178
+  Fixpoint iterations:    541260
+  Time:                   6016.917 ms
+
+[RUN 2] Syntactic bisimulation baseline (same pair)...
+WTB: 587842 PT zones, 39152 DT zones, 0 PT labels, 0 matched pairs
+  BFS done: accepted=1  rejected=0
+Verdict: TRUE (syntactically bisimilar)
+Semantic Alignment Result:
+  Aligned:                TRUE
+  Label pairs in E:       0
+  Initial state pairs:    1
+  Final relation size:    1
+  SMT calls total:        0
+  Fixpoint iterations:    1
+  Time:                   0.044 ms
+[WARNING] RUN 2: expected syntactic FAILURE but got TRUE (labels may have been matched by accident).
+
+[RUN 3] Threshold drift misalignment (Variant A, 480 vs 500 kg)...
+
+=== Label Equivalence E ===
+  [A-UNMATCHED] hoist_up!  →  (no DT equivalent)
+  [A-UNMATCHED] hoist_down!  →  (no DT equivalent)
+  hoist_complete!  →  {hoist_command!, cycle_logged!}
+  [A-UNMATCHED] overload_detected!  →  (no DT equivalent)
+  travel_start!  →  {bridge_motion_start!}
+  travel_complete!  →  {bridge_motion_end!}
+  load_released!  →  {load_setdown_event!}
+  maintenance_complete!  →  {inspection_start!, inspection_complete!}
+  emergency_stop!  →  {protective_stop_command!}
+  reset_crane!  →  {inspection_start!, inspection_complete!}
+  maintenance_start!  →  {inspection_start!, inspection_complete!}
+  thermal_rest_start!  →  {duty_cycle_rest_start!}
+  thermal_rest_complete!  →  {duty_cycle_rest_end!}
+  [B-UNMATCHED]              ←  load_exceedance_event!  (no PT equivalent)
+  Total: 13 PT labels, 14 matched pairs, 587842 PT zones, 39152 DT zones
+  BFS done: accepted=0  rejected=1
+Verdict: FALSE (NOT aligned — threshold drift detected)
+Semantic Alignment Result:
+  Aligned:                FALSE
+  Label pairs in E:       14
+  Initial state pairs:    1
+  Final relation size:    0
+  SMT calls total:        178
+  Fixpoint iterations:    1
+  Time:                   12.221 ms
+  Counterexample labels:  PT='hoist_down!'  DT='<A-unmatched>'
+[RQ4] Threshold drift gap probability: 3.636% (20 kg gap over Uniform[0, 550 kg])
+
+[RUN 4] Runtime monitor baseline (threshold drift)...
+Monitor 'EN13001_LoadCapacity': NOT DETECTED | traces: 1000 | steps to detection: 0 | overhead/step: 1.000 us
+Monitor 'IEC60204_EmergencyReach': NOT DETECTED | traces: 1000 | steps to detection: 0 | overhead/step: 1.000 us
+
+[RUN 5] Ontology evolution (RQ1, rated_load: 500 -> 475 kg)...
+
+=== Label Equivalence E ===
+  [A-UNMATCHED] hoist_up!  →  (no DT equivalent)
+  [A-UNMATCHED] hoist_down!  →  (no DT equivalent)
+  hoist_complete!  →  {hoist_command!, cycle_logged!}
+  overload_detected!  →  {load_exceedance_event!}
+  travel_start!  →  {bridge_motion_start!}
+  travel_complete!  →  {bridge_motion_end!}
+  load_released!  →  {load_setdown_event!}
+  maintenance_complete!  →  {inspection_start!, inspection_complete!}
+  emergency_stop!  →  {protective_stop_command!}
+  [A-UNMATCHED] reset_crane!  →  (no DT equivalent)
+  maintenance_start!  →  {inspection_start!, inspection_complete!}
+  thermal_rest_start!  →  {duty_cycle_rest_start!}
+  thermal_rest_complete!  →  {duty_cycle_rest_end!}
+  Total: 13 PT labels, 13 matched pairs, 587842 PT zones, 39152 DT zones
+  BFS done: accepted=0  rejected=1
+Verdict under domain_v2.ont: FALSE (alignment broken by ontology evolution)
+Semantic Alignment Result:
+  Aligned:                FALSE
+  Label pairs in E:       13
+  Initial state pairs:    1
+  Final relation size:    0
+  SMT calls total:        178
+  Fixpoint iterations:    1
+  Time:                   12.835 ms
+  Counterexample labels:  PT='hoist_down!'  DT='<A-unmatched>'
+[WARNING] RUN 5: ontology evolution broke alignment (Theorem 1 may not hold for this pair).
+
+[RUN N+1] Munoz et al. NW trace-alignment monitor (RQ2/RQ4)...
+  [Aligned pair]   avg_NW_score=0.000  anomaly_detected=YES  overhead/step=3.602 us
+  [Thresh drift]   avg_NW_score=0.000  anomaly_detected=YES  overhead/step=3.584 us
+
+[TIMING VIOLATION DETECTION SUMMARY — CS2]
+  Munoz NW (aligned pair):   avg_score=0.000  detected=YES
+  Munoz NW (thresh drift):   avg_score=0.000  detected=YES
+  SemAlign (thresh drift):   NOT ALIGNED (DETECTED)
+  Key finding: NW cannot detect semantic-only threshold drift;
+    SemAlign detects it via Z3 label-equivalence refutation.
+
+[RQ4] Engineering cost summary:
+  SemAlign one-time cost:       6016.917 ms
+  SemAlign total SMT calls:     178
+  Label-equiv pairs (|E|):      16
+  Initial relation size:        1
+  Final relation size:          541260
+  Fixpoint iterations:          541260
+  Monitor LOC estimate:         90
+  Monitor overhead/step:        1.000 us
+
+Results written to: results/CS2_results.csv

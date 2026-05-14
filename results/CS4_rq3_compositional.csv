@@ -1,0 +1,2 @@
+model,monolithic_time_ms,fms_time_ms,tms_time_ms,compositional_total_ms,speedup_factor,fms_aligned,tms_aligned,monolithic_aligned,consistent
+CS4_Engine,21.4274,4.31423,8.65079,12.965,1.653,true,false,true,false

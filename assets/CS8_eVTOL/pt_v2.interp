@@ -1,0 +1,31 @@
+; Interpretation: pt_v2 -- PT with updated ontology (domain_v2.ont)
+; Identical to pt.interp; all formulas reference min_soc_operation symbolically.
+; Theorem 1: ontology tightening (min_soc_operation 20->22) does not invalidate
+; alignment because the DT interp also uses min_soc_operation symbolically.
+; Condition I (NOx sort addition) is transparent to both interps.
+
+; === LOCATION INTERPRETATIONS ===
+GROUND              : (and (= airspeed 0) (>= battery_soc min_soc_landing))
+VERTICAL_CLIMB      : (and (> vertical_speed 0) (>= battery_soc min_soc_operation) (<= lift_motor_current max_motor_current))
+TRANSITION_TO_CRUISE: (and (> airspeed 0) (>= battery_soc min_soc_operation) (<= lift_motor_current max_motor_current))
+CRUISE              : (and (>= airspeed 50) (>= battery_soc min_soc_operation) (<= cruise_motor_current max_motor_current))
+TRANSITION_TO_HOVER : (and (> airspeed 0) (>= battery_soc min_soc_operation))
+HOVER               : (and (= airspeed 0) (>= battery_soc min_soc_operation) (<= lift_motor_current max_motor_current))
+VERTICAL_DESCENT    : (and (< vertical_speed 0) (>= battery_soc min_soc_landing))
+LANDING             : (and (< vertical_speed 0) (>= battery_soc min_soc_landing) (<= altitude 500))
+BATTERY_CRITICAL    : (< battery_soc min_soc_operation)
+ROTOR_FAULT         : (> lift_motor_current max_motor_current)
+
+; === EVENT INTERPRETATIONS ===
+takeoff_initiated!        : (and (= altitude 0) (>= battery_soc min_soc_operation))
+transition_cruise_start!  : (and (>= altitude 500) (>= battery_soc min_soc_operation))
+cruise_established!       : (and (>= airspeed 50) (<= transition_time max_transition_time) (>= battery_soc min_soc_operation))
+transition_hover_start!   : (and (>= battery_soc min_soc_operation) (>= altitude 500))
+hover_stable!             : (and (<= airspeed 5) (<= transition_time max_transition_time) (>= battery_soc min_soc_operation))
+descent_initiated!        : (>= battery_soc min_soc_landing)
+landing_initiated!        : (and (<= altitude 500) (>= battery_soc min_soc_landing))
+touchdown!                : (= altitude 0)
+battery_critical!         : (< battery_soc min_soc_operation)
+emergency_descent!        : (< battery_soc min_soc_operation)
+rotor_fault!              : (> lift_motor_current max_motor_current)
+emergency_landing!        : (> lift_motor_current max_motor_current)

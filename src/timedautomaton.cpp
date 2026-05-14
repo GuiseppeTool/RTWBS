@@ -318,19 +318,23 @@ void TimedAutomaton::build_transitions(const UTAP::Template& template_ref) {
         int source_int = location_map_[source_id];
         int target_int = location_map_[target_id];
         
-    // Parse edge components
-    std::string action = parse_edge_assignment(edge, i);
+    // Add the transition first (always with tau action; sync is set later)
+    add_transition(source_int, target_int, TA_CONFIG.tau_action_name);
 
-    // Decide action label considering abstraction config only for non-synchronized edges
-    //bool will_sync = !edge.sync.empty();
-    //const std::string& label = (TA_CONFIG.abstract_non_channels && !will_sync) ? TA_CONFIG.//tau_action_name : action;
-    add_transition(source_int, target_int, action);
-        
+    // Use the actual transition index (not the edge loop index i) so that
+    // add_reset / add_guard / add_synchronization operate on the correct entry
+    // even when earlier edges were skipped (e.g. missing locations or bad guards).
+    size_t tr_idx = transitions_.size() - 1;
+
+    // Parse edge components (assignment must come AFTER add_transition so that
+    // transitions_[tr_idx] already exists when add_reset is called)
+    parse_edge_assignment(edge, tr_idx);
+
         DEV_PRINT("   Added transition: " << source_id << " -> " << target_id 
                   << " (" << source_int << " -> " << target_int << ")" << std::endl);
         
         // Parse guard constraints
-        if (!parse_edge_guard(edge, i)) {
+        if (!parse_edge_guard(edge, tr_idx)) {
             // If guard parsing fails and constraints are not satisfied, skip this transition
             DEV_PRINT("     Skipping transition due to unsatisfied constraints" << std::endl);
             // Remove the transition we just added
@@ -346,7 +350,7 @@ void TimedAutomaton::build_transitions(const UTAP::Template& template_ref) {
         }
         
         // Parse synchronization
-        parse_edge_synchronization(edge, i);
+        parse_edge_synchronization(edge, tr_idx);
     }
 }
 
@@ -1300,6 +1304,7 @@ void TimedAutomaton::construct_zone_graph(int initial_location, const std::vecto
     states_.clear();
     state_map_.clear();
     zone_transitions_.clear();
+    labeled_zone_transitions_.clear();
     waiting_list_ = std::queue<int>();
     
     // Create initial state: intersect initial zone with invariants of the initial location
@@ -1597,9 +1602,11 @@ int TimedAutomaton::add_state(int location_id, const std::vector<raw_t>& zone) {
     
     // Add new state
     int state_id = states_.size();
+    new_state->state_id = state_id;
     state_map_[*new_state] = state_id;
     states_.push_back(std::move(new_state));
     zone_transitions_.emplace_back();
+    labeled_zone_transitions_.emplace_back();
     waiting_list_.push(state_id);  // Only add new states to waiting list
     
     return state_id;
@@ -1635,6 +1642,11 @@ void TimedAutomaton::explore_state(int state_id) {
                     // Add successor state
                     int successor_id = add_state(transition.to_location, final_zone);
                     zone_transitions_[state_id].push_back(successor_id);
+                    // Record labeled transition (for weak_observable_successors_raw)
+                    const std::string& tr_label = transition.has_synchronization()
+                        ? transition.channel + (transition.is_sender ? TA_CONFIG.sender_suffix : TA_CONFIG.receiver_suffix)
+                        : transition.action;
+                    labeled_zone_transitions_[state_id].emplace_back(tr_label, successor_id);
                 }
             }
         }
@@ -1665,6 +1677,13 @@ const ZoneState* TimedAutomaton::get_zone_state(size_t state_id) const {
     return states_[state_id].get();
 }
 
+std::vector<std::pair<std::string, int>> TimedAutomaton::get_zone_labeled_successors(int state_id) const {
+    std::shared_lock<std::shared_mutex> rlock(state_mutex_);
+    if (state_id < 0 || static_cast<size_t>(state_id) >= labeled_zone_transitions_.size()) {
+        return {};
+    }
+    return labeled_zone_transitions_[state_id];
+}
 int TimedAutomaton::get_state_id(const ZoneState* state) const {
     if (!state) return -1;
     std::shared_lock<std::shared_mutex> rlock(state_mutex_);
@@ -1725,9 +1744,11 @@ const ZoneState* TimedAutomaton::get_or_add_zone_state(int location_id, const st
         // Allocate and register the new state
         int state_id = static_cast<int>(states_.size());
         auto new_state = std::make_unique<ZoneState>(location_id, zone, dimension_);
+        new_state->state_id = state_id;
         state_map_[*new_state] = state_id;
         states_.push_back(std::move(new_state));
         zone_transitions_.emplace_back(); // empty successor list
+        labeled_zone_transitions_.emplace_back(); // empty labeled successor list
         // NOTE: we intentionally do NOT push onto waiting_list_ because the
         // on-the-fly DFS drives exploration; the waiting_list_ is only used
         // by the eager construct_zone_graph() BFS.

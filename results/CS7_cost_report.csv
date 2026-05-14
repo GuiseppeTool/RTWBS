@@ -1,0 +1,15 @@
+property,covered_by_alignment,monitor_loc_estimate,traces_to_verify,semalign_time_ms
+activate! ~ ap_engage_telemetry!,true,2,3,0.707
+hazard_alert! ~ flight_envelope_breach!,true,4,8,0.707
+maneuver_climb! ~ safety_climb_initiated!,true,3,5,0.707
+maneuver_descend! ~ safety_descent_initiated!,true,3,5,0.707
+maneuver_left! ~ safety_turn_left_initiated!,true,3,5,0.707
+maneuver_right! ~ safety_turn_right_initiated!,true,3,5,0.707
+maneuver_complete! ~ safety_maneuver_confirmed!,true,4,7,0.707
+recovery_complete! ~ nominal_envelope_restored!,true,3,6,0.707
+emergency_override! ~ pilot_authority_event!,true,3,4,0.707
+thrust_up! ~ power_increase_event!,true,2,3,0.707
+thrust_down! ~ power_decrease_event!,true,2,3,0.707
+transition_complete! ~ power_mode_stable!,true,2,4,0.707
+system_fault! ~ ap_fault_telemetry!,true,2,3,0.707
+fault_reset! ~ ap_reset_telemetry!,true,2,3,0.707

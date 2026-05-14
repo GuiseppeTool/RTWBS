@@ -21,7 +21,7 @@ release: $(RELEASE_DIR)/Makefile
 	@cp $(RELEASE_DIR)/benchmarks/run_all ./run_all
 	@echo "Copy the release run_synthetic binary from benchmarks/run_synthetic to the main directory"
 	@cp $(RELEASE_DIR)/benchmarks/run_synthetic ./run_synthetic
-	@cp $(RELEASE_DIR)/benchmarks/use_case ./use_case
+	@cp $(RELEASE_DIR)/benchmarks/run_use_case_paper ./use_case
 
 # Rule to run cmake and generate the Makefile in the build directory (development)
 $(BUILD_DIR)/Makefile: CMakeLists.txt

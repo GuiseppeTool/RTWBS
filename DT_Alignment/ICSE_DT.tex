@@ -1,0 +1,94 @@
+
+\documentclass[10pt,conference, ]{IEEEtran}
+\usepackage[hidelinks]{hyperref}
+\usepackage{orcidlink}
+\usepackage{tikz}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\usepackage{xspace}
+\usepackage{amsfonts}
+\usepackage{amsmath}
+\usepackage{stmaryrd}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{tabularx}
+\usepackage{enumitem}
+\usepackage{amsmath, amssymb, amsfonts, amsthm, mathtools,stmaryrd}
+
+\usepackage[
+  ruled,
+  vlined,
+  linesnumbered
+]{algorithm2e}
+
+
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}
+\newtheorem{example}{Example}
+
+\theoremstyle{plain}
+\newtheorem{theorem}{Theorem}
+\newtheorem{corollary}{Corollary}
+\newtheorem{proposition}{Proposition}
+\theoremstyle{remark}
+\newtheorem{remark}{Remark}
+\newtheorem{lemma}{Lemma}
+\input{acronyms}
+
+\usetikzlibrary{arrows.meta,fit,positioning}
+
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
+    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+
+
+
+\newcommand{\citationRequired}{\footnote{\textcolor{red}{Citation Required}}}
+\begin{document}
+
+
+
+
+
+
+\title{A Formal Software Engineering Methodology for Semantically Aligned Digital Twins\\
+}
+
+
+\author{
+	\IEEEauthorblockN{Name, Last Name  }
+	\IEEEauthorblockA{University\\
+		University \\
+		\{name.last\_name\}@uni.com \\
+		City, Country
+	}
+	
+
+	}
+
+
+
+\maketitle
+
+\begin{abstract}
+In safety-critical cyber-physical systems (CPS), digital twins (DTs) are used alongside their physical counterparts to support monitoring, prediction, and decision-making. Driven by changing regulations, design improvements, and emerging optimization opportunities, both the physical twin (PT) and its digital counterpart evolve throughout development and operation. Existing frameworks typically assume alignment between PT and DT without providing formal guarantees. When PT and DT models are developed independently using different abstractions and vocabularies, maintaining alignment becomes challenging, undermining the reliability of DT-based reasoning.
+This paper introduces a formal framework based on model-based systems engineering (MBSE) for reasoning about semantic alignment between PT and DT. We define semantic alignment as consistency in the interpretation of data and behavior matching between PT and DT models with respect to a shared ontology capturing domain knowledge. We show that this alignment enables the transfer of behavioral and data properties between PT and DT models, and that these guarantees extend to deployed systems and are preserved under ontology refinement
+\end{abstract}
+
+\begin{IEEEkeywords}
+digital twins, semantic alignment, ontologies 
+\end{IEEEkeywords}
+
+\input{section/motivation.tex}
+\input{section/architecture.tex}
+\input{section/related_work.tex}
+\input{section/preliminaries.tex}
+\input{section/domain_knowledge.tex}
+\input{section/system_model.tex}
+
+\bibliographystyle{IEEEtran}
+\bibliography{BIB}
+
+
+\end{document}
+\endinput

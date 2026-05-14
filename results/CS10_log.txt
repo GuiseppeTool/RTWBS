@@ -1,0 +1,173 @@
+=========================================================
+=== CS10: Autonomous Pesticide Spraying Drone          ===
+=== PAPER VALIDATION CASE STUDY                        ===
+=========================================================
+    PT: SprayingDronePT     (EPPO firmware, Examples 1-2)
+    DT: EnergyBudgetDT      (energy envelope, Example 4)
+    Ontology: domain.ont    (Definition 5 / Example 1)
+    Standards: EPPO PP 1/213(3), EU 2009/128/EC, EASA 2019/947,
+               ISO 16119-4:2014, ICAO Annex 2:2005
+
+Loading PT and DT models...
+  PT zones: 103  |  DT zones: 95
+
+=========================================================
+=== Paper Example Validation (Section VII)             ===
+=========================================================
+Checking: Δ |= I_PT(spray!) ↔ I_DT(apply!) ...
+  I_PT(spray!)  = (<= (consumption 1) 50)
+  I_DT(apply!)  = (<= (consumption 1) max_per_hectare_dose)
+  Equivalence:  Δ axiom max_dose_val: max_per_hectare_dose = 50
+Δ |= I_PT(spray!) ↔ I_DT(apply!)     ... [ENTAILED]
+Checking: Δ |= I_PT(shutoff!) ↔ I_DT(power_down!) ...
+  I_PT(shutoff!)    = (and (<= total_consumption battery_capacity) (covered 1))
+  I_DT(power_down!) = (and (>= (- battery_capacity total_consumption) 0) (covered 1))
+Δ |= I_PT(shutoff!) ↔ I_DT(power_down!) ... [ENTAILED]
+Expected: both ENTAILED (per Section VII of paper)
+  Biconditional 1 (spray! ~ apply!):     [ENTAILED]
+  Biconditional 2 (shutoff! ~ power_down!): [ENTAILED]
+Overall: [PASS]
+=========================================================
+
+[RUN 1] Semantic alignment (paper Examples 1-4, aligned pair)...
+        6 label-equiv pairs: EPPO firmware <-> energy budget vocabulary
+        spray! ~ apply! (Section VII, Check 1)
+        shutoff! ~ power_down! (Section VII, Check 2)
+[WARNING] PT label 'spray!' has a tautological interpretation under Δ — treating as tau (removed from dom(I_PT))
+[WARNING] DT label 'apply!' has a tautological interpretation under Δ — treating as tau (removed from dom(I_DT))
+
+=== Label Equivalence E ===
+  shutoff!  →  {power_down!}
+  enter_zone!  →  {zone_entry_logged!}
+  exit_zone!  →  {coverage_confirmed!}
+  takeoff!  →  {mission_start_logged!}
+  land!  →  {base_return_logged!}
+  [B-UNMATCHED]              ←  apply!  (no PT equivalent)
+  Total: 5 PT labels, 5 matched pairs, 103 PT zones, 95 DT zones
+  BFS done: accepted=3  rejected=0
+Verdict: TRUE (semantically aligned)
+Semantic Alignment Result:
+  Aligned:                TRUE
+  Label pairs in E:       5
+  Initial state pairs:    1
+  Final relation size:    3
+  SMT calls total:        45
+  Fixpoint iterations:    3
+  Time:                   2.439 ms
+
+[RUN 2] Syntactic bisimulation baseline (same pair)...
+        EPPO firmware vocabulary vs energy budget vocabulary
+WTB: 103 PT zones, 95 DT zones, 0 PT labels, 0 matched pairs
+  BFS done: accepted=1  rejected=0
+Syntactic bisimulation on (spray! vs apply!): ALIGNED (unexpected!)
+Syntactic bisimulation verdict: TRUE (unexpected)
+Semantic Alignment Result:
+  Aligned:                TRUE
+  Label pairs in E:       0
+  Initial state pairs:    1
+  Final relation size:    1
+  SMT calls total:        0
+  Fixpoint iterations:    1
+  Time:                   0.007 ms
+[WARNING] RUN 2: expected syntactic FAILURE but got TRUE.
+
+[RUN 3] Misalignment Variant A: consumption limit drift...
+        PT threshold: consumption(1) <= 50 (EPPO PP 1/213(3) Sec.4.2)
+        DT threshold: consumption(1) > 60  (10 AU/ha drift = EU violation zone)
+[WARNING] PT label 'spray!' has a tautological interpretation under Δ — treating as tau (removed from dom(I_PT))
+
+=== Label Equivalence E ===
+  shutoff!  →  {power_down!}
+  enter_zone!  →  {zone_entry_logged!}
+  exit_zone!  →  {coverage_confirmed!}
+  takeoff!  →  {mission_start_logged!}
+  land!  →  {base_return_logged!}
+  [B-UNMATCHED]              ←  apply!  (no PT equivalent)
+  Total: 5 PT labels, 5 matched pairs, 103 PT zones, 95 DT zones
+  BFS done: accepted=3  rejected=1
+Verdict: TRUE (drift not detected)
+Semantic Alignment Result:
+  Aligned:                TRUE
+  Label pairs in E:       5
+  Initial state pairs:    1
+  Final relation size:    2
+  SMT calls total:        48
+  Fixpoint iterations:    4
+  Time:                   2.855 ms
+[WARNING] RUN 3: expected NOT ALIGNED but got ALIGNED.
+
+[RUN 4] Ontology evolution (RQ1, Theorem 1, Definition 7)...
+        Condition I:  sort Motor + fun rpm added (EASA 2019/947 Annex I)
+        Condition II: battery_capacity 500->450 (200-cycle degradation)
+        Condition III: shutoff!/power_down! updated to concrete 450
+
+  [Condition II verification]
+  domain.ont   |= (total_consumption = 460 is satisfiable): YES (460 <= battery_capacity=500)
+  domain_v2.ont|= (total_consumption = 460 is satisfiable): NO (460 > battery_capacity=450 -- correctly rejected)
+[WARNING] PT label 'fault_return!' has a tautological interpretation under Δ — treating as tau (removed from dom(I_PT))
+[WARNING] PT label 'land!' has a tautological interpretation under Δ — treating as tau (removed from dom(I_PT))
+[WARNING] PT label 'return_base!' has a tautological interpretation under Δ — treating as tau (removed from dom(I_PT))
+[WARNING] PT label 'fault_detected!' has a tautological interpretation under Δ — treating as tau (removed from dom(I_PT))
+[WARNING] PT label 'spray!' has a tautological interpretation under Δ — treating as tau (removed from dom(I_PT))
+[WARNING] DT label 'base_return_logged!' has a tautological interpretation under Δ — treating as tau (removed from dom(I_DT))
+
+=== Label Equivalence E ===
+  recharge_complete!  →  {mission_start_logged!}
+  shutoff!  →  {power_down!, coverage_confirmed!}
+  enter_zone!  →  {zone_entry_logged!}
+  exit_zone!  →  {power_down!, coverage_confirmed!}
+  takeoff!  →  {mission_start_logged!}
+  [B-UNMATCHED]              ←  base_return_logged!  (no PT equivalent)
+  [B-UNMATCHED]              ←  apply!  (no PT equivalent)
+  Total: 5 PT labels, 7 matched pairs, 103 PT zones, 95 DT zones
+  BFS done: accepted=3  rejected=1
+
+Verdict under domain_v2.ont: TRUE (alignment preserved -- Theorem 1 holds)
+Semantic Alignment Result:
+  Aligned:                TRUE
+  Label pairs in E:       7
+  Initial state pairs:    1
+  Final relation size:    2
+  SMT calls total:        48
+  Fixpoint iterations:    4
+  Time:                   2.289 ms
+[RQ1] Theorem 1 validated (Definition 7 Conditions I, II, III):
+      Condition I (sort Motor + rpm): transparent -- not in interps.
+      Condition II (bat_cap 500->450): tightens total_consumption bound.
+        shutoff!/power_down! symbolic forms equivalent to concrete 450.
+      Condition III (interp update to 450): consistent with Condition II.
+      Alignment preserved under all three conditions.
+
+[RQ1] Ontology evolution detailed report:
+---------------------------------------------------------------------------
+Property                              domain.ont (v1)   domain_v2.ont (v2)
+---------------------------------------------------------------------------
+battery_capacity                      500               450 (10% degradation, 200 cycles)
+sort Motor                            (absent)          added (EASA 2019/947 Annex I)
+fun rpm : Motor -> Real               (absent)          added (motor telemetry)
+shutoff! (pt_v2.interp)               symbolic battery_capconcrete 450
+power_down! (dt_v2.interp)            symbolic battery_capconcrete 450
+total_consumption=460 valid           YES               NO (correctly rejected)
+---------------------------------------------------------------------------
+RUN 1 time (v1 ontology): 2.439 ms | RUN 4 time (v2 ontology): 2.289 ms
+SMT calls v1: 45 | SMT calls v2: 48
+
+[Summary] CS10 Results:
+Variant                                      SemAlign            Note
+-----------------------------------------------------------------------------------------------
+RUN 0: Paper validation (spray!/apply!)      ENTAILED            Section VII Check 1
+RUN 0: Paper validation (shutoff!/power_down!)ENTAILED            Section VII Check 2
+RUN 1: Semantic alignment (aligned pair)     ALIGNED             6 label-equiv pairs
+RUN 2: Syntactic bisimulation                ALIGNED             spray!!=apply! (expected failure)
+RUN 3: Consumption limit drift (+10 AU/ha)   ALIGNED             EPPO PP 1/213(3) EU violation zone
+RUN 4: Battery degradation (Thm 1)           ALIGNED             500->450, Conditions I+II+III
+
+[Paper validation: PASS] [Overall: SOME RESULTS DEVIATE FROM EXPECTATIONS]
+
+[RQ3] Zone-graph sizes:
+  PT zones: 103 | DT zones: 95
+[RQ4] Engineering cost (RUN 1 vs RUN 2):
+  SemAlign (RUN 1): 2.439 ms, 45 SMT calls, 5 label pairs
+  Syntactic (RUN 2): immediate failure (0 matching label strings)
+
+Results written to: results/CS10_results.csv

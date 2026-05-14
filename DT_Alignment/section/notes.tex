@@ -1,0 +1,30 @@
+\section{Overview of the paper}
+
+\begin{itemize}
+	\item Motivation: DT and PT need to be aligned for safe and correct operators, especially in safety-critical domains and for interoperability.
+	\item Motivating example: Gaia-X and the need for semantic alignment in digital twins for data sharing and interoperability, how the DTs are used in Gaia-X for safety-critical domain like automous driving as well as for smart farming. 
+	\item RW on semantic alignment in DTs, and the gap in formal software engineering methodologies for achieving semantic alignment in DTs. Most of them use ontologies, but they focus specifically on data using knowledge graphs, for example, but they do not provide a rigorous software engineering methodology that guarantees alignment during evolution and maintenance of the DTs, not just operation. 
+\end{itemize}
+
+
+
+\section{Things to actually consider}
+\begin{itemize}
+	\item So exactly, when is this alignment requirement? During operation, but also during evolution and maintenance. So on the one hand, we need to ensure that the DT and PT are aligned during operation. We would like to have that by design. Similarly, we need to make sure that as we evolve, substitute and maintain the DT and PT, they remain aligned. So we need to have a software engineering methodology that ensures that the DT and PT are aligned during operation, but also during evolution and maintenance.
+	\item Why ontologyes: Because they are a powerful tool for representing and reasoning about knowledge, and they can help us to achieve semantic alignment between the DT and PT. We can basically use them to represent domain knowledge. People use Knowledge graphs, we generalize tht to FOL. We need to specify that our method is not tied to a specific ontology language, but it can be used with any ontology language that can be translated to FOL.
+	\item Model-based software engineering is already the standard practice for complex cyber-physical systems. Engineers already build TA models, simulate them, verify properties. The DT is itself a software model of the PT. So the question is not "should we use models?" — they already do. The question is: Given that both PT and DT are modeled, how do we formally ensure their models remain consistent — at operation time, across iterative development, and across substitutions in federated architectures?
+	\item 
+	
+	\begin{itemize}
+		\item Operation time consistency.
+Bisimulation established at design time guarantees that the DT faithfully reflects PT behavior at runtime — for all possible executions, not just observed ones. Existing data-level approaches only check individual snapshots.
+\item Iterative development.
+The conservative refinement theorem guarantees that as engineers refine the ontology and the models during development, previously established alignment results are never invalidated. You can evolve incrementally without re-verifying everything from scratch.
+\item Substitutability.
+If a new DT implementation is bisimilar to the PT semantic view under the same ontology, it can substitute the old one without breaking alignment. The ontology-typed TA is the substitutability contract.
+\item Interoperability.
+In federated architectures like Gaia-X, different components developed by different parties can interoperate as long as they share the ontology and satisfy the bisimulation condition. The ontology is the interoperability contract.
+	\end{itemize}
+
+\end{itemize}
+

@@ -1,0 +1,9 @@
+model_name,aligned,label_pairs_E,initial_pairs,final_pairs,smt_calls,fixpoint_iters,time_ms
+CS7_aligned,true,24,1,716,238,716,16.954
+CS7_thresh_drift,true,22,1,1,238,3,13.841
+CS7_timing_violation,true,24,1,770,476,770,16.127
+CS7_missing_override,true,23,1,1,222,3,12.685
+CS7_evo_v2,true,24,1,716,238,716,16.696
+CS7_NOS,true,10,1,5,28,5,1.433
+CS7_MES,true,10,1,7,54,7,3.497
+CS7_EHS,true,5,1,7,33,7,2.211

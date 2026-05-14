@@ -8,6 +8,50 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# ============================================================
+# SemAlign dependencies: Z3 (system) + nlohmann/json (FetchContent)
+# ============================================================
+
+# --- Z3 (installed as system library) ---
+find_library(Z3_LIBRARY NAMES z3 libz3
+    PATHS /usr/lib /usr/lib/x86_64-linux-gnu
+    DOC "Z3 SMT solver shared library"
+)
+find_path(Z3_INCLUDE_DIR NAMES z3++.h z3.h
+    PATHS /usr/include
+    DOC "Z3 C++ API header directory"
+)
+
+if(NOT Z3_LIBRARY OR NOT Z3_INCLUDE_DIR)
+    message(WARNING "Z3 not found — semalign targets will be skipped. "
+                    "Install libz3-dev (sudo apt-get install libz3-dev).")
+    set(SEMALIGN_AVAILABLE OFF)
+else()
+    message(STATUS "Z3 found: ${Z3_LIBRARY}  (headers: ${Z3_INCLUDE_DIR})")
+    set(SEMALIGN_AVAILABLE ON)
+endif()
+
+# --- nlohmann/json (header-only, fetched via FetchContent) ---
+include(FetchContent)
+FetchContent_Declare(
+    nlohmann_json
+    GIT_REPOSITORY https://github.com/nlohmann/json.git
+    GIT_TAG        v3.11.3
+    GIT_SHALLOW    TRUE
+)
+# Allow offline builds: only fetch if not already populated
+FetchContent_GetProperties(nlohmann_json)
+if(NOT nlohmann_json_POPULATED)
+    # Try to find a system install first
+    find_package(nlohmann_json 3.11 QUIET)
+    if(NOT nlohmann_json_FOUND)
+        message(STATUS "nlohmann/json not found as system package — fetching v3.11.3 via FetchContent")
+        FetchContent_MakeAvailable(nlohmann_json)
+    else()
+        message(STATUS "nlohmann/json found as system package")
+    endif()
+endif()
+
 # Set default installation prefix if not specified
 if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
     set(CMAKE_INSTALL_PREFIX "${CMAKE_CURRENT_SOURCE_DIR}/install" CACHE PATH "Installation directory" FORCE)
@@ -148,6 +192,11 @@ find_library(Y_LIBRARY
     PATHS ${CMAKE_CURRENT_SOURCE_DIR}/utap/local/x86_64-linux/lib
     NO_DEFAULT_PATH
 )
+# Y_LIBRARY is optional: UTAP on some builds embeds the yacc runtime.
+if(NOT Y_LIBRARY)
+    set(Y_LIBRARY "")
+    message(STATUS "liby not found — assuming it is embedded in libUTAP.a")
+endif()
 
 # Common include directories
 set(COMMON_INCLUDE_DIRS
@@ -179,6 +228,9 @@ set(UTAP_LIBRARIES
 file(GLOB_RECURSE RTWBS_SOURCES "src/*.cpp")
 file(GLOB_RECURSE RTWBS_HEADERS "include/*.h" "include/*.hpp")
 
+# Exclude semalign sources from the core rtwbs library (they live in src/semalign/)
+list(FILTER RTWBS_SOURCES EXCLUDE REGEX ".*/semalign/.*")
+
 # Create the rtwbs library
 add_library(rtwbs STATIC ${RTWBS_SOURCES} ${RTWBS_HEADERS})
 
@@ -199,6 +251,33 @@ target_link_libraries(rtwbs PUBLIC ${UDBM_LIBRARIES} ${UTAP_LIBRARIES})
 if(TBB_FOUND)
     target_link_libraries(rtwbs PUBLIC TBB::tbb)
     target_compile_definitions(rtwbs PUBLIC RTWBS_HAS_TBB=1)
+endif()
+
+# ============================================================
+# semalign_lib — static library for semantic alignment
+# ============================================================
+if(SEMALIGN_AVAILABLE)
+    file(GLOB SEMALIGN_SOURCES "src/semalign/*.cpp")
+
+    add_library(semalign_lib STATIC ${SEMALIGN_SOURCES})
+
+    target_include_directories(semalign_lib PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<BUILD_INTERFACE:${Z3_INCLUDE_DIR}>
+        $<INSTALL_INTERFACE:include>
+    )
+
+    target_link_libraries(semalign_lib PUBLIC rtwbs ${Z3_LIBRARY})
+
+    if(nlohmann_json_FOUND)
+        target_link_libraries(semalign_lib PUBLIC nlohmann_json::nlohmann_json)
+    else()
+        target_include_directories(semalign_lib PUBLIC
+            $<BUILD_INTERFACE:${nlohmann_json_SOURCE_DIR}/include>
+        )
+    endif()
+
+    message(STATUS "semalign_lib configured (Z3 + nlohmann/json)")
 endif()
 
 # Function to create a UDBM example executable
@@ -252,38 +331,112 @@ add_integration_example(zone_graph_example)
 # Copy assets directory to build directory
 # Must be able to specify which subfolder according to the target
 
-add_custom_target(copy_assets_examples ALL
+#add_custom_target(copy_assets_examples ALL
+#    COMMAND ${CMAKE_COMMAND} -E copy_directory
+#    ${CMAKE_CURRENT_SOURCE_DIR}/assets
+#    ${CMAKE_CURRENT_BINARY_DIR}/examples/assets
+#    COMMAND ${CMAKE_COMMAND} -E copy_directory
+#    ${CMAKE_CURRENT_SOURCE_DIR}/assets
+#    ${CMAKE_CURRENT_BINARY_DIR}/assets
+#    COMMENT "Copying assets directory to examples directory and build root"
+#)
+#
+#add_custom_target(copy_assets_benchmarks ALL
+#    COMMAND ${CMAKE_COMMAND} -E copy_directory
+#    ${CMAKE_CURRENT_SOURCE_DIR}/assets
+#    ${CMAKE_CURRENT_BINARY_DIR}/benchmarks/assets
+#    COMMAND ${CMAKE_COMMAND} -E copy_directory
+#    ${CMAKE_CURRENT_SOURCE_DIR}/assets
+#    ${CMAKE_CURRENT_BINARY_DIR}/assets
+#    COMMENT "Copying assets directory to benchmarks directory and build root"
+#)
+
+
+
+
+# ============================================================
+# Asset copying (parallel-build safe)
+# ============================================================
+
+# Root copy (executed once)
+add_custom_target(copy_assets_root ALL
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+    ${CMAKE_CURRENT_SOURCE_DIR}/assets
+    ${CMAKE_CURRENT_BINARY_DIR}/assets
+    COMMENT "Copying assets to build root"
+)
+
+# Copy assets for examples
+add_custom_target(copy_assets_examples
     COMMAND ${CMAKE_COMMAND} -E copy_directory
     ${CMAKE_CURRENT_SOURCE_DIR}/assets
     ${CMAKE_CURRENT_BINARY_DIR}/examples/assets
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-    ${CMAKE_CURRENT_SOURCE_DIR}/assets
-    ${CMAKE_CURRENT_BINARY_DIR}/assets
-    COMMENT "Copying assets directory to examples directory and build root"
+    COMMENT "Copying assets to examples directory"
 )
 
-add_custom_target(copy_assets_benchmarks ALL
+# Copy assets for benchmarks
+add_custom_target(copy_assets_benchmarks
     COMMAND ${CMAKE_COMMAND} -E copy_directory
     ${CMAKE_CURRENT_SOURCE_DIR}/assets
     ${CMAKE_CURRENT_BINARY_DIR}/benchmarks/assets
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-    ${CMAKE_CURRENT_SOURCE_DIR}/assets
-    ${CMAKE_CURRENT_BINARY_DIR}/assets
-    COMMENT "Copying assets directory to benchmarks directory and build root"
+    COMMENT "Copying assets to benchmarks directory"
 )
 
-
-
-
-
+# Ensure root copy happens first
+add_dependencies(copy_assets_examples copy_assets_root)
+add_dependencies(copy_assets_benchmarks copy_assets_root)
 
 add_benchmark(run_all)
 add_benchmark(run_ASTRail)
 add_benchmark(run_FMICS2021)
 add_benchmark(run_synthetic)
 add_benchmark(run_zone_stats)
-add_benchmark(use_case)
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/benchmark/use_case.cpp)
+    add_benchmark(use_case)
+endif()
 add_benchmark(run_use_case_paper)
+
+# ============================================================
+# SemAlign benchmark executables (require Z3)
+# ============================================================
+if(SEMALIGN_AVAILABLE)
+    function(add_semalign_benchmark BENCHMARK_NAME)
+        add_executable(${BENCHMARK_NAME} benchmark/${BENCHMARK_NAME}.cpp)
+        target_include_directories(${BENCHMARK_NAME} PRIVATE ${COMMON_INCLUDE_DIRS} ${Z3_INCLUDE_DIR})
+        target_link_libraries(${BENCHMARK_NAME} semalign_lib)
+        set_target_properties(${BENCHMARK_NAME} PROPERTIES
+            RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/benchmarks
+        )
+    endfunction()
+
+    add_semalign_benchmark(run_semantic_alignment)
+    add_semalign_benchmark(run_all_semantic)
+    add_semalign_benchmark(run_CS1)
+    add_semalign_benchmark(run_CS2)
+    add_semalign_benchmark(run_CS3)
+    add_semalign_benchmark(run_CS4)
+    add_semalign_benchmark(run_CS5)
+    add_semalign_benchmark(run_CS6)
+    add_semalign_benchmark(run_CS7)
+    add_semalign_benchmark(run_CS8)
+    add_semalign_benchmark(run_CS9)
+    add_semalign_benchmark(run_CS10)
+
+    add_dependencies(run_semantic_alignment copy_assets_benchmarks)
+    add_dependencies(run_all_semantic copy_assets_benchmarks)
+    add_dependencies(run_CS1 copy_assets_benchmarks)
+    add_dependencies(run_CS2 copy_assets_benchmarks)
+    add_dependencies(run_CS3 copy_assets_benchmarks)
+    add_dependencies(run_CS4 copy_assets_benchmarks)
+    add_dependencies(run_CS5 copy_assets_benchmarks)
+    add_dependencies(run_CS6 copy_assets_benchmarks)
+    add_dependencies(run_CS7 copy_assets_benchmarks)
+    add_dependencies(run_CS8 copy_assets_benchmarks)
+    add_dependencies(run_CS9 copy_assets_benchmarks)
+    add_dependencies(run_CS10 copy_assets_benchmarks)
+
+    message(STATUS "SemAlign benchmarks: run_semantic_alignment, run_all_semantic, run_CS1, run_CS2, run_CS3, run_CS4, run_CS5, run_CS6, run_CS7, run_CS8, run_CS9, run_CS10")
+endif()
 
 
 # Benchmarks depend on assets copy
@@ -291,7 +444,9 @@ add_dependencies(run_all copy_assets_benchmarks)
 add_dependencies(run_ASTRail copy_assets_benchmarks)
 add_dependencies(run_FMICS2021 copy_assets_benchmarks)
 add_dependencies(run_zone_stats copy_assets_benchmarks)
-add_dependencies(use_case copy_assets_benchmarks)
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/benchmark/use_case.cpp)
+    add_dependencies(use_case copy_assets_benchmarks)
+endif()
 add_dependencies(run_use_case_paper copy_assets_benchmarks)
 
 

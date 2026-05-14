@@ -1,0 +1,153 @@
+=== CS1: Three-Tank System (IEC 61511) ===
+Loading PT and DT models...
+  PT zones: 1000  |  DT zones: 1347
+
+[RUN 1] Semantic alignment (aligned pair)...
+
+=== Label Equivalence E ===
+  pump_on!  →  {pump_activate_monitor!}
+  pump_off!  →  {pump_deactivate_monitor!}
+  valve12_open!  →  {inflow_t2_start!}
+  valve12_close!  →  {inflow_t2_stop!}
+  system_reset!  →  {diagnostic_cycle_start!, system_reset!}
+  valve23_open!  →  {inflow_t3_start!}
+  valve23_close!  →  {inflow_t3_stop!}
+  drain!  →  {outflow_start!}
+  level_critical!  →  {safety_margin_breach!, protective_trip_command!}
+  proof_test_start!  →  {diagnostic_cycle_start!, system_reset!}
+  proof_test_complete!  →  {diagnostic_cycle_complete!}
+  emergency_shutdown!  →  {safety_margin_breach!, protective_trip_command!}
+  (all labels matched)
+  Total: 12 PT labels, 16 matched pairs, 1000 PT zones, 1347 DT zones
+  BFS done: accepted=3817  rejected=0
+Verdict: TRUE (semantically aligned)
+Semantic Alignment Result:
+  Aligned:                TRUE
+  Label pairs in E:       16
+  Initial state pairs:    1
+  Final relation size:    3817
+  SMT calls total:        180
+  Fixpoint iterations:    3817
+  Time:                   28.530 ms
+
+[RUN 2] Syntactic bisimulation baseline (same pair)...
+WTB: 1000 PT zones, 1347 DT zones, 0 PT labels, 0 matched pairs
+  BFS done: accepted=1  rejected=0
+Verdict: TRUE (syntactically bisimilar)
+Semantic Alignment Result:
+  Aligned:                TRUE
+  Label pairs in E:       0
+  Initial state pairs:    1
+  Final relation size:    1
+  SMT calls total:        0
+  Fixpoint iterations:    1
+  Time:                   0.010 ms
+[WARNING] RUN 2: expected syntactic FAILURE but got TRUE (labels may have been matched by accident).
+
+[RUN 3] Threshold drift misalignment (Variant A)...
+
+=== Label Equivalence E ===
+  pump_on!  →  {pump_activate_monitor!}
+  pump_off!  →  {pump_deactivate_monitor!}
+  valve12_open!  →  {inflow_t2_start!}
+  valve12_close!  →  {inflow_t2_stop!}
+  system_reset!  →  {diagnostic_cycle_start!, system_reset!}
+  valve23_open!  →  {inflow_t3_start!}
+  valve23_close!  →  {inflow_t3_stop!}
+  drain!  →  {outflow_start!}
+  level_critical!  →  {protective_trip_command!}
+  proof_test_start!  →  {diagnostic_cycle_start!, system_reset!}
+  proof_test_complete!  →  {diagnostic_cycle_complete!}
+  emergency_shutdown!  →  {protective_trip_command!}
+  [B-UNMATCHED]              ←  safety_margin_breach!  (no PT equivalent)
+  Total: 12 PT labels, 14 matched pairs, 1000 PT zones, 1347 DT zones
+  BFS done: accepted=0  rejected=1
+Verdict: FALSE (NOT aligned — threshold drift detected)
+Semantic Alignment Result:
+  Aligned:                FALSE
+  Label pairs in E:       14
+  Initial state pairs:    1
+  Final relation size:    0
+  SMT calls total:        180
+  Fixpoint iterations:    1
+  Time:                   11.881 ms
+  Counterexample labels:  PT='<B-unmatched>'  DT='safety_margin_breach!'
+[RQ2] Threshold drift is a SEMANTIC-ONLY misalignment: same TA structure, different interpretation.
+      Syntactic bisimulation cannot detect it (same labels, same structure).
+      Semantic alignment detects it via Z3 formula refutation.
+
+[RUN 4] Runtime monitor baseline (threshold drift)...
+Monitor 'IEC61511_LowLow_Safety': NOT DETECTED | traces: 1000 | steps to detection: 0 | overhead/step: 1.000 us
+Monitor 'IEC61511_TotalVolume_Bound': NOT DETECTED | traces: 1000 | steps to detection: 0 | overhead/step: 1.000 us
+
+[RUN 5] Ontology evolution (RQ1)...
+
+=== Label Equivalence E ===
+  pump_on!  →  {pump_activate_monitor!}
+  pump_off!  →  {pump_deactivate_monitor!}
+  valve12_open!  →  {inflow_t2_start!}
+  valve12_close!  →  {inflow_t2_stop!}
+  system_reset!  →  {diagnostic_cycle_start!, system_reset!}
+  valve23_open!  →  {inflow_t3_start!}
+  valve23_close!  →  {inflow_t3_stop!}
+  drain!  →  {outflow_start!}
+  level_critical!  →  {safety_margin_breach!, protective_trip_command!}
+  proof_test_start!  →  {diagnostic_cycle_start!, system_reset!}
+  proof_test_complete!  →  {diagnostic_cycle_complete!}
+  emergency_shutdown!  →  {safety_margin_breach!, protective_trip_command!}
+  (all labels matched)
+  Total: 12 PT labels, 16 matched pairs, 1000 PT zones, 1347 DT zones
+  BFS done: accepted=3817  rejected=0
+Verdict under domain_v2.ont: TRUE (alignment preserved — Theorem 1 holds)
+Semantic Alignment Result:
+  Aligned:                TRUE
+  Label pairs in E:       16
+  Initial state pairs:    1
+  Final relation size:    3817
+  SMT calls total:        180
+  Fixpoint iterations:    3817
+  Time:                   28.207 ms
+
+[RUN 6] Munoz et al. NW trace-alignment monitor (RQ2/RQ4)...
+
+=== Label Equivalence E ===
+  pump_on!  →  {pump_activate_monitor!}
+  pump_off!  →  {pump_deactivate_monitor!}
+  valve12_open!  →  {inflow_t2_start!}
+  valve12_close!  →  {inflow_t2_stop!}
+  system_reset!  →  {diagnostic_cycle_start!, system_reset!}
+  valve23_open!  →  {inflow_t3_start!}
+  valve23_close!  →  {inflow_t3_stop!}
+  drain!  →  {outflow_start!}
+  level_critical!  →  {safety_margin_breach!, protective_trip_command!}
+  proof_test_start!  →  {diagnostic_cycle_start!, system_reset!}
+  proof_test_complete!  →  {diagnostic_cycle_complete!}
+  emergency_shutdown!  →  {safety_margin_breach!, protective_trip_command!}
+  (all labels matched)
+  Total: 12 PT labels, 16 matched pairs, 1000 PT zones, 1347 DT zones
+  BFS done: accepted=3817  rejected=0
+  [Aligned pair]   avg_NW_score=0.000  anomaly_detected=YES  traces_to_detect=451  overhead/step=3.407 us
+  [Thresh drift]   avg_NW_score=0.000  anomaly_detected=YES  traces_to_detect=451  overhead/step=3.371 us
+
+[TIMING VIOLATION DETECTION SUMMARY — CS1]
+  Munoz NW (aligned pair):        avg_score=0.000  detected=YES
+  Munoz NW (thresh drift):        avg_score=0.000  detected=YES
+  SemAlign (thresh drift):        NOT ALIGNED (DETECTED)
+  Property monitor (IEC61511_LowLow): NOT DETECTED
+  Key finding: Threshold drift is a SEMANTIC-ONLY misalignment.
+    NW alignment cannot detect it (same TA structure, same label order).
+    SemAlign detects it via Z3 formula refutation.
+
+[RQ4] Engineering cost summary:
+  SemAlign one-time cost:       28.530 ms
+  SemAlign total SMT calls:     180
+  Label-equiv pairs (|E|):      16
+  Initial relation size:        1
+  Final relation size:          3817
+  Fixpoint iterations:          3817
+  Monitor LOC estimate:         90
+  Monitor overhead/step:        1.000 us
+  Amortization point:           28530 execution steps
+  (SemAlign pays for itself after 28530 monitored steps)
+
+Results written to: results/CS1_results.csv

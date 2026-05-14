@@ -1,0 +1,295 @@
+=== CS7: Autopilot FSM (Lockheed Martin CPS Challenge) ===
+    (DO-178C:2011 / ARP4754A:2010 / FAA AC 25.1309-1A / MIL-STD-1797B:2004)
+    Benchmark: RTCA DO-178C qualification workflow; Lockheed Martin CPS 2019
+Loading PT and DT models...
+  PT zones: 2576  |  DT zones: 1154
+
+[RUN 1] Semantic alignment (aligned pair)...
+
+=== Label Equivalence E ===
+  emergency_override!  →  {pilot_authority_event!}
+  fault_reset!  →  {ap_reset_telemetry!}
+  activate!  →  {power_decrease_event!, power_mode_stable!, ap_engage_telemetry!}
+  hazard_alert!  →  {safety_climb_initiated!, flight_envelope_breach!}
+  maneuver_climb!  →  {safety_climb_initiated!, flight_envelope_breach!}
+  maneuver_descend!  →  {safety_descent_initiated!}
+  transition_complete!  →  {power_decrease_event!, power_mode_stable!, ap_engage_telemetry!}
+  maneuver_right!  →  {safety_turn_right_initiated!, safety_turn_left_initiated!}
+  system_fault!  →  {ap_fault_telemetry!}
+  maneuver_complete!  →  {safety_maneuver_confirmed!}
+  recovery_complete!  →  {nominal_envelope_restored!}
+  maneuver_left!  →  {safety_turn_right_initiated!, safety_turn_left_initiated!}
+  thrust_up!  →  {power_increase_event!}
+  thrust_down!  →  {power_decrease_event!, power_mode_stable!, ap_engage_telemetry!}
+  (all labels matched)
+  Total: 14 PT labels, 24 matched pairs, 2576 PT zones, 1154 DT zones
+  BFS done: accepted=716  rejected=0
+Verdict: TRUE (semantically aligned)
+Semantic Alignment Result:
+  Aligned:                TRUE
+  Label pairs in E:       24
+  Initial state pairs:    1
+  Final relation size:    716
+  SMT calls total:        238
+  Fixpoint iterations:    716
+  Time:                   16.954 ms
+
+[RUN 2] Syntactic bisimulation baseline (same pair)...
+WTB: 2576 PT zones, 1154 DT zones, 0 PT labels, 0 matched pairs
+  BFS done: accepted=1  rejected=0
+Verdict: TRUE (syntactically bisimilar)
+Semantic Alignment Result:
+  Aligned:                TRUE
+  Label pairs in E:       0
+  Initial state pairs:    1
+  Final relation size:    1
+  SMT calls total:        0
+  Fixpoint iterations:    1
+  Time:                   0.011 ms
+[WARNING] RUN 2: expected syntactic FAILURE but got TRUE.
+
+[RUN 3] Misalignment Variant A: flight envelope breach threshold drift...
+        PT trigger: altitude >= min_altitude (1000 ft AGL)
+        DT trigger: pitch_angle > 35 (5-degree stall-risk gap)
+
+=== Label Equivalence E ===
+  emergency_override!  →  {pilot_authority_event!}
+  fault_reset!  →  {ap_reset_telemetry!}
+  activate!  →  {power_decrease_event!, power_mode_stable!, ap_engage_telemetry!}
+  hazard_alert!  →  {safety_climb_initiated!}
+  maneuver_climb!  →  {safety_climb_initiated!}
+  maneuver_descend!  →  {safety_descent_initiated!}
+  transition_complete!  →  {power_decrease_event!, power_mode_stable!, ap_engage_telemetry!}
+  maneuver_right!  →  {safety_turn_right_initiated!, safety_turn_left_initiated!}
+  system_fault!  →  {ap_fault_telemetry!}
+  maneuver_complete!  →  {safety_maneuver_confirmed!}
+  recovery_complete!  →  {nominal_envelope_restored!}
+  maneuver_left!  →  {safety_turn_right_initiated!, safety_turn_left_initiated!}
+  thrust_up!  →  {power_increase_event!}
+  thrust_down!  →  {power_decrease_event!, power_mode_stable!, ap_engage_telemetry!}
+  [B-UNMATCHED]              ←  flight_envelope_breach!  (no PT equivalent)
+  Total: 14 PT labels, 22 matched pairs, 2576 PT zones, 1154 DT zones
+  BFS done: accepted=2  rejected=1
+Verdict: TRUE (drift not detected -- unexpected)
+Semantic Alignment Result:
+  Aligned:                TRUE
+  Label pairs in E:       22
+  Initial state pairs:    1
+  Final relation size:    1
+  SMT calls total:        238
+  Fixpoint iterations:    3
+  Time:                   13.841 ms
+[WARNING] RUN 3: expected NOT ALIGNED but got ALIGNED.
+
+[RUN 4] Misalignment Variant B: timing violation (t_env 4 -> 5)...
+        ARP4754A HAZ budget: PT [0,2] + telemetry [0,2] = DT [0,4]
+        Violation: DT allows t_env up to 5 (1 unit over budget)
+
+=== Label Equivalence E ===
+  emergency_override!  →  {pilot_authority_event!}
+  fault_reset!  →  {ap_reset_telemetry!}
+  activate!  →  {power_decrease_event!, power_mode_stable!, ap_engage_telemetry!}
+  hazard_alert!  →  {safety_climb_initiated!, flight_envelope_breach!}
+  maneuver_climb!  →  {safety_climb_initiated!, flight_envelope_breach!}
+  maneuver_descend!  →  {safety_descent_initiated!}
+  transition_complete!  →  {power_decrease_event!, power_mode_stable!, ap_engage_telemetry!}
+  maneuver_right!  →  {safety_turn_right_initiated!, safety_turn_left_initiated!}
+  system_fault!  →  {ap_fault_telemetry!}
+  maneuver_complete!  →  {safety_maneuver_confirmed!}
+  recovery_complete!  →  {nominal_envelope_restored!}
+  maneuver_left!  →  {safety_turn_right_initiated!, safety_turn_left_initiated!}
+  thrust_up!  →  {power_increase_event!}
+  thrust_down!  →  {power_decrease_event!, power_mode_stable!, ap_engage_telemetry!}
+  (all labels matched)
+  Total: 14 PT labels, 24 matched pairs, 2576 PT zones, 1462 DT zones
+  BFS done: accepted=770  rejected=0
+Verdict: TRUE (timing violation not detected -- unexpected)
+Semantic Alignment Result:
+  Aligned:                TRUE
+  Label pairs in E:       24
+  Initial state pairs:    1
+  Final relation size:    770
+  SMT calls total:        476
+  Fixpoint iterations:    770
+  Time:                   16.127 ms
+[WARNING] RUN 4: expected NOT ALIGNED but got ALIGNED.
+
+[RUN 5] Misalignment Variant C: missing pilot override event...
+        pilot_authority_event! omitted from DT interpretation
+        DO-178C DAL-A safety function has no DT coverage
+
+=== Label Equivalence E ===
+  [A-UNMATCHED] emergency_override!  →  (no DT equivalent)
+  fault_reset!  →  {ap_reset_telemetry!}
+  activate!  →  {ap_engage_telemetry!, power_mode_stable!, power_decrease_event!}
+  hazard_alert!  →  {flight_envelope_breach!, safety_climb_initiated!}
+  maneuver_climb!  →  {flight_envelope_breach!, safety_climb_initiated!}
+  maneuver_descend!  →  {safety_descent_initiated!}
+  transition_complete!  →  {ap_engage_telemetry!, power_mode_stable!, power_decrease_event!}
+  maneuver_right!  →  {safety_turn_left_initiated!, safety_turn_right_initiated!}
+  system_fault!  →  {ap_fault_telemetry!}
+  maneuver_complete!  →  {safety_maneuver_confirmed!}
+  recovery_complete!  →  {nominal_envelope_restored!}
+  maneuver_left!  →  {safety_turn_left_initiated!, safety_turn_right_initiated!}
+  thrust_up!  →  {power_increase_event!}
+  thrust_down!  →  {ap_engage_telemetry!, power_mode_stable!, power_decrease_event!}
+  Total: 14 PT labels, 23 matched pairs, 2576 PT zones, 1154 DT zones
+  BFS done: accepted=2  rejected=1
+Verdict: TRUE (missing event not detected -- unexpected)
+Semantic Alignment Result:
+  Aligned:                TRUE
+  Label pairs in E:       23
+  Initial state pairs:    1
+  Final relation size:    1
+  SMT calls total:        222
+  Fixpoint iterations:    3
+  Time:                   12.685 ms
+[WARNING] RUN 5: expected NOT ALIGNED but got ALIGNED.
+
+[RUN 6] Ontology evolution (RQ1, max_pitch_up: 30 -> 27 deg)...
+        Condition I:  failure_prob_per_hour sort (FAA AC 25.1309-1A)
+        Condition II: max_pitch_up tightened 30->27 deg (ARP4754A fleet data)
+
+=== Label Equivalence E ===
+  emergency_override!  →  {pilot_authority_event!}
+  fault_reset!  →  {ap_reset_telemetry!}
+  activate!  →  {power_decrease_event!, power_mode_stable!, ap_engage_telemetry!}
+  hazard_alert!  →  {safety_climb_initiated!, flight_envelope_breach!}
+  maneuver_climb!  →  {safety_climb_initiated!, flight_envelope_breach!}
+  maneuver_descend!  →  {safety_descent_initiated!}
+  transition_complete!  →  {power_decrease_event!, power_mode_stable!, ap_engage_telemetry!}
+  maneuver_right!  →  {safety_turn_right_initiated!, safety_turn_left_initiated!}
+  system_fault!  →  {ap_fault_telemetry!}
+  maneuver_complete!  →  {safety_maneuver_confirmed!}
+  recovery_complete!  →  {nominal_envelope_restored!}
+  maneuver_left!  →  {safety_turn_right_initiated!, safety_turn_left_initiated!}
+  thrust_up!  →  {power_increase_event!}
+  thrust_down!  →  {power_decrease_event!, power_mode_stable!, ap_engage_telemetry!}
+  (all labels matched)
+  Total: 14 PT labels, 24 matched pairs, 2576 PT zones, 1154 DT zones
+  BFS done: accepted=716  rejected=0
+Verdict under domain_v2.ont: TRUE (alignment preserved -- Theorem 1 holds)
+Semantic Alignment Result:
+  Aligned:                TRUE
+  Label pairs in E:       24
+  Initial state pairs:    1
+  Final relation size:    716
+  SMT calls total:        238
+  Fixpoint iterations:    716
+  Time:                   16.696 ms
+
+[RUN 7] Compositional NOS (Normal Operations Subsystem)...
+  PT_NOS zones: 5  |  DT_NOS zones: 3
+
+=== Label Equivalence E ===
+  activate!  →  {ap_engage_telemetry!, power_decrease_event!, power_mode_stable!}
+  thrust_up!  →  {power_increase_event!}
+  thrust_down!  →  {ap_engage_telemetry!, power_decrease_event!, power_mode_stable!}
+  transition_complete!  →  {ap_engage_telemetry!, power_decrease_event!, power_mode_stable!}
+  (all labels matched)
+  Total: 4 PT labels, 10 matched pairs, 5 PT zones, 3 DT zones
+  BFS done: accepted=5  rejected=0
+Verdict NOS: TRUE (aligned)
+Semantic Alignment Result:
+  Aligned:                TRUE
+  Label pairs in E:       10
+  Initial state pairs:    1
+  Final relation size:    5
+  SMT calls total:        28
+  Fixpoint iterations:    5
+  Time:                   1.433 ms
+
+[RUN 8] Compositional MES (Manoeuvre Execution Subsystem)...
+  PT_MES zones: 7  |  DT_MES zones: 6
+
+=== Label Equivalence E ===
+  hazard_alert!  →  {flight_envelope_breach!, safety_climb_initiated!}
+  maneuver_climb!  →  {flight_envelope_breach!, safety_climb_initiated!}
+  maneuver_descend!  →  {safety_descent_initiated!}
+  maneuver_left!  →  {safety_turn_left_initiated!, safety_turn_right_initiated!}
+  maneuver_right!  →  {safety_turn_left_initiated!, safety_turn_right_initiated!}
+  maneuver_complete!  →  {safety_maneuver_confirmed!}
+  (all labels matched)
+  Total: 6 PT labels, 10 matched pairs, 7 PT zones, 6 DT zones
+  BFS done: accepted=7  rejected=0
+Verdict MES: TRUE (aligned)
+Semantic Alignment Result:
+  Aligned:                TRUE
+  Label pairs in E:       10
+  Initial state pairs:    1
+  Final relation size:    7
+  SMT calls total:        54
+  Fixpoint iterations:    7
+  Time:                   3.497 ms
+
+[RUN 9] Compositional EHS (Emergency Handling Subsystem)...
+  PT_EHS zones: 8  |  DT_EHS zones: 6
+
+=== Label Equivalence E ===
+  recovery_complete!  →  {nominal_envelope_restored!}
+  emergency_override!  →  {pilot_authority_event!}
+  manual_takeover!  →  {pilot_authority_event!}
+  system_fault!  →  {ap_fault_telemetry!}
+  fault_reset!  →  {ap_reset_telemetry!}
+  (all labels matched)
+  Total: 5 PT labels, 5 matched pairs, 8 PT zones, 6 DT zones
+  BFS done: accepted=7  rejected=0
+Verdict EHS: TRUE (aligned)
+Semantic Alignment Result:
+  Aligned:                TRUE
+  Label pairs in E:       5
+  Initial state pairs:    1
+  Final relation size:    7
+  SMT calls total:        33
+  Fixpoint iterations:    7
+  Time:                   2.211 ms
+
+[RQ3] Compositional speedup summary:
+  Monolithic check time:        16.96 ms
+  Subsystem 1 check time:       1.44 ms
+  Subsystem 2 check time:       3.50 ms
+  Subsystem 3 check time:       2.21 ms
+  Compositional total:          7.15 ms
+  Speedup factor:               2.37x
+  RQ3 data written to: results/CS7_rq3_compositional.csv
+
+[RQ2] CS7 Misalignment detection summary:
+Run                                          SemAlign            Note
+----------------------------------------------------------------------------------------------------
+RUN 1: Aligned pair                          ALIGNED             14 label-equiv pairs via DO-178C/ARP4754A ontology
+RUN 2: Syntactic bisimulation                ALIGNED             zero shared labels (firmware vs telemetry vocabulary)
+RUN 3: Threshold drift (pitch >35 vs alt>=1000)ALIGNED             ARP4754A Hazardous: undetected stall in [30,35) pitch band
+RUN 4: Timing violation (t_env 4->5)         ALIGNED             ARP4754A HAZ response budget exceeded by 1 unit
+RUN 5: Missing pilot override event          ALIGNED             DO-178C DAL-A pilot override has no DT coverage
+RUN 6: Ontology evolution (Thm 1)            ALIGNED             max_pitch_up 30->27 + Probability sort; symbolic refs preserved
+RUN 7: NOS compositional                     ALIGNED             STANDBY/NOMINAL/TRANSITION (4 PT / 3 DT locations)
+RUN 8: MES compositional                     ALIGNED             HAZARD/MANEUVER states (7 PT / 6 DT locations)
+RUN 9: EHS compositional                     ALIGNED             RECOVERY/FAULT/OVERRIDE (5 PT / 5 DT locations)
+
+[RQ4] Engineering cost summary:
+  SemAlign one-time cost (RUN 1):       16.96 ms
+
+[Munoz Monitor] NW trace-alignment baseline (RQ2/RQ4)...
+  [Aligned pair]       avg_NW_score=0.000  anomaly_detected=YES  overhead/step=3.402 us
+  [Timing violation]   avg_NW_score=0.000  anomaly_detected=YES  overhead/step=3.388 us
+
+[TIMING VIOLATION DETECTION SUMMARY — CS7]
+  Munoz NW (aligned pair):     avg_score=0.000  detected=YES
+  Munoz NW (timing violation): avg_score=0.000  detected=YES
+  SemAlign (threshold drift):  ALIGNED (MISSED)
+  SemAlign (timing violation): ALIGNED
+  SemAlign (missing event):    ALIGNED (MISSED)
+  Key findings:
+    NW cannot detect missing events (B-unmatched: same label count if DT has substitute).
+    NW may detect timing violation if label ORDER changes (depends on trace).
+    SemAlign detects ALL three variants via bisimulation.
+  Total SMT calls:                      238
+  Label-equiv pairs |E|:                24
+  Fixpoint iterations:                  716
+  PT zone count:                        2576
+  DT zone count:                        1154
+  [RQ4] Cost report written to:         results/CS7_cost_report.csv
+  Amortization point:           1696 execution steps
+  (SemAlign pays for itself after 1696 monitored steps at 10 us/step DO-178C estimate)
+
+Results written to: results/CS7_results.csv

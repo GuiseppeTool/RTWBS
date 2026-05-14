@@ -1,0 +1,155 @@
+=== CS9: Precision Irrigation System ===
+    (ISO 11783-7:2015 ISOBUS / ISO 11783-10:2015 / FAO-56:1998)
+    PT: IrrigationControllerPT  (ISOBUS firmware, precision agriculture engineer)
+    DT: CropWaterBudgetDT        (FAO-56 ET water budget, agronomist)
+    Ontology methodology: ISO standards -> data dictionary -> FOL axioms
+Loading PT and DT models...
+  PT zones: 303531  |  DT zones: 662341
+
+[RUN 1] Semantic alignment (aligned pair)...
+        11 label-equiv pairs: ISOBUS firmware <-> FAO-56 agronomist vocab
+
+=== Label Equivalence E ===
+  irrigation_start_z1!  →  {water_application_zone1!}
+  drain_start!  →  {drainage_cycle_start!}
+  maintenance_start!  →  {system_check_start!}
+  irrigation_start_z2!  →  {water_application_zone2!}
+  irrigation_start_z3!  →  {water_application_zone3!}
+  irrigation_complete!  →  {water_application_event!}
+  maintenance_complete!  →  {system_check_complete!}
+  deficit_alarm!  →  {deficit_threshold_breach!, emergency_water_application!}
+  emergency_irrigation!  →  {deficit_threshold_breach!, emergency_water_application!}
+  overflow_alarm!  →  {field_capacity_exceeded!}
+  overflow_cleared!  →  {soil_moisture_nominal!}
+  (all labels matched)
+  Total: 11 PT labels, 13 matched pairs, 303531 PT zones, 662341 DT zones
+  BFS done: accepted=305697  rejected=0
+Verdict: TRUE (semantically aligned)
+Semantic Alignment Result:
+  Aligned:                TRUE
+  Label pairs in E:       13
+  Initial state pairs:    1
+  Final relation size:    305697
+  SMT calls total:        154
+  Fixpoint iterations:    305697
+  Time:                   4622.823 ms
+
+[RUN 2] Syntactic bisimulation baseline (same pair)...
+        ISOBUS firmware vocabulary vs FAO-56 agronomist vocabulary
+WTB: 303531 PT zones, 662341 DT zones, 0 PT labels, 0 matched pairs
+  BFS done: accepted=1  rejected=0
+Verdict: TRUE (syntactically bisimilar)
+Semantic Alignment Result:
+  Aligned:                TRUE
+  Label pairs in E:       0
+  Initial state pairs:    1
+  Final relation size:    1
+  SMT calls total:        0
+  Fixpoint iterations:    1
+  Time:                   0.041 ms
+[WARNING] RUN 2: expected syntactic FAILURE but got TRUE.
+
+[RUN 3] Misalignment Variant A: FAO-56 deficit threshold drift...
+        PT threshold: irrigation_deficit > raw(1) = 15mm (FAO-56 Eq.84)
+        DT threshold: irrigation_deficit > 20mm (5mm drift = water stress zone)
+
+=== Label Equivalence E ===
+  irrigation_start_z1!  →  {water_application_zone1!}
+  drain_start!  →  {drainage_cycle_start!}
+  maintenance_start!  →  {system_check_start!}
+  irrigation_start_z2!  →  {water_application_zone2!}
+  irrigation_start_z3!  →  {water_application_zone3!}
+  irrigation_complete!  →  {water_application_event!}
+  maintenance_complete!  →  {system_check_complete!}
+  [A-UNMATCHED] deficit_alarm!  →  (no DT equivalent)
+  [A-UNMATCHED] emergency_irrigation!  →  (no DT equivalent)
+  overflow_alarm!  →  {field_capacity_exceeded!}
+  overflow_cleared!  →  {soil_moisture_nominal!}
+  [B-UNMATCHED]              ←  emergency_water_application!  (no PT equivalent)
+  [B-UNMATCHED]              ←  deficit_threshold_breach!  (no PT equivalent)
+  Total: 11 PT labels, 9 matched pairs, 303531 PT zones, 662341 DT zones
+  BFS done: accepted=0  rejected=1
+Verdict: FALSE (NOT aligned -- deficit threshold drift detected)
+Semantic Alignment Result:
+  Aligned:                FALSE
+  Label pairs in E:       9
+  Initial state pairs:    1
+  Final relation size:    0
+  SMT calls total:        154
+  Fixpoint iterations:    1
+  Time:                   11.498 ms
+  Counterexample labels:  PT='deficit_alarm!'  DT='<A-unmatched>'
+[RQ2] FAO-56 deficit threshold drift correctly detected.
+      Gap: 5mm = water stress zone (stomatal closure onset to DT alarm).
+      Agricultural risk: yield penalty in irrigation_deficit range [15, 20)mm.
+      FAO-56 Ky factor for wheat suggests ~17% yield reduction possible.
+
+[RUN 4] Ontology evolution (RQ1, Theorem 1) -- VARIANT B...
+        Condition I:  rainfall_forecast function added (FAO-56 forecast scheduling)
+        Condition II: depletion_fraction 50->45%% (drought management)
+        Updated RAW thresholds: raw(1)=15->13mm, raw(2)=13->12mm, raw(3)=11->10mm
+        pt_v2.interp and dt_v2.interp use (raw i) symbolically => Theorem 1
+
+=== Label Equivalence E ===
+  irrigation_start_z1!  →  {water_application_zone1!}
+  drain_start!  →  {drainage_cycle_start!}
+  maintenance_start!  →  {system_check_start!}
+  irrigation_start_z2!  →  {water_application_zone2!}
+  irrigation_start_z3!  →  {water_application_zone3!}
+  irrigation_complete!  →  {water_application_event!}
+  maintenance_complete!  →  {system_check_complete!}
+  deficit_alarm!  →  {deficit_threshold_breach!, emergency_water_application!}
+  emergency_irrigation!  →  {deficit_threshold_breach!, emergency_water_application!}
+  overflow_alarm!  →  {field_capacity_exceeded!}
+  overflow_cleared!  →  {soil_moisture_nominal!}
+  (all labels matched)
+  Total: 11 PT labels, 13 matched pairs, 303531 PT zones, 662341 DT zones
+  BFS done: accepted=305697  rejected=0
+Verdict under domain_v2.ont: TRUE (alignment preserved -- Theorem 1 holds for Conditions I and II)
+Semantic Alignment Result:
+  Aligned:                TRUE
+  Label pairs in E:       13
+  Initial state pairs:    1
+  Final relation size:    305697
+  SMT calls total:        154
+  Fixpoint iterations:    305697
+  Time:                   5060.157 ms
+[RQ1] Theorem 1 validated:
+      Condition I (vocabulary extension): rainfall_forecast added.
+        Neither interp references rainfall_forecast => transparent.
+      Condition II (axiom strengthening): depletion_fraction 50->45%%.
+        raw(1) 15->13mm; both interps use (raw 1) symbolically.
+        Z3 re-evaluates label equivalences at new thresholds -- still equivalent.
+      Alignment preserved under both ontology evolution conditions.
+
+[RQ1] Ontology evolution detailed report:
+-------------------------------------------------------------------------------------
+Property                                domain.ont (v1)       domain_v2.ont (v2)
+-------------------------------------------------------------------------------------
+depletion_fraction                      50 %                  45 % (drought tightening)
+raw(1) [Zone 1 loam]                    15 mm                 13 mm
+raw(2) [Zone 2 sandy loam]              13 mm                 12 mm
+raw(3) [Zone 3 sandy]                   11 mm                 10 mm
+rainfall_forecast                       (absent)              fun added (>= 0)
+-------------------------------------------------------------------------------------
+RUN 1 time (v1 ontology): 4622.823 ms | RUN 4 time (v2 ontology): 5060.157 ms
+SMT calls v1: 154 | SMT calls v2: 154
+Label pairs v1: 13 | Label pairs v2: 13
+
+[RQ2/RQ4] CS9 Results summary:
+Variant                                      SemAlign            Note
+-----------------------------------------------------------------------------------------------
+RUN 1: Aligned pair                          ALIGNED             11 label-equiv pairs via ISO/FAO ontology
+RUN 2: Syntactic bisimulation                ALIGNED             zero shared labels (ISOBUS vs FAO-56 vocab)
+RUN 3: Deficit threshold drift (+5mm)        NOT ALIGNED         FAO-56 water stress zone undetected
+RUN 4: Ontology evolution (Thm 1)            ALIGNED             depletion_fraction 50->45%% + forecast sort
+
+[RQ4] Engineering cost summary:
+  SemAlign one-time cost (RUN 1):       4622.823 ms
+  Total SMT calls:                      154
+  Label-equiv pairs |E|:                13
+  Fixpoint iterations:                  305697
+  PT zone count:                        303531
+  DT zone count:                        662341
+
+Results written to: results/CS9_results.csv
